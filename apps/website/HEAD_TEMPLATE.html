@@ -1,0 +1,1342 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TrackFlow Utility Lab | Manual Function Testing</title>
+    <meta
+      name="description"
+      content="Interactive utility testing lab for TrackFlow collections, search, transformation, and validation functions."
+    />
+    <meta
+      name="keywords"
+      content="TrackFlow utility testing, TypeScript utilities, manual QA, data operations, logistics testing"
+    />
+    <meta name="author" content="TrackFlow Inc." />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+    <meta name="theme-color" content="#2563EB" />
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              flowBlue: "#2563EB",
+              flowSoftBlue: "#82A2E5",
+              flowAccent: "#FF9142",
+              flowInk: "#0F172A",
+              flowSky: "#E0EAFF"
+            },
+            fontFamily: {
+              sans: ["Plus Jakarta Sans", "Segoe UI", "sans-serif"],
+              space: ["Space Grotesk", "Avenir Next", "sans-serif"]
+            },
+            boxShadow: {
+              float: "0 20px 60px -28px rgba(37, 99, 235, 0.35)"
+            },
+            keyframes: {
+              riseIn: {
+                from: { opacity: "0", transform: "translateY(12px)" },
+                to: { opacity: "1", transform: "translateY(0)" }
+              }
+            },
+            animation: {
+              riseIn: "riseIn 650ms ease forwards",
+              riseInFast: "riseIn 500ms ease forwards"
+            }
+          }
+        }
+      };
+    </script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body class="min-h-screen bg-white font-sans text-black transition-colors dark:bg-black dark:text-white">
+    <a
+      class="absolute left-3 top-[-40px] z-50 rounded-lg bg-flowInk px-3 py-2 text-sm font-semibold text-white no-underline transition-[top] focus-visible:top-3 focus-visible:outline-none"
+      href="#main-content"
+      >Skip to main content</a
+    >
+    <div
+      class="fixed inset-0 -z-10 bg-[radial-gradient(1200px_500px_at_90%_-10%,rgba(37,99,235,0.16),transparent_70%),radial-gradient(640px_340px_at_70%_50%,rgba(255,145,66,0.12),transparent_60%),radial-gradient(700px_380px_at_15%_85%,rgba(56,189,248,0.14),transparent_65%),linear-gradient(180deg,#f8fbff_0%,#ffffff_45%,#f7faff_100%)] dark:bg-[radial-gradient(1200px_500px_at_90%_-10%,rgba(59,130,246,0.2),transparent_70%),radial-gradient(640px_340px_at_70%_50%,rgba(255,145,66,0.16),transparent_60%),radial-gradient(700px_380px_at_15%_85%,rgba(56,189,248,0.14),transparent_65%),linear-gradient(180deg,#05070c_0%,#090d16_45%,#0a111d_100%)]"
+    ></div>
+
+    <header class="w-full py-6">
+      <nav
+        class="flex items-center justify-between rounded-2xl border border-flowBlue/15 bg-white/80 px-4 py-3 shadow-sm backdrop-blur-sm dark:border-white/30 dark:bg-black/90 md:px-6"
+        aria-label="Primary"
+      >
+        <a href="index.html#home" class="flex items-center gap-3" aria-label="TrackFlow home">
+          <img
+            src="../../workflows/TrackFlowLogo.png"
+            alt="TrackFlow company logo icon in blue and orange"
+            class="h-10 w-10 rounded-xl object-cover ring-1 ring-flowBlue/20"
+          />
+          <div>
+            <p class="font-space text-lg font-bold leading-none">TrackFlow</p>
+            <p class="text-xs text-slate-500 dark:text-white">Faster routes, smarter deliveries</p>
+          </div>
+        </a>
+
+        <ul class="hidden items-center gap-7 text-sm font-medium text-slate-700 dark:text-white md:flex" role="list">
+          <li><a href="index.html#home" class="transition hover:text-flowBlue">Home</a></li>
+          <li><a href="index.html#services" class="transition hover:text-flowBlue">Services</a></li>
+          <li><a href="index.html#benefits" class="transition hover:text-flowBlue">Benefits</a></li>
+          <li><a href="index.html#contact" class="transition hover:text-flowBlue">Contact</a></li>
+        </ul>
+
+        <div class="flex items-center gap-2">
+          <button
+            id="theme-toggle"
+            type="button"
+            class="inline-flex min-w-[5.2rem] items-center gap-2 rounded-full border border-flowBlue/25 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-flowBlue hover:text-flowBlue dark:border-white/40 dark:bg-black dark:text-white dark:hover:border-white dark:hover:text-white"
+            aria-label="Activate dark mode"
+            aria-pressed="false"
+          >
+            <span class="theme-toggle-icon" aria-hidden="true">◐</span>
+            <span class="theme-toggle-text">Dark</span>
+          </button>
+
+          <a
+            href="HEAD_TEMPLATE.html"
+            class="rounded-full border border-flowBlue/20 bg-flowBlue/10 px-4 py-2 text-sm font-semibold text-flowBlue transition hover:scale-[1.03]"
+          >
+            Utility lab
+          </a>
+
+          <a href="signup.html" class="rounded-full bg-flowBlue px-4 py-2 text-sm font-semibold text-white transition hover:scale-[1.03] hover:bg-blue-700">
+            Sign up
+          </a>
+        </div>
+      </nav>
+    </header>
+
+    <main id="main-content" class="mx-auto w-full max-w-[90rem] px-6 pb-20 pt-2 md:px-10">
+      <section class="animate-riseIn rounded-3xl border border-flowBlue/20 bg-white/85 p-8 opacity-0 shadow-float backdrop-blur-sm motion-reduce:animate-none motion-reduce:opacity-100 dark:border-white/30 dark:bg-black/80 md:p-10">
+        <p class="inline-flex items-center rounded-full border border-flowBlue/25 bg-flowBlue/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-flowBlue">
+          Manual Tester
+        </p>
+        <h1 class="mt-4 font-space text-3xl font-bold leading-tight sm:text-4xl md:text-5xl">
+          TrackFlow Utility Lab
+        </h1>
+        <p class="mt-4 max-w-3xl text-slate-600 dark:text-white">
+          Interactive page to manually test utility behavior from
+          <span class="font-semibold">collections.ts</span>,
+          <span class="font-semibold">search.ts</span>,
+          <span class="font-semibold">transformation.ts</span>, and
+          <span class="font-semibold">validations.ts</span>.
+          Each panel lets you run operations and review live JSON results.
+        </p>
+
+        <div class="mt-8 grid gap-3 sm:grid-cols-3">
+          <article class="rounded-2xl border border-slate-200 bg-white/80 p-4 dark:border-white/30 dark:bg-black">
+            <p class="text-xs uppercase tracking-[0.16em] text-slate-500 dark:text-white">Active dataset</p>
+            <p id="dataset-size" class="mt-2 text-xl font-bold text-flowBlue">-</p>
+          </article>
+          <article class="rounded-2xl border border-slate-200 bg-white/80 p-4 dark:border-white/30 dark:bg-black">
+            <p class="text-xs uppercase tracking-[0.16em] text-slate-500 dark:text-white">Last operation</p>
+            <p id="last-operation" class="mt-2 text-base font-semibold text-slate-800 dark:text-white">None yet</p>
+          </article>
+          <article class="rounded-2xl border border-slate-200 bg-white/80 p-4 dark:border-white/30 dark:bg-black">
+            <p class="text-xs uppercase tracking-[0.16em] text-slate-500 dark:text-white">Status</p>
+            <p id="status-chip" class="mt-2 inline-flex rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold uppercase tracking-[0.16em] text-emerald-700">Ready</p>
+          </article>
+        </div>
+
+        <div class="mt-6 flex flex-wrap gap-3">
+          <button data-action="run-full-suite" class="rounded-xl bg-flowInk px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 dark:border dark:border-white/30 dark:bg-black dark:hover:bg-white/10">
+            Run Full Utility Suite
+          </button>
+          <p class="text-sm text-slate-600 dark:text-white">
+            Executes representative scenarios for every exported utility family.
+          </p>
+        </div>
+      </section>
+
+      <section class="mt-8 grid gap-6 lg:grid-cols-2">
+        <article class="rounded-2xl border border-flowBlue/20 bg-white/90 p-6 shadow-sm dark:border-white/30 dark:bg-black">
+          <h2 class="font-space text-xl font-bold">search.ts operations</h2>
+          <p class="mt-2 text-sm text-slate-600 dark:text-white">Linear, binary, and ID-based lookups with sample logistics data.</p>
+
+          <div class="mt-5 space-y-4">
+            <div class="rounded-xl border border-slate-200 p-4 dark:border-white/25">
+              <p class="text-sm font-semibold">Linear search in number list</p>
+              <div class="mt-3 grid gap-2 sm:grid-cols-3">
+                <input id="linear-array" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-white/30 dark:bg-black" value="2,5,7,9,14,20" />
+                <input id="linear-target" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-white/30 dark:bg-black" value="9" />
+                <button data-action="run-linear-search" class="rounded-lg bg-flowBlue px-3 py-2 text-sm font-semibold text-white transition hover:bg-blue-700">Run</button>
+              </div>
+            </div>
+
+            <div class="rounded-xl border border-slate-200 p-4 dark:border-white/25">
+              <p class="text-sm font-semibold">Binary search in sorted list</p>
+              <div class="mt-3 grid gap-2 sm:grid-cols-3">
+                <input id="binary-array" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-white/30 dark:bg-black" value="1,3,4,8,11,16,21" />
+                <input id="binary-target" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-white/30 dark:bg-black" value="11" />
+                <button data-action="run-binary-search" class="rounded-lg bg-flowBlue px-3 py-2 text-sm font-semibold text-white transition hover:bg-blue-700">Run</button>
+              </div>
+            </div>
+
+            <div class="rounded-xl border border-slate-200 p-4 dark:border-white/25">
+              <p class="text-sm font-semibold">Find entity by ID</p>
+              <div class="mt-3 grid gap-2 sm:grid-cols-3">
+                <select id="find-entity" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-white/30 dark:bg-black">
+                  <option value="order">Order</option>
+                  <option value="return">Return</option>
+                  <option value="worker">Worker</option>
+                  <option value="carrier">Carrier</option>
+                  <option value="warehouse">Warehouse</option>
+                  <option value="department">Department</option>
+                </select>
+                <input id="find-id" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-white/30 dark:bg-black" value="ORD-002" />
+                <button data-action="run-find-by-id" class="rounded-lg bg-flowAccent px-3 py-2 text-sm font-semibold text-white transition hover:brightness-95">Run</button>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <article class="rounded-2xl border border-flowBlue/20 bg-white/90 p-6 shadow-sm dark:border-white/30 dark:bg-black">
+          <h2 class="font-space text-xl font-bold">collections.ts operations</h2>
+          <p class="mt-2 text-sm text-slate-600 dark:text-white">Filter, combined search, and sorting controls.</p>
+
+          <div class="mt-5 space-y-4">
+            <div class="rounded-xl border border-slate-200 p-4 dark:border-white/25">
+              <p class="text-sm font-semibold">Filter orders by status and destination</p>
+              <div class="mt-3 grid gap-2 sm:grid-cols-3">
+                <select id="order-status" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-white/30 dark:bg-black">
+                  <option value="">Any status</option>
+                  <option>In Process</option>
+                  <option>Shipped</option>
+                  <option>Delivered</option>
+                  <option>Returned</option>
+                </select>
+                <input id="order-location" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-white/30 dark:bg-black" placeholder="Destination" value="Madrid" />
+                <button data-action="run-search-orders" class="rounded-lg bg-flowBlue px-3 py-2 text-sm font-semibold text-white transition hover:bg-blue-700">Run</button>
+              </div>
+            </div>
+
+            <div class="rounded-xl border border-slate-200 p-4 dark:border-white/25">
+              <p class="text-sm font-semibold">Filter carriers by service and location</p>
+              <div class="mt-3 grid gap-2 sm:grid-cols-3">
+                <select id="carrier-service" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-white/30 dark:bg-black">
+                  <option value="">Any service</option>
+                  <option>local</option>
+                  <option>international</option>
+                </select>
+                <select id="carrier-location" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-white/30 dark:bg-black">
+                  <option value="">Any country</option>
+                  <option>Mexico</option>
+                  <option>Spain</option>
+                </select>
+                <button data-action="run-search-carriers" class="rounded-lg bg-flowBlue px-3 py-2 text-sm font-semibold text-white transition hover:bg-blue-700">Run</button>
+              </div>
+            </div>
+
+            <div class="rounded-xl border border-slate-200 p-4 dark:border-white/25">
+              <p class="text-sm font-semibold">Sort orders by weight</p>
+              <div class="mt-3 grid gap-2 sm:grid-cols-2">
+                <select id="sort-direction" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-white/30 dark:bg-black">
+                  <option value="asc">Ascending</option>
+                  <option value="desc">Descending</option>
+                </select>
+                <button data-action="run-sort-orders" class="rounded-lg bg-flowAccent px-3 py-2 text-sm font-semibold text-white transition hover:brightness-95">Run</button>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <article class="rounded-2xl border border-flowBlue/20 bg-white/90 p-6 shadow-sm dark:border-white/30 dark:bg-black">
+          <h2 class="font-space text-xl font-bold">transformation.ts operations</h2>
+          <p class="mt-2 text-sm text-slate-600 dark:text-white">Category counts and numeric report generation from order data.</p>
+
+          <div class="mt-5 space-y-4">
+            <div class="rounded-xl border border-slate-200 p-4 dark:border-white/25">
+              <p class="text-sm font-semibold">Count orders by status</p>
+              <button data-action="run-count-status" class="mt-3 w-full rounded-lg bg-flowBlue px-3 py-2 text-sm font-semibold text-white transition hover:bg-blue-700">Run</button>
+            </div>
+
+            <div class="rounded-xl border border-slate-200 p-4 dark:border-white/25">
+              <p class="text-sm font-semibold">Numeric report for order weight</p>
+              <button data-action="run-weight-report" class="mt-3 w-full rounded-lg bg-flowAccent px-3 py-2 text-sm font-semibold text-white transition hover:brightness-95">Run</button>
+            </div>
+          </div>
+        </article>
+
+        <article class="rounded-2xl border border-flowBlue/20 bg-white/90 p-6 shadow-sm dark:border-white/30 dark:bg-black">
+          <h2 class="font-space text-xl font-bold">validations.ts operations</h2>
+          <p class="mt-2 text-sm text-slate-600 dark:text-white">Run generic and model-specific validation checks.</p>
+
+          <div class="mt-5 space-y-4">
+            <div class="rounded-xl border border-slate-200 p-4 dark:border-white/25">
+              <p class="text-sm font-semibold">Validate numeric range</p>
+              <div class="mt-3 grid gap-2 sm:grid-cols-4">
+                <input id="range-value" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-white/30 dark:bg-black" value="12" />
+                <input id="range-min" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-white/30 dark:bg-black" value="1" />
+                <input id="range-max" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-white/30 dark:bg-black" value="10" />
+                <button data-action="run-range-validation" class="rounded-lg bg-flowBlue px-3 py-2 text-sm font-semibold text-white transition hover:bg-blue-700">Run</button>
+              </div>
+            </div>
+
+            <div class="rounded-xl border border-slate-200 p-4 dark:border-white/25">
+              <p class="text-sm font-semibold">Validate date coherence</p>
+              <div class="mt-3 grid gap-2 sm:grid-cols-3">
+                <input id="date-start" type="date" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-white/30 dark:bg-black" value="2026-05-10" />
+                <input id="date-end" type="date" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-white/30 dark:bg-black" value="2026-05-09" />
+                <button data-action="run-date-validation" class="rounded-lg bg-flowBlue px-3 py-2 text-sm font-semibold text-white transition hover:bg-blue-700">Run</button>
+              </div>
+            </div>
+
+            <div class="rounded-xl border border-slate-200 p-4 dark:border-white/25">
+              <p class="text-sm font-semibold">Validate sample order</p>
+              <div class="mt-3 grid gap-2 sm:grid-cols-2">
+                <select id="order-validity" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-white/30 dark:bg-black">
+                  <option value="valid">Valid sample</option>
+                  <option value="invalid">Invalid sample</option>
+                </select>
+                <button data-action="run-order-validation" class="rounded-lg bg-flowAccent px-3 py-2 text-sm font-semibold text-white transition hover:brightness-95">Run</button>
+              </div>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <section class="mt-8 rounded-2xl border border-flowBlue/20 bg-flowInk p-6 text-white shadow-float dark:border-white/30">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <h3 class="font-space text-lg font-bold">Operation Result</h3>
+          <button id="clear-result" class="rounded-lg border border-white/30 px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] transition hover:bg-white/10">Clear</button>
+        </div>
+        <pre id="result-view" class="mt-4 max-h-[24rem] overflow-auto rounded-xl border border-white/20 bg-black/30 p-4 text-xs leading-relaxed"></pre>
+      </section>
+    </main>
+
+    <footer class="border-t border-flowBlue/15 bg-white/90 dark:border-white/30 dark:bg-black">
+      <div class="mx-auto grid w-full max-w-[90rem] gap-8 px-6 py-10 md:grid-cols-3 md:px-10">
+        <div>
+          <div class="flex items-center gap-3">
+            <img
+              src="../../workflows/TrackFlowLogo.png"
+              alt="TrackFlow logo symbol used in website footer"
+              class="h-10 w-10 rounded-xl object-cover ring-1 ring-flowBlue/20"
+            />
+            <p class="font-space text-lg font-bold">TrackFlow Inc.</p>
+          </div>
+          <p class="mt-3 text-sm text-slate-600 dark:text-white">
+            Logistics utility testing sandbox aligned with TrackFlow Tech visual identity.
+          </p>
+        </div>
+        <div>
+          <p class="font-space text-base font-bold">Quick links</p>
+          <ul class="mt-3 space-y-2 text-sm text-slate-600 dark:text-white" role="list">
+            <li><a href="index.html#services" class="transition hover:text-flowBlue">Services</a></li>
+            <li><a href="index.html#benefits" class="transition hover:text-flowBlue">Benefits</a></li>
+            <li><a href="index.html#contact" class="transition hover:text-flowBlue">Contact</a></li>
+          </ul>
+        </div>
+        <div>
+          <p class="font-space text-base font-bold">Motto</p>
+          <p class="mt-3 rounded-xl border border-flowAccent/40 bg-orange-50 px-4 py-3 text-sm font-semibold text-slate-700 dark:border-white/30 dark:bg-black dark:text-white">
+            "Faster routes, smarter deliveries"
+          </p>
+        </div>
+      </div>
+      <div class="border-t border-flowBlue/10 py-4 text-center text-xs text-slate-500 dark:border-white/30 dark:text-white">
+        © 2026 Trackflow Inc. All rights reserved.
+      </div>
+    </footer>
+
+    <script>
+      (function () {
+        var orders = [
+          {
+            orderID: "ORD-001",
+            placedAt: new Date("2026-05-01"),
+            expectedDelivery: new Date("2026-05-04"),
+            packageQuantity: 1,
+            packageSize: "M",
+            weight: 3.2,
+            urgent: false,
+            destination: "Monterrey",
+            products: [{ product: "Keyboard", quantity: 1 }],
+            carrierID: "CAR-001",
+            warehouseID: "WH-001",
+            client: "VoltStore",
+            status: "Shipped"
+          },
+          {
+            orderID: "ORD-002",
+            placedAt: new Date("2026-05-02"),
+            expectedDelivery: new Date("2026-05-05"),
+            packageQuantity: 2,
+            packageSize: "L",
+            weight: 7.6,
+            urgent: true,
+            destination: "Madrid",
+            products: [{ product: "Monitor", quantity: 1 }],
+            carrierID: "CAR-002",
+            warehouseID: "WH-002",
+            client: "CasaNova",
+            status: "In Process"
+          },
+          {
+            orderID: "ORD-003",
+            placedAt: new Date("2026-05-03"),
+            expectedDelivery: new Date("2026-05-06"),
+            packageQuantity: 1,
+            packageSize: "S",
+            weight: 1.4,
+            urgent: false,
+            destination: "Valencia",
+            products: [{ product: "Cable", quantity: 2 }],
+            carrierID: "CAR-003",
+            warehouseID: "WH-002",
+            client: "TechWay",
+            status: "Delivered"
+          },
+          {
+            orderID: "ORD-004",
+            placedAt: new Date("2026-05-04"),
+            expectedDelivery: new Date("2026-05-08"),
+            packageQuantity: 3,
+            packageSize: "L",
+            weight: 10.1,
+            urgent: true,
+            destination: "Madrid",
+            products: [{ product: "Router", quantity: 3 }],
+            carrierID: "CAR-002",
+            warehouseID: "WH-001",
+            client: "NovaCom",
+            status: "Returned"
+          }
+        ];
+
+        var returnsList = [
+          {
+            orderID: "ORD-004",
+            returnID: "RET-001",
+            returningReason: "Damaged packaging",
+            requestedAt: new Date("2026-05-07"),
+            productCondition: "Fair",
+            status: "Under review",
+            expectedArrival: new Date("2026-05-10"),
+            packageQuantity: 1,
+            packageSize: "L",
+            weight: 3,
+            products: [{ product: "Router", quantity: 1 }],
+            carrierID: "CAR-002",
+            warehouseID: "WH-001",
+            client: "NovaCom"
+          }
+        ];
+
+        var workers = [
+          { name: "Ana", workerID: "WK-001", location: "Mexico", departmentID: "DEP-001", position: "Supervisor" },
+          { name: "Bruno", workerID: "WK-002", location: "Spain", departmentID: "DEP-002", position: "Agent" }
+        ];
+
+        var carriers = [
+          { name: "Estafeta", carrierID: "CAR-001", location: ["Mexico"], service: "local" },
+          { name: "SEUR", carrierID: "CAR-002", location: ["Spain"], service: "local" },
+          { name: "DHL", carrierID: "CAR-003", location: ["Mexico", "Spain"], service: "international" }
+        ];
+
+        var warehouses = [
+          { warehouseID: "WH-001", location: "Monterrey", country: "Mexico", managementSystem: "commercial software" },
+          { warehouseID: "WH-002", location: "Zaragoza", country: "Spain", managementSystem: "advanced spreadsheet" }
+        ];
+
+        var departments = [
+          { name: "Warehouse Operations", departmentID: "DEP-001", location: ["Mexico", "Spain"], needs: ["Dashboard"], managerID: "WK-001" },
+          { name: "Customer Experience", departmentID: "DEP-002", location: ["Mexico", "Spain"], needs: ["Automation"], managerID: "WK-002" }
+        ];
+
+        function normalizeText(value) {
+          return String(value).trim().toLowerCase();
+        }
+
+        function normalizeId(value) {
+          return normalizeText(value);
+        }
+
+        function normalizeRange(min, max) {
+          if (min !== undefined && max !== undefined && min > max) {
+            return { min: max, max: min };
+          }
+          return { min: min, max: max };
+        }
+
+        function toLocationList(value) {
+          if (value === undefined) return [];
+          return Array.isArray(value) ? value : [value];
+        }
+
+        function compareSortValues(left, right) {
+          if (left == null && right == null) return 0;
+          if (left == null) return 1;
+          if (right == null) return -1;
+          if (left instanceof Date && right instanceof Date) return left.getTime() - right.getTime();
+          if (typeof left === "number" && typeof right === "number") return left - right;
+          if (typeof left === "boolean" && typeof right === "boolean") return Number(left) - Number(right);
+          return String(left).localeCompare(String(right), undefined, { sensitivity: "base", numeric: true });
+        }
+
+        function linearSearch(items, predicate) {
+          for (var i = 0; i < items.length; i += 1) {
+            if (predicate(items[i])) return items[i];
+          }
+          return null;
+        }
+
+        function linearSearchIndex(items, predicate) {
+          for (var i = 0; i < items.length; i += 1) {
+            if (predicate(items[i])) return i;
+          }
+          return -1;
+        }
+
+        function defaultCompare(left, right) {
+          var a = left instanceof Date ? left.getTime() : typeof left === "boolean" ? Number(left) : left;
+          var b = right instanceof Date ? right.getTime() : typeof right === "boolean" ? Number(right) : right;
+          if (a === b) return 0;
+          return a < b ? -1 : 1;
+        }
+
+        function binarySearch(sortedItems, target, compare) {
+          var comparator = compare || defaultCompare;
+          var low = 0;
+          var high = sortedItems.length - 1;
+
+          while (low <= high) {
+            var mid = Math.floor((low + high) / 2);
+            var cmp = comparator(sortedItems[mid], target);
+            if (cmp === 0) return mid;
+            if (cmp < 0) low = mid + 1;
+            else high = mid - 1;
+          }
+
+          return -1;
+        }
+
+        function binarySearchBy(sortedItems, target, selector, compare) {
+          var comparator = compare || defaultCompare;
+          var low = 0;
+          var high = sortedItems.length - 1;
+
+          while (low <= high) {
+            var mid = Math.floor((low + high) / 2);
+            var selectedValue = selector(sortedItems[mid]);
+            var cmp = comparator(selectedValue, target);
+            if (cmp === 0) return mid;
+            if (cmp < 0) low = mid + 1;
+            else high = mid - 1;
+          }
+
+          return -1;
+        }
+
+        function findById(items, key, id) {
+          var target = normalizeId(id);
+          return linearSearch(items, function (item) {
+            return normalizeId(item[key]) === target;
+          });
+        }
+
+        function filterByCategory(items, category, getCategory) {
+          return items.filter(function (item) {
+            return getCategory(item) === category;
+          });
+        }
+
+        function filterByPriceRange(items, getPrice, minPrice, maxPrice) {
+          if (minPrice === undefined && maxPrice === undefined) return items.slice();
+          var range = normalizeRange(minPrice, maxPrice);
+
+          return items.filter(function (item) {
+            var value = getPrice(item);
+            if (!Number.isFinite(value)) return false;
+            if (range.min !== undefined && value < range.min) return false;
+            if (range.max !== undefined && value > range.max) return false;
+            return true;
+          });
+        }
+
+        function filterByStatus(items, status, getStatus) {
+          return items.filter(function (item) {
+            return getStatus(item) === status;
+          });
+        }
+
+        function filterByDateRange(items, getDate, fromDate, toDate) {
+          if (!fromDate && !toDate) return items.slice();
+          var range = normalizeRange(
+            fromDate instanceof Date && !Number.isNaN(fromDate.getTime()) ? fromDate.getTime() : undefined,
+            toDate instanceof Date && !Number.isNaN(toDate.getTime()) ? toDate.getTime() : undefined
+          );
+
+          return items.filter(function (item) {
+            var date = getDate(item);
+            if (!(date instanceof Date) || Number.isNaN(date.getTime())) return false;
+            var time = date.getTime();
+            if (range.min !== undefined && time < range.min) return false;
+            if (range.max !== undefined && time > range.max) return false;
+            return true;
+          });
+        }
+
+        function filterByLocation(items, location, getLocation) {
+          return items.filter(function (item) {
+            var locations = toLocationList(getLocation(item));
+            return locations.some(function (value) {
+              return normalizeText(value) === normalizeText(location);
+            });
+          });
+        }
+
+        function searchByCriteria(items, criteria, accessors) {
+          var result = items.slice();
+
+          if (criteria.category !== undefined && accessors.getCategory) {
+            result = filterByCategory(result, criteria.category, accessors.getCategory);
+          }
+
+          if ((criteria.minPrice !== undefined || criteria.maxPrice !== undefined) && accessors.getPrice) {
+            result = filterByPriceRange(result, accessors.getPrice, criteria.minPrice, criteria.maxPrice);
+          }
+
+          if (criteria.status !== undefined && accessors.getStatus) {
+            result = filterByStatus(result, criteria.status, accessors.getStatus);
+          }
+
+          if ((criteria.fromDate !== undefined || criteria.toDate !== undefined) && accessors.getDate) {
+            result = filterByDateRange(result, accessors.getDate, criteria.fromDate, criteria.toDate);
+          }
+
+          if (criteria.location !== undefined && accessors.getLocation) {
+            result = filterByLocation(result, criteria.location, accessors.getLocation);
+          }
+
+          return result;
+        }
+
+        function sortByField(items, selector, direction) {
+          var sorted = items.slice().sort(function (a, b) {
+            return compareSortValues(selector(a), selector(b));
+          });
+          return direction === "desc" ? sorted.reverse() : sorted;
+        }
+
+        function sortByMultipleFields(items, fields) {
+          if (!fields.length) return items.slice();
+
+          return items.slice().sort(function (leftItem, rightItem) {
+            for (var i = 0; i < fields.length; i += 1) {
+              var field = fields[i];
+              var direction = field.direction || "asc";
+              var base = compareSortValues(field.selector(leftItem), field.selector(rightItem));
+              if (base !== 0) return direction === "asc" ? base : -base;
+            }
+            return 0;
+          });
+        }
+
+        function sortAlphabetically(items, selector, direction) {
+          return sortByField(items, selector, direction || "asc");
+        }
+
+        function searchOrders(data, criteria) {
+          return searchByCriteria(data, criteria, {
+            getStatus: function (order) {
+              return order.status;
+            },
+            getDate: function (order) {
+              return order.placedAt;
+            },
+            getLocation: function (order) {
+              return order.destination;
+            }
+          });
+        }
+
+        function searchCarriers(data, criteria) {
+          return searchByCriteria(data, criteria, {
+            getCategory: function (carrier) {
+              return carrier.service;
+            },
+            getLocation: function (carrier) {
+              return carrier.location;
+            }
+          });
+        }
+
+        function searchReturns(data, criteria) {
+          return searchByCriteria(data, criteria, {
+            getStatus: function (item) {
+              return item.status;
+            },
+            getDate: function (item) {
+              return item.requestedAt;
+            },
+            getLocation: function (item) {
+              return item.client;
+            }
+          });
+        }
+
+        function searchWarehouses(data, criteria) {
+          return searchByCriteria(data, criteria, {
+            getCategory: function (warehouse) {
+              return warehouse.managementSystem;
+            },
+            getLocation: function (warehouse) {
+              return [warehouse.country, warehouse.location];
+            }
+          });
+        }
+
+        function isValidNumber(value) {
+          return Number.isFinite(value);
+        }
+
+        function getValidNumbers(items, selector) {
+          var values = [];
+          for (var i = 0; i < items.length; i += 1) {
+            var number = selector(items[i]);
+            if (isValidNumber(number)) values.push(number);
+          }
+          return values;
+        }
+
+        function countByCategory(items, selector) {
+          var result = {};
+          for (var i = 0; i < items.length; i += 1) {
+            var key = selector(items[i]);
+            result[key] = (result[key] || 0) + 1;
+          }
+          return result;
+        }
+
+        function calculateTotal(items, selector) {
+          var values = getValidNumbers(items, selector);
+          var total = 0;
+          for (var i = 0; i < values.length; i += 1) total += values[i];
+          return total;
+        }
+
+        function calculateAverage(items, selector) {
+          var values = getValidNumbers(items, selector);
+          if (values.length === 0) return null;
+          return calculateTotal(values, function (n) {
+            return n;
+          }) / values.length;
+        }
+
+        function findMaximum(items, selector) {
+          var values = getValidNumbers(items, selector);
+          if (values.length === 0) return null;
+          var max = values[0];
+          for (var i = 1; i < values.length; i += 1) {
+            if (values[i] > max) max = values[i];
+          }
+          return max;
+        }
+
+        function findMinimum(items, selector) {
+          var values = getValidNumbers(items, selector);
+          if (values.length === 0) return null;
+          var min = values[0];
+          for (var i = 1; i < values.length; i += 1) {
+            if (values[i] < min) min = values[i];
+          }
+          return min;
+        }
+
+        function buildNumericReport(items, selector) {
+          return {
+            total: calculateTotal(items, selector),
+            average: calculateAverage(items, selector),
+            maximum: findMaximum(items, selector),
+            minimum: findMinimum(items, selector)
+          };
+        }
+
+        function createResult(errors) {
+          return { isValid: errors.length === 0, errors: errors };
+        }
+
+        var VALID_COUNTRIES = ["Mexico", "Spain"];
+        var VALID_SERVICES = ["local", "international"];
+        var VALID_WMS = ["commercial software", "advanced spreadsheet"];
+        var VALID_ORDER_STATUS = ["In Process", "Shipped", "Delivered", "Returned"];
+        var VALID_RETURN_STATUS = ["Under review", "Approved", "Rejected", "In transit", "Refunded", "Disposed"];
+        var VALID_PRODUCT_CONDITION = ["Poor", "Fair", "Excellent", "Like New"];
+
+        function validateRequiredFields(source, requiredFields) {
+          var errors = [];
+          for (var i = 0; i < requiredFields.length; i += 1) {
+            var field = requiredFields[i];
+            var value = source[field];
+            if (value === undefined || value === null) {
+              errors.push({ field: field, message: "Field is required." });
+            } else if (typeof value === "string" && value.trim().length === 0) {
+              errors.push({ field: field, message: "Field cannot be empty." });
+            }
+          }
+          return createResult(errors);
+        }
+
+        function validateNumericRange(field, value, min, max) {
+          var isValid = Number.isFinite(value) && (min === undefined || value >= min) && (max === undefined || value <= max);
+          if (isValid) return createResult([]);
+          return createResult([
+            {
+              field: field,
+              message: "Field must be a finite number in range [" + (min !== undefined ? min : "-∞") + ", " + (max !== undefined ? max : "+∞") + "]."
+            }
+          ]);
+        }
+
+        function validateDateCoherence(startField, startDate, endField, endDate) {
+          var errors = [];
+          if (!(startDate instanceof Date) || Number.isNaN(startDate.getTime())) {
+            errors.push({ field: startField, message: "Invalid date." });
+          }
+          if (!(endDate instanceof Date) || Number.isNaN(endDate.getTime())) {
+            errors.push({ field: endField, message: "Invalid date." });
+          }
+          if (errors.length === 0 && endDate.getTime() < startDate.getTime()) {
+            errors.push({ field: startField + "-" + endField, message: endField + " must be greater than or equal to " + startField + "." });
+          }
+          return createResult(errors);
+        }
+
+        function combineResults(results) {
+          var errors = [];
+          for (var i = 0; i < results.length; i += 1) {
+            errors = errors.concat(results[i].errors);
+          }
+          return createResult(errors);
+        }
+
+        function validateEnumField(field, value, validValues) {
+          if (validValues.indexOf(value) !== -1) return createResult([]);
+          return createResult([{ field: field, message: "Invalid value." }]);
+        }
+
+        function validateStringField(field, value) {
+          if (typeof value === "string" && value.trim().length > 0) return createResult([]);
+          return createResult([{ field: field, message: "Field is required and must be a non-empty string." }]);
+        }
+
+        function validateCountryArray(field, countries) {
+          var errors = [];
+          if (!Array.isArray(countries) || countries.length === 0) {
+            return createResult([{ field: field, message: "At least one country is required." }]);
+          }
+
+          for (var i = 0; i < countries.length; i += 1) {
+            if (VALID_COUNTRIES.indexOf(countries[i]) === -1) {
+              errors.push({ field: field + "[" + i + "]", message: "Invalid country." });
+            }
+          }
+          return createResult(errors);
+        }
+
+        function validateProductItems(items) {
+          var errors = [];
+          if (!Array.isArray(items) || items.length === 0) {
+            return createResult([{ field: "products", message: "At least one product item is required." }]);
+          }
+
+          for (var i = 0; i < items.length; i += 1) {
+            var item = items[i];
+            if (typeof item.product !== "string" || item.product.trim().length === 0) {
+              errors.push({ field: "products[" + i + "].product", message: "Product name is required." });
+            }
+            if (!Number.isFinite(item.quantity) || item.quantity < 1) {
+              errors.push({ field: "products[" + i + "].quantity", message: "Quantity must be >= 1." });
+            }
+          }
+          return createResult(errors);
+        }
+
+        function validateDepartment(department) {
+          return combineResults([
+            validateStringField("name", department.name),
+            validateStringField("departmentID", department.departmentID),
+            validateCountryArray("location", department.location),
+            Array.isArray(department.needs)
+              ? createResult([])
+              : createResult([{ field: "needs", message: "Needs must be an array." }]),
+            validateStringField("managerID", department.managerID)
+          ]);
+        }
+
+        function validateWarehouse(warehouse) {
+          return combineResults([
+            validateStringField("warehouseID", warehouse.warehouseID),
+            validateStringField("location", warehouse.location),
+            validateEnumField("country", warehouse.country, VALID_COUNTRIES),
+            validateEnumField("managementSystem", warehouse.managementSystem, VALID_WMS)
+          ]);
+        }
+
+        function validateWorker(worker) {
+          return combineResults([
+            validateStringField("name", worker.name),
+            validateStringField("workerID", worker.workerID),
+            validateEnumField("location", worker.location, VALID_COUNTRIES),
+            validateStringField("departmentID", worker.departmentID),
+            validateStringField("position", worker.position)
+          ]);
+        }
+
+        function validateCarrier(carrier) {
+          return combineResults([
+            validateStringField("name", carrier.name),
+            validateStringField("carrierID", carrier.carrierID),
+            validateCountryArray("location", carrier.location),
+            validateEnumField("service", carrier.service, VALID_SERVICES)
+          ]);
+        }
+
+        function validateOrder(order) {
+          return combineResults([
+            validateRequiredFields(order, [
+              "orderID",
+              "packageSize",
+              "destination",
+              "carrierID",
+              "warehouseID",
+              "client",
+              "products",
+              "placedAt",
+              "expectedDelivery",
+              "status"
+            ]),
+            validateDateCoherence("placedAt", order.placedAt, "expectedDelivery", order.expectedDelivery),
+            validateNumericRange("packageQuantity", order.packageQuantity, 1),
+            validateNumericRange("weight", order.weight, Number.EPSILON),
+            validateEnumField("status", order.status, VALID_ORDER_STATUS),
+            validateProductItems(order.products)
+          ]);
+        }
+
+        function validateReturn(returnItem) {
+          return combineResults([
+            validateRequiredFields(returnItem, [
+              "orderID",
+              "returnID",
+              "returningReason",
+              "requestedAt",
+              "expectedArrival",
+              "packageSize",
+              "carrierID",
+              "warehouseID",
+              "client",
+              "status",
+              "productCondition",
+              "products"
+            ]),
+            validateDateCoherence("requestedAt", returnItem.requestedAt, "expectedArrival", returnItem.expectedArrival),
+            validateNumericRange("packageQuantity", returnItem.packageQuantity, 1),
+            validateNumericRange("weight", returnItem.weight, Number.EPSILON),
+            validateEnumField("status", returnItem.status, VALID_RETURN_STATUS),
+            validateEnumField("productCondition", returnItem.productCondition, VALID_PRODUCT_CONDITION),
+            validateProductItems(returnItem.products)
+          ]);
+        }
+
+        function getInputNumber(id) {
+          var value = Number(document.getElementById(id).value);
+          return Number.isNaN(value) ? undefined : value;
+        }
+
+        function parseNumberArray(text) {
+          return text
+            .split(",")
+            .map(function (part) {
+              return Number(part.trim());
+            })
+            .filter(function (value) {
+              return Number.isFinite(value);
+            });
+        }
+
+        function safeSerialize(data) {
+          return JSON.stringify(
+            data,
+            function (key, value) {
+              if (value instanceof Date) return value.toISOString();
+              return value;
+            },
+            2
+          );
+        }
+
+        var resultView = document.getElementById("result-view");
+        var statusChip = document.getElementById("status-chip");
+        var lastOperation = document.getElementById("last-operation");
+        var datasetSize = document.getElementById("dataset-size");
+
+        function renderResult(operation, payload, ok) {
+          resultView.textContent = safeSerialize(payload);
+          lastOperation.textContent = operation;
+          statusChip.textContent = ok ? "Success" : "Validation warning";
+          statusChip.className =
+            "mt-2 inline-flex rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.16em] " +
+            (ok ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700");
+        }
+
+        datasetSize.textContent =
+          orders.length +
+          " orders · " +
+          returnsList.length +
+          " returns · " +
+          workers.length +
+          " workers";
+
+        var actionMap = {
+          "run-linear-search": function () {
+            var array = parseNumberArray(document.getElementById("linear-array").value);
+            var target = Number(document.getElementById("linear-target").value);
+            var foundValue = linearSearch(array, function (item) {
+              return item === target;
+            });
+            var foundIndex = linearSearchIndex(array, function (item) {
+              return item === target;
+            });
+
+            renderResult("search.ts: linearSearch + linearSearchIndex", {
+              input: array,
+              target: target,
+              foundValue: foundValue,
+              foundIndex: foundIndex
+            }, true);
+          },
+          "run-binary-search": function () {
+            var array = parseNumberArray(document.getElementById("binary-array").value);
+            var target = Number(document.getElementById("binary-target").value);
+            var index = binarySearch(array, target);
+            var orderIndex = binarySearchBy(sortByField(orders, function (item) {
+              return item.orderID;
+            }, "asc"), "ORD-003", function (item) {
+              return item.orderID;
+            });
+
+            renderResult("search.ts: binarySearch + binarySearchBy", {
+              input: array,
+              target: target,
+              index: index,
+              binarySearchByOrderIDForORD003: orderIndex
+            }, true);
+          },
+          "run-find-by-id": function () {
+            var entity = document.getElementById("find-entity").value;
+            var id = document.getElementById("find-id").value;
+            var sourceMap = {
+              order: { list: orders, key: "orderID" },
+              return: { list: returnsList, key: "returnID" },
+              worker: { list: workers, key: "workerID" },
+              carrier: { list: carriers, key: "carrierID" },
+              warehouse: { list: warehouses, key: "warehouseID" },
+              department: { list: departments, key: "departmentID" }
+            };
+
+            var source = sourceMap[entity];
+            var item = findById(source.list, source.key, id);
+
+            renderResult("search.ts: model-specific find*ById", {
+              entity: entity,
+              lookupID: id,
+              result: item
+            }, item !== null);
+          },
+          "run-search-orders": function () {
+            var status = document.getElementById("order-status").value;
+            var location = document.getElementById("order-location").value;
+            var criteria = {};
+            if (status) criteria.status = status;
+            if (location) criteria.location = location;
+
+            var result = searchOrders(orders, criteria);
+            var onlyDelivered = filterByStatus(orders, "Delivered", function (item) {
+              return item.status;
+            });
+
+            renderResult("collections.ts: searchOrders + filterByStatus", {
+              criteria: criteria,
+              results: result,
+              deliveredOnly: onlyDelivered
+            }, true);
+          },
+          "run-search-carriers": function () {
+            var service = document.getElementById("carrier-service").value;
+            var country = document.getElementById("carrier-location").value;
+            var criteria = {};
+            if (service) criteria.category = service;
+            if (country) criteria.location = country;
+
+            var result = searchCarriers(carriers, criteria);
+            var onlyInternational = filterByCategory(carriers, "international", function (item) {
+              return item.service;
+            });
+
+            renderResult("collections.ts: searchCarriers + filterByCategory + filterByLocation", {
+              criteria: criteria,
+              results: result,
+              internationalOnly: onlyInternational
+            }, true);
+          },
+          "run-sort-orders": function () {
+            var direction = document.getElementById("sort-direction").value;
+            var sorted = sortByField(orders, function (item) {
+              return item.weight;
+            }, direction);
+
+            renderResult("collections.ts: sortByField", {
+              direction: direction,
+              sorted: sorted
+            }, true);
+          },
+          "run-count-status": function () {
+            var grouped = countByCategory(orders, function (item) {
+              return item.status;
+            });
+
+            renderResult("transformation.ts: countByCategory", grouped, true);
+          },
+          "run-weight-report": function () {
+            var report = buildNumericReport(orders, function (item) {
+              return item.weight;
+            });
+
+            renderResult("transformation.ts: buildNumericReport", report, true);
+          },
+          "run-range-validation": function () {
+            var value = getInputNumber("range-value");
+            var min = getInputNumber("range-min");
+            var max = getInputNumber("range-max");
+            var result = validateNumericRange("customRange", value, min, max);
+
+            renderResult("validations.ts: validateNumericRange", result, result.isValid);
+          },
+          "run-date-validation": function () {
+            var startRaw = document.getElementById("date-start").value;
+            var endRaw = document.getElementById("date-end").value;
+            var start = new Date(startRaw + "T00:00:00");
+            var end = new Date(endRaw + "T00:00:00");
+            var result = validateDateCoherence("startDate", start, "endDate", end);
+
+            renderResult("validations.ts: validateDateCoherence", result, result.isValid);
+          },
+          "run-order-validation": function () {
+            var mode = document.getElementById("order-validity").value;
+            var validOrder = {
+              orderID: "ORD-099",
+              packageSize: "M",
+              destination: "Monterrey",
+              carrierID: "CAR-001",
+              warehouseID: "WH-001",
+              client: "VoltStore",
+              products: [{ product: "Mouse", quantity: 1 }],
+              placedAt: new Date("2026-05-01"),
+              expectedDelivery: new Date("2026-05-03"),
+              status: "Shipped",
+              packageQuantity: 1,
+              weight: 1.2
+            };
+            var invalidOrder = {
+              orderID: "",
+              packageSize: "",
+              destination: "",
+              carrierID: "",
+              warehouseID: "",
+              client: "",
+              products: [],
+              placedAt: new Date("2026-05-04"),
+              expectedDelivery: new Date("2026-05-02"),
+              status: "Unknown",
+              packageQuantity: 0,
+              weight: -4
+            };
+
+            var target = mode === "valid" ? validOrder : invalidOrder;
+            var requiredResult = validateRequiredFields(target, [
+              "orderID",
+              "packageSize",
+              "destination",
+              "carrierID",
+              "warehouseID",
+              "client"
+            ]);
+            var orderResult = validateOrder(target);
+
+            renderResult("validations.ts: validateRequiredFields + validateOrder", {
+              mode: mode,
+              requiredResult: requiredResult,
+              orderResult: orderResult
+            }, orderResult.isValid);
+          },
+          "run-full-suite": function () {
+            var fullSuite = {
+              search: {
+                linearSearch: linearSearch([10, 20, 30], function (item) {
+                  return item === 20;
+                }),
+                linearSearchIndex: linearSearchIndex([10, 20, 30], function (item) {
+                  return item === 30;
+                }),
+                binarySearch: binarySearch([1, 2, 3, 4, 5], 4),
+                binarySearchBy: binarySearchBy(sortByField(orders, function (order) {
+                  return order.orderID;
+                }, "asc"), "ORD-002", function (order) {
+                  return order.orderID;
+                }),
+                findOrderById: findById(orders, "orderID", "ORD-001"),
+                findReturnById: findById(returnsList, "returnID", "RET-001"),
+                findWorkerById: findById(workers, "workerID", "WK-001"),
+                findCarrierById: findById(carriers, "carrierID", "CAR-001"),
+                findWarehouseById: findById(warehouses, "warehouseID", "WH-001"),
+                findDepartmentById: findById(departments, "departmentID", "DEP-001")
+              },
+              collections: {
+                filterByCategory: filterByCategory(carriers, "local", function (carrier) {
+                  return carrier.service;
+                }),
+                filterByPriceRange: filterByPriceRange(orders, function (order) {
+                  return order.weight;
+                }, 2, 8),
+                filterByStatus: filterByStatus(orders, "Shipped", function (order) {
+                  return order.status;
+                }),
+                filterByDateRange: filterByDateRange(orders, function (order) {
+                  return order.placedAt;
+                }, new Date("2026-05-02"), new Date("2026-05-04")),
+                filterByLocation: filterByLocation(warehouses, "Spain", function (warehouse) {
+                  return [warehouse.country, warehouse.location];
+                }),
+                searchByCriteria: searchByCriteria(orders, { status: "In Process", location: "Madrid" }, {
+                  getStatus: function (order) {
+                    return order.status;
+                  },
+                  getLocation: function (order) {
+                    return order.destination;
+                  }
+                }),
+                searchOrders: searchOrders(orders, { status: "Returned" }),
+                searchReturns: searchReturns(returnsList, { status: "Under review" }),
+                searchCarriers: searchCarriers(carriers, { category: "international" }),
+                searchWarehouses: searchWarehouses(warehouses, { category: "advanced spreadsheet" }),
+                sortByField: sortByField(orders, function (order) {
+                  return order.weight;
+                }, "asc"),
+                sortByMultipleFields: sortByMultipleFields(orders, [
+                  {
+                    selector: function (order) {
+                      return order.status;
+                    },
+                    direction: "asc"
+                  },
+                  {
+                    selector: function (order) {
+                      return order.weight;
+                    },
+                    direction: "desc"
+                  }
+                ]),
+                sortAlphabetically: sortAlphabetically(carriers, function (carrier) {
+                  return carrier.name;
+                }, "asc")
+              },
+              transformation: {
+                countByCategory: countByCategory(orders, function (order) {
+                  return order.status;
+                }),
+                calculateTotal: calculateTotal(orders, function (order) {
+                  return order.weight;
+                }),
+                calculateAverage: calculateAverage(orders, function (order) {
+                  return order.weight;
+                }),
+                findMaximum: findMaximum(orders, function (order) {
+                  return order.weight;
+                }),
+                findMinimum: findMinimum(orders, function (order) {
+                  return order.weight;
+                }),
+                buildNumericReport: buildNumericReport(orders, function (order) {
+                  return order.weight;
+                })
+              },
+              validations: {
+                validateRequiredFields: validateRequiredFields(orders[0], ["orderID", "status"]),
+                validateNumericRange: validateNumericRange("weight", 3.2, 0.5, 10),
+                validateDateCoherence: validateDateCoherence("start", new Date("2026-05-01"), "end", new Date("2026-05-03")),
+                validateDepartment: validateDepartment(departments[0]),
+                validateWarehouse: validateWarehouse(warehouses[0]),
+                validateWorker: validateWorker(workers[0]),
+                validateCarrier: validateCarrier(carriers[0]),
+                validateOrder: validateOrder(orders[0]),
+                validateReturn: validateReturn(returnsList[0])
+              }
+            };
+
+            renderResult("Full utility suite across all files", fullSuite, true);
+          }
+        };
+
+        document.querySelectorAll("[data-action]").forEach(function (button) {
+          button.addEventListener("click", function () {
+            var action = button.getAttribute("data-action");
+            if (actionMap[action]) actionMap[action]();
+          });
+        });
+
+        document.getElementById("clear-result").addEventListener("click", function () {
+          resultView.textContent = "";
+          lastOperation.textContent = "None yet";
+          statusChip.textContent = "Ready";
+          statusChip.className = "mt-2 inline-flex rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold uppercase tracking-[0.16em] text-emerald-700";
+        });
+
+        var toggleButton = document.getElementById("theme-toggle");
+        var textNode = toggleButton.querySelector(".theme-toggle-text");
+        var iconNode = toggleButton.querySelector(".theme-toggle-icon");
+
+        function updateThemeUI(isDark) {
+          toggleButton.setAttribute("aria-pressed", String(isDark));
+          toggleButton.setAttribute("aria-label", isDark ? "Activate light mode" : "Activate dark mode");
+
+          if (textNode) {
+            textNode.textContent = isDark ? "Light" : "Dark";
+          }
+
+          if (iconNode) {
+            iconNode.textContent = isDark ? "☀" : "◐";
+          }
+        }
+
+        var storedTheme = localStorage.getItem("trackflow-theme");
+        var startsDark = storedTheme === "dark";
+
+        if (startsDark) {
+          document.body.classList.add("dark");
+        }
+
+        updateThemeUI(startsDark);
+
+        toggleButton.addEventListener("click", function () {
+          var isDark = document.body.classList.toggle("dark");
+          localStorage.setItem("trackflow-theme", isDark ? "dark" : "light");
+          updateThemeUI(isDark);
+        });
+      })();
+    </script>
+  </body>
+</html>

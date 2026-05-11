@@ -1,0 +1,370 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TrackFlow Tech | Signup</title>
+    <meta
+      name="description"
+      content="Create your TrackFlow onboarding profile and share warehouse, carrier, returns, CX, and tech operations data."
+    />
+    <meta name="theme-color" content="#2563EB" />
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              flowBlue: "#2563EB",
+              flowSoftBlue: "#82A2E5",
+              flowAccent: "#FF9142",
+              flowInk: "#0F172A"
+            },
+            fontFamily: {
+              sans: ["Plus Jakarta Sans", "Segoe UI", "sans-serif"],
+              space: ["Space Grotesk", "Avenir Next", "sans-serif"]
+            },
+            boxShadow: {
+              float: "0 20px 60px -28px rgba(37, 99, 235, 0.35)"
+            },
+            keyframes: {
+              riseIn: {
+                from: { opacity: "0", transform: "translateY(12px)" },
+                to: { opacity: "1", transform: "translateY(0)" }
+              }
+            },
+            animation: {
+              riseIn: "riseIn 650ms ease forwards"
+            }
+          }
+        }
+      };
+    </script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body class="min-h-screen bg-white font-sans text-black transition-colors dark:bg-black dark:text-white">
+    <a class="absolute left-3 top-[-40px] z-50 rounded-lg bg-flowInk px-3 py-2 text-sm font-semibold text-white no-underline transition-[top] focus-visible:top-3 focus-visible:outline-none" href="#main-content">Skip to main content</a>
+    <div class="fixed inset-0 -z-10 bg-[radial-gradient(1200px_500px_at_90%_-10%,rgba(37,99,235,0.16),transparent_70%),radial-gradient(640px_340px_at_70%_50%,rgba(255,145,66,0.12),transparent_60%),radial-gradient(700px_380px_at_15%_85%,rgba(56,189,248,0.14),transparent_65%),linear-gradient(180deg,#f8fbff_0%,#ffffff_45%,#f7faff_100%)] dark:bg-[radial-gradient(1200px_500px_at_90%_-10%,rgba(59,130,246,0.2),transparent_70%),radial-gradient(640px_340px_at_70%_50%,rgba(255,145,66,0.16),transparent_60%),radial-gradient(700px_380px_at_15%_85%,rgba(56,189,248,0.14),transparent_65%),linear-gradient(180deg,#05070c_0%,#090d16_45%,#0a111d_100%)]"></div>
+
+    <header class="w-full py-6">
+      <nav class="flex items-center justify-between rounded-2xl border border-flowBlue/15 bg-white/80 px-4 py-3 shadow-sm backdrop-blur-sm dark:border-white/30 dark:bg-black/90 md:px-6" aria-label="Primary">
+        <a href="index.html#home" class="flex items-center gap-3" aria-label="TrackFlow home">
+          <img
+            src="../../workflows/TrackFlowLogo.png"
+            alt="TrackFlow company logo icon in blue and orange"
+            class="h-10 w-10 rounded-xl object-cover ring-1 ring-flowBlue/20"
+          />
+          <div>
+            <p class="font-space text-lg font-bold leading-none">TrackFlow</p>
+            <p class="text-xs text-slate-500 dark:text-white">Faster routes, smarter deliveries</p>
+          </div>
+        </a>
+
+        <ul class="hidden items-center gap-7 text-sm font-medium text-slate-700 dark:text-white md:flex" role="list">
+          <li><a href="index.html#home" class="transition hover:text-flowBlue">Home</a></li>
+          <li><a href="index.html#services" class="transition hover:text-flowBlue">Services</a></li>
+          <li><a href="index.html#benefits" class="transition hover:text-flowBlue">Benefits</a></li>
+          <li><a href="index.html#contact" class="transition hover:text-flowBlue">Contact</a></li>
+        </ul>
+
+        <div class="flex items-center gap-2">
+          <button
+            id="theme-toggle"
+            type="button"
+            class="inline-flex min-w-[5.2rem] items-center gap-2 rounded-full border border-flowBlue/25 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-flowBlue hover:text-flowBlue dark:border-white/40 dark:bg-black dark:text-white dark:hover:border-white dark:hover:text-white"
+            aria-label="Activate dark mode"
+            aria-pressed="false"
+          >
+            <span class="theme-toggle-icon" aria-hidden="true">◐</span>
+            <span class="theme-toggle-text">Dark</span>
+          </button>
+
+          <a href="signup.html" class="rounded-full bg-flowBlue px-4 py-2 text-sm font-semibold text-white transition hover:scale-[1.03] hover:bg-blue-700">
+            Log in
+          </a>
+        </div>
+      </nav>
+
+      <details class="mt-3 overflow-hidden rounded-2xl border border-flowBlue/20 bg-white/90 shadow-[0_12px_28px_-22px_rgba(15,23,42,0.7)] dark:border-white/35 dark:bg-black dark:shadow-[0_18px_34px_-24px_rgba(0,0,0,0.85)] md:hidden">
+        <summary class="cursor-pointer list-none px-4 py-3 font-bold text-flowInk marker:content-none [&::-webkit-details-marker]:hidden dark:text-white" aria-label="Open navigation menu">Menu</summary>
+        <ul class="grid list-none gap-1 px-4 pb-4" role="list" aria-label="Mobile navigation links">
+          <li><a href="index.html#home" class="block rounded-lg px-2.5 py-2 font-semibold text-slate-700 transition hover:bg-blue-50 hover:text-flowBlue dark:text-white dark:hover:bg-white/10 dark:hover:text-white">Home</a></li>
+          <li><a href="index.html#services" class="block rounded-lg px-2.5 py-2 font-semibold text-slate-700 transition hover:bg-blue-50 hover:text-flowBlue dark:text-white dark:hover:bg-white/10 dark:hover:text-white">Services</a></li>
+          <li><a href="index.html#benefits" class="block rounded-lg px-2.5 py-2 font-semibold text-slate-700 transition hover:bg-blue-50 hover:text-flowBlue dark:text-white dark:hover:bg-white/10 dark:hover:text-white">Benefits</a></li>
+          <li><a href="index.html#contact" class="block rounded-lg px-2.5 py-2 font-semibold text-slate-700 transition hover:bg-blue-50 hover:text-flowBlue dark:text-white dark:hover:bg-white/10 dark:hover:text-white">Contact</a></li>
+        </ul>
+      </details>
+    </header>
+
+    <main id="main-content" class="mx-auto w-full max-w-[90rem] px-6 pb-20 md:px-10">
+      <section class="animate-riseIn rounded-3xl border border-flowBlue/20 bg-white/85 p-8 opacity-0 shadow-sm motion-reduce:animate-none motion-reduce:opacity-100 dark:border-white/30 dark:bg-black md:p-10">
+        <div class="grid gap-8 md:grid-cols-12 md:items-start">
+          <div class="md:col-span-4">
+            <p class="inline-flex items-center gap-2 rounded-full border border-flowBlue/25 bg-flowBlue/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-flowBlue">
+              TrackFlow onboarding
+            </p>
+            <h1 class="mt-4 font-space text-4xl font-bold leading-tight dark:text-white">Create your operations profile</h1>
+            <p class="mt-4 text-sm text-slate-600 dark:text-white">
+              Share your logistics and system data so TrackFlow Tech can tailor unified inventory, carrier optimization,
+              reverse logistics automation, CX workflows, and executive reporting for your operation.
+            </p>
+            <div class="mt-6 space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-5 text-sm text-slate-600 dark:border-white/30 dark:bg-black dark:text-white">
+              <p><span class="font-semibold text-flowInk">Coverage:</span> Mexico and Spain</p>
+              <p><span class="font-semibold text-flowInk">Core areas:</span> Warehouse, Last Mile, Returns, CX, Tech</p>
+              <p><span class="font-semibold text-flowInk">Estimated time:</span> 8 to 12 minutes</p>
+            </div>
+          </div>
+
+          <div class="md:col-span-8">
+            <form id="signup-form" action="#" method="post" class="space-y-6" aria-label="TrackFlow signup form" novalidate>
+              <fieldset class="rounded-2xl border border-slate-200 bg-white p-5 dark:border-white/30 dark:bg-black">
+                <legend class="px-2 font-space text-lg font-semibold text-flowBlue">1. Contact and company details</legend>
+                <div class="mt-4 grid gap-4 sm:grid-cols-2">
+                  <label class="text-sm font-medium text-slate-700 dark:text-white" for="fullName">Full name
+                    <input id="fullName" name="fullName" type="text" required class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" />
+                  </label>
+                  <label class="text-sm font-medium text-slate-700 dark:text-white" for="workEmail">Work email
+                    <input id="workEmail" name="workEmail" type="email" required class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" />
+                  </label>
+                  <label class="text-sm font-medium text-slate-700 dark:text-white" for="securityCode">Security code (password)
+                    <input id="securityCode" name="securityCode" type="password" autocomplete="new-password" required class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" aria-describedby="securityCodeHint" />
+                    <span id="securityCodeHint" class="mt-2 block text-xs leading-[1.35] text-slate-500 dark:text-white">
+                      Use at least 8 characters, including one uppercase and one lowercase letter.
+                    </span>
+                  </label>
+                  <label class="text-sm font-medium text-slate-700 dark:text-white" for="phone">Phone number
+                    <input id="phone" name="phone" type="tel" required class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" />
+                  </label>
+                  <label class="text-sm font-medium text-slate-700 dark:text-white" for="role">Role
+                    <input id="role" name="role" type="text" placeholder="Operations Manager, CTO, CX Lead..." required class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" />
+                  </label>
+                  <label class="text-sm font-medium text-slate-700 dark:text-white" for="company">Company name
+                    <input id="company" name="company" type="text" required class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" />
+                  </label>
+                  <label class="text-sm font-medium text-slate-700 dark:text-white" for="country">Main operating country
+                    <select id="country" name="country" required class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm">
+                      <option value="">Select country</option>
+                      <option value="mexico">Mexico</option>
+                      <option value="spain">Spain</option>
+                      <option value="both">Both</option>
+                    </select>
+                  </label>
+                </div>
+              </fieldset>
+
+              <fieldset class="rounded-2xl border border-slate-200 bg-white p-5 dark:border-white/30 dark:bg-black">
+                <legend class="px-2 font-space text-lg font-semibold text-flowBlue">2. Warehouse operations</legend>
+                <div class="mt-4 grid gap-4 sm:grid-cols-2">
+                  <label class="text-sm font-medium text-slate-700 dark:text-white" for="monterreyWms">Monterrey WMS or workflow
+                    <input id="monterreyWms" name="monterreyWms" type="text" placeholder="Commercial WMS, spreadsheet, custom app" required class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" />
+                  </label>
+                  <label class="text-sm font-medium text-slate-700 dark:text-white" for="zaragozaWms">Zaragoza WMS or workflow
+                    <input id="zaragozaWms" name="zaragozaWms" type="text" placeholder="Commercial WMS, spreadsheet, custom app" required class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" />
+                  </label>
+                  <label class="text-sm font-medium text-slate-700 dark:text-white" for="dailyOrders">Average daily orders
+                    <input id="dailyOrders" name="dailyOrders" type="number" min="0" required class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" />
+                  </label>
+                  <label class="text-sm font-medium text-slate-700 dark:text-white" for="inventoryVisibility">Global real-time inventory visibility
+                    <select id="inventoryVisibility" name="inventoryVisibility" required class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm">
+                      <option value="">Choose one</option>
+                      <option value="yes">Yes</option>
+                      <option value="partial">Partial</option>
+                      <option value="no">No</option>
+                    </select>
+                  </label>
+                </div>
+                <label class="mt-4 block text-sm font-medium text-slate-700 dark:text-white" for="inboundFormat">How inbound orders arrive today
+                  <textarea id="inboundFormat" name="inboundFormat" rows="3" placeholder="Email formats, files, manual transcription process" required class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"></textarea>
+                </label>
+              </fieldset>
+
+              <fieldset class="rounded-2xl border border-slate-200 bg-white p-5 dark:border-white/30 dark:bg-black">
+                <legend class="px-2 font-space text-lg font-semibold text-flowBlue">3. Last mile and carrier management</legend>
+                <div class="mt-4 grid gap-4 sm:grid-cols-2">
+                  <label class="text-sm font-medium text-slate-700 dark:text-white" for="carriers">Carriers currently used
+                    <input id="carriers" name="carriers" type="text" placeholder="Estafeta, FedEx, DHL, MRW, SEUR..." required class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" />
+                  </label>
+                  <label class="text-sm font-medium text-slate-700 dark:text-white" for="shipmentsMonth">Monthly shipment volume
+                    <input id="shipmentsMonth" name="shipmentsMonth" type="number" min="0" required class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" />
+                  </label>
+                  <label class="text-sm font-medium text-slate-700 dark:text-white" for="onTimeRate">Current on-time delivery rate (%)
+                    <input id="onTimeRate" name="onTimeRate" type="number" min="0" max="100" required class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" />
+                  </label>
+                  <label class="text-sm font-medium text-slate-700 dark:text-white" for="costPerKg">Average cost per kg
+                    <input id="costPerKg" name="costPerKg" type="number" min="0" step="0.01" required class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" />
+                  </label>
+                </div>
+                <label class="mt-4 block text-sm font-medium text-slate-700 dark:text-white" for="carrierPain">Main issues with carrier assignment and tracking
+                  <textarea id="carrierPain" name="carrierPain" rows="3" placeholder="Lost parcels, failed deliveries, route incidents, manual portal checks" required class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"></textarea>
+                </label>
+              </fieldset>
+
+              <fieldset class="rounded-2xl border border-slate-200 bg-white p-5 dark:border-white/30 dark:bg-black">
+                <legend class="px-2 font-space text-lg font-semibold text-flowBlue">4. Returns and customer experience</legend>
+                <div class="mt-4 grid gap-4 sm:grid-cols-2">
+                  <label class="text-sm font-medium text-slate-700 dark:text-white" for="returnsRate">Returns rate (%)
+                    <input id="returnsRate" name="returnsRate" type="number" min="0" max="100" placeholder="18-25" required class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" />
+                  </label>
+                  <label class="text-sm font-medium text-slate-700 dark:text-white" for="approvalRules">Automated return approval rules
+                    <select id="approvalRules" name="approvalRules" required class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm">
+                      <option value="">Choose one</option>
+                      <option value="yes">Yes</option>
+                      <option value="partial">Partial</option>
+                      <option value="no">No</option>
+                    </select>
+                  </label>
+                  <label class="text-sm font-medium text-slate-700 dark:text-white" for="cxChannels">CX channels in use
+                    <input id="cxChannels" name="cxChannels" type="text" placeholder="Email, WhatsApp, phone" required class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" />
+                  </label>
+                  <label class="text-sm font-medium text-slate-700 dark:text-white" for="autoQueryRate">Queries that can be automated (%)
+                    <input id="autoQueryRate" name="autoQueryRate" type="number" min="0" max="100" placeholder="80" required class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" />
+                  </label>
+                </div>
+                <label class="mt-4 block text-sm font-medium text-slate-700 dark:text-white" for="returnReasons">Top return reasons and current inspection flow
+                  <textarea id="returnReasons" name="returnReasons" rows="3" required class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"></textarea>
+                </label>
+              </fieldset>
+
+              <fieldset class="rounded-2xl border border-slate-200 bg-white p-5 dark:border-white/30 dark:bg-black">
+                <legend class="px-2 font-space text-lg font-semibold text-flowBlue">5. Technology and reporting readiness</legend>
+                <div class="mt-4 grid gap-4 sm:grid-cols-2">
+                  <label class="text-sm font-medium text-slate-700 dark:text-white" for="erp">Current ERP platform
+                    <input id="erp" name="erp" type="text" placeholder="Legacy ERP, custom, cloud" required class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" />
+                  </label>
+                  <label class="text-sm font-medium text-slate-700 dark:text-white" for="deployCycle">Feature deployment cycle
+                    <select id="deployCycle" name="deployCycle" required class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm">
+                      <option value="">Select one</option>
+                      <option value="daily">Daily</option>
+                      <option value="weekly">Weekly</option>
+                      <option value="biweekly">Every 1-2 weeks</option>
+                      <option value="monthly">Monthly or longer</option>
+                    </select>
+                  </label>
+                  <label class="text-sm font-medium text-slate-700 dark:text-white" for="telemetry">Centralized telemetry and alerts
+                    <select id="telemetry" name="telemetry" required class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm">
+                      <option value="">Choose one</option>
+                      <option value="yes">Yes</option>
+                      <option value="partial">Partial</option>
+                      <option value="no">No</option>
+                    </select>
+                  </label>
+                  <label class="text-sm font-medium text-slate-700 dark:text-white" for="reporting">Executive reporting frequency
+                    <select id="reporting" name="reporting" required class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm">
+                      <option value="">Select one</option>
+                      <option value="realtime">Real-time dashboards</option>
+                      <option value="weekly-manual">Weekly manual report</option>
+                      <option value="monthly">Monthly summary only</option>
+                    </select>
+                  </label>
+                </div>
+                <label class="mt-4 block text-sm font-medium text-slate-700 dark:text-white" for="goals">Top goals for the next 90 days
+                  <textarea id="goals" name="goals" rows="3" placeholder="Examples: reduce incident rates, automate returns approvals, launch tracking portal" required class="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"></textarea>
+                </label>
+              </fieldset>
+
+              <div class="rounded-2xl border border-flowAccent/30 bg-orange-50 p-4 text-sm text-slate-700 dark:border-white/30 dark:bg-black dark:text-white">
+                <label class="flex items-start gap-3" for="consent">
+                  <input id="consent" name="consent" type="checkbox" required class="mt-1 h-4 w-4 rounded border-slate-400" />
+                  <span>
+                    I confirm this information can be used by TrackFlow Tech to design a modernization plan and contact my team.
+                  </span>
+                </label>
+              </div>
+
+              <div class="flex flex-wrap items-center gap-3">
+                <button type="submit" class="rounded-full bg-flowBlue px-6 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-blue-700">
+                  Submit profile
+                </button>
+                <a href="index.html" class="rounded-full border border-flowSoftBlue/60 bg-white px-6 py-3 text-sm font-semibold text-slate-700 transition hover:border-flowBlue hover:text-flowBlue dark:border-white/40 dark:bg-black dark:text-white dark:hover:border-white dark:hover:text-white">
+                  Back to homepage
+                </a>
+              </div>
+            </form>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="border-t border-flowBlue/15 bg-white/90 dark:border-white/30 dark:bg-black">
+      <div class="mx-auto grid w-full max-w-[90rem] gap-8 px-6 py-10 md:grid-cols-3 md:px-10">
+        <div>
+          <div class="flex items-center gap-3">
+            <img
+              src="../../workflows/TrackFlowLogo.png"
+              alt="TrackFlow logo symbol used in website footer"
+              class="h-10 w-10 rounded-xl object-cover ring-1 ring-flowBlue/20"
+            />
+            <p class="font-space text-lg font-bold">TrackFlow Inc.</p>
+          </div>
+          <p class="mt-3 text-sm text-slate-600 dark:text-white">Last-mile delivery and warehouse management, now evolving through TrackFlow Tech across Mexico and Spain.</p>
+        </div>
+        <div>
+          <p class="font-space text-base font-bold">Quick links</p>
+          <ul class="mt-3 space-y-2 text-sm text-slate-600 dark:text-white" role="list">
+            <li><a href="index.html#services" class="transition hover:text-flowBlue">Services</a></li>
+            <li><a href="index.html#benefits" class="transition hover:text-flowBlue">Benefits</a></li>
+            <li><a href="index.html#contact" class="transition hover:text-flowBlue">Contact</a></li>
+          </ul>
+        </div>
+        <div>
+          <p class="font-space text-base font-bold">Motto</p>
+          <p class="mt-3 rounded-xl border border-flowAccent/40 bg-orange-50 px-4 py-3 text-sm font-semibold text-slate-700 dark:border-white/30 dark:bg-black dark:text-white">
+            "Faster routes, smarter deliveries"
+          </p>
+        </div>
+      </div>
+      <div class="border-t border-flowBlue/10 py-4 text-center text-xs text-slate-500 dark:border-white/30 dark:text-white">
+        © 2026 Trackflow Inc. All rights reserved.
+      </div>
+    </footer>
+
+    <script>
+      (function () {
+        var toggleButton = document.getElementById("theme-toggle");
+        if (!toggleButton) {
+          return;
+        }
+
+        var textNode = toggleButton.querySelector(".theme-toggle-text");
+        var iconNode = toggleButton.querySelector(".theme-toggle-icon");
+
+        function updateThemeUI(isDark) {
+          toggleButton.setAttribute("aria-pressed", String(isDark));
+          toggleButton.setAttribute("aria-label", isDark ? "Activate light mode" : "Activate dark mode");
+
+          if (textNode) {
+            textNode.textContent = isDark ? "Light" : "Dark";
+          }
+
+          if (iconNode) {
+            iconNode.textContent = isDark ? "☀" : "◐";
+          }
+        }
+
+        var storedTheme = localStorage.getItem("trackflow-theme");
+        var startsDark = storedTheme === "dark";
+
+        if (startsDark) {
+          document.body.classList.add("dark");
+        }
+
+        updateThemeUI(startsDark);
+
+        toggleButton.addEventListener("click", function () {
+          var isDark = document.body.classList.toggle("dark");
+          localStorage.setItem("trackflow-theme", isDark ? "dark" : "light");
+          updateThemeUI(isDark);
+        });
+      })();
+    </script>
+    <script src="signup.js"></script>
+  </body>
+</html>
