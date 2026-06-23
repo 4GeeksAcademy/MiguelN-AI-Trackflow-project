@@ -4,7 +4,8 @@
   "private": true,
   "description": "Root scripts for running the TrackFlow project",
   "scripts": {
-    "start": "python3 server.py"
+    "start": "python3 server.py",
+    "typecheck": "npx -y -p typescript tsc --noEmit src/types/models.ts src/utils/collections.ts src/utils/search.ts src/utils/transformation.ts src/utils/validations.ts"
   },
   "dependencies": {
     "flask": "^0.2.10"

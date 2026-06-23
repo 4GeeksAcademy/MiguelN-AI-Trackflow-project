@@ -1,100 +1,84 @@
- export type Country = "Mexico" | "Spain";
-export type ServiceType = "local" | "international";
-export type WarehouseManagementSystem = "commercial software" | "advanced spreadsheet";
+export type ProductCategory =
+  | "Fashion"
+  | "Electronics"
+  | "Cosmetics"
+  | "Home"
+  | "Other";
 
-export type OrderStatus = "In Process" | "Shipped" | "Delivered" | "Returned";
-export type ReturnStatus =
-  | "Under review"
-  | "Approved"
-  | "Rejected"
+export type WarehouseLocation = "Los Angeles" | "Zaragoza";
+export type ProductStatus = "Active" | "Low stock" | "Out of stock" | "Discontinued";
+
+export type Country = "United States" | "Spain";
+export type ShipmentPriority = "Standard" | "Express" | "Same-day";
+export type ShipmentStatus =
+  | "Pending"
+  | "Assigned"
   | "In transit"
-  | "Refunded"
-  | "Disposed";
+  | "Delivered"
+  | "Failed";
 
-export type ProductCondition = "Poor" | "Fair" | "Excellent" | "Like New";
+export type MovementType = "Inbound" | "Outbound" | "Transfer" | "Adjustment";
 
-export interface ProductItem {
-  product: string;
-  quantity: number;
+export interface Dimensions {
+  lengthCm: number;
+  widthCm: number;
+  heightCm: number;
 }
 
-export interface Department {
+export interface Product {
+  sku: string;
   name: string;
-  departmentID: string;
-  location: Country[];
-  needs: string[];
-  managerID: string;
-
-  operatesIn(country: Country): boolean;
-  hasNeed(need: string): boolean;
+  category: ProductCategory;
+  weightKg: number;
+  dimensions: Dimensions;
+  warehouse: WarehouseLocation;
+  stockQuantity: number;
+  minStockThreshold: number;
+  unitCostUSD: number;
+  isFragile: boolean;
+  status: ProductStatus;
 }
 
-export interface Warehouse {
-  warehouseID: string;
-  location: string;
+export interface Destination {
+  city: string;
   country: Country;
-  managementSystem: WarehouseManagementSystem;
-
-  isInCountry(country: Country): boolean;
-  usesManagementSystem(system: WarehouseManagementSystem): boolean;
+  postalCode: string;
+  distanceKm: number;
 }
 
-export interface Worker {
-  name: string;
-  workerID: string;
-  location: Country;
-  departmentID: string;
-  position: string;
-
-  belongsToDepartment(departmentID: string): boolean;
-  isBasedIn(country: Country): boolean;
+export interface Shipment {
+  id: string;
+  sku: string;
+  quantity: number;
+  origin: WarehouseLocation;
+  destination: Destination;
+  priority: ShipmentPriority;
+  declaredValueUSD: number;
+  carrier: string | null;
+  status: ShipmentStatus;
+  createdAt: Date;
 }
 
 export interface Carrier {
+  id: string;
   name: string;
-  carrierID: string;
-  location: Country[];
-  service: ServiceType;
-
-  servesCountry(country: Country): boolean;
-  providesService(service: ServiceType): boolean;
+  operatesIn: Country[];
+  baseRateUSD: number;
+  ratePerKgUSD: number;
+  ratePerKmUSD: number;
+  avgDeliveryDays: number;
+  onTimeRate: number;
+  maxWeightKg: number;
+  handlesFragile: boolean;
+  acceptsPriority: ShipmentPriority[];
 }
 
-export interface Order {
-  orderID: string;
-  placedAt: Date;
-  expectedDelivery: Date;
-  packageQuantity: number;
-  packageSize: string;
-  weight: number;
-  urgent: boolean;
-  destination: string;
-  products: ProductItem[];
-  carrierID: string;
-  warehouseID: string;
-  client: string;
-  status: OrderStatus;
-
-  totalProducts(): number;
-  isDelayed(referenceDate?: Date): boolean;
-}
-
-export interface Return {
-  orderID: string;
-  returnID: string;
-  returningReason: string;
-  requestedAt: Date;
-  productCondition: ProductCondition;
-  status: ReturnStatus;
-  expectedArrival: Date;
-  packageQuantity: number;
-  packageSize: string;
-  weight: number;
-  products: ProductItem[];
-  carrierID: string;
-  warehouseID: string;
-  client: string;
-
-  totalProducts(): number;
-  hasCoherentDates(): boolean;
+export interface InventoryMovement {
+  id: string;
+  sku: string;
+  warehouse: WarehouseLocation;
+  type: MovementType;
+  quantity: number;
+  reason: string;
+  timestamp: Date;
 }
