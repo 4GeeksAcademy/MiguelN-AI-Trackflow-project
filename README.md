@@ -49,6 +49,14 @@ ai-engineering-project-template/
 4. **Read** `AGENTS.md` so you know which skills are available when working with AI.
 5. **Build** your milestone deliverables inside `apps/`, reusing `packages/shared-types` and `pipelines/data` as needed.
 
+### TypeScript validation
+
+Run local TypeScript validation for Milestone 2 files with:
+
+```bash
+npm run typecheck
+```
+
 ---
 
 ## Milestones (reference)
