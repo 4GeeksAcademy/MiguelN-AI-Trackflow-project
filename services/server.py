@@ -3,7 +3,7 @@ from pathlib import Path
 from flask import Flask, send_from_directory
 
 
-ROOT_DIR = Path(__file__).resolve().parent
+ROOT_DIR = Path(__file__).resolve().parent.parent
 WEBSITE_DIR = ROOT_DIR / "apps" / "website"
 
 app = Flask(__name__, static_folder=None)

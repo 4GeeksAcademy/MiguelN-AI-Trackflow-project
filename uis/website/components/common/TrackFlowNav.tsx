@@ -5,14 +5,14 @@ type TrackFlowNavProps = {
   subtitle?: string;
 };
 
-export function TrackFlowNav({ subtitle = "Talent Pipeline Tracker" }: TrackFlowNavProps) {
+export function TrackFlowNav({ subtitle = "Faster routes, smarter deliveries" }: TrackFlowNavProps) {
   return (
     <header className="sticky top-0 z-30 border-b border-[color:var(--border-soft)] bg-[color:var(--surface)/0.9] backdrop-blur-md">
       <nav
         aria-label="Primary"
         className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6"
       >
-        <Link href="/" className="flex items-center gap-3" aria-label="TrackFlow candidates home">
+        <Link href="/" className="flex items-center gap-3" aria-label="TrackFlow corporate home">
           <Image
             src="/trackflow-logo.png"
             alt="TrackFlow company logo"
@@ -30,6 +30,12 @@ export function TrackFlowNav({ subtitle = "Talent Pipeline Tracker" }: TrackFlow
         <div className="hidden items-center gap-6 sm:flex">
           <Link
             href="/"
+            className="text-sm font-semibold text-[color:var(--text-muted)] transition hover:text-[color:var(--flow-blue)]"
+          >
+            Home
+          </Link>
+          <Link
+            href="/candidates"
             className="text-sm font-semibold text-[color:var(--text-muted)] transition hover:text-[color:var(--flow-blue)]"
           >
             Candidates

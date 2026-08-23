@@ -281,7 +281,7 @@ export default function CandidateDetailPage() {
       <div className="mx-auto w-full max-w-5xl rounded-3xl border border-[color:var(--border-soft)] bg-[color:var(--surface)] p-6 shadow-[0_22px_58px_-40px_rgba(37,99,235,0.45)] sm:p-8">
         <header className="mb-6 border-b border-[color:var(--border-soft)] pb-5">
           <Link
-            href="/"
+            href="/candidates"
             className="mb-4 inline-flex text-sm font-semibold text-[color:var(--flow-blue)] transition hover:text-[color:var(--flow-soft-blue)]"
           >
             {"<- "}Back to candidates
