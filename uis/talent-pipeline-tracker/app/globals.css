@@ -1,0 +1,30 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f2f7ff;
+  --foreground: #2563eb;
+  --surface: #ffffff;
+  --flow-blue: #2563eb;
+  --flow-soft-blue: #82a2e5;
+  --flow-accent: #ff9142;
+  --text-strong: #2563eb;
+  --text-muted: #82a2e5;
+  --border-soft: rgba(130, 162, 229, 0.4);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-plus-jakarta);
+  --font-brand-display: var(--font-space-grotesk);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-plus-jakarta), "Segoe UI", sans-serif;
+}
+
+::selection {
+  background: rgba(37, 99, 235, 0.22);
+}
