@@ -14,8 +14,8 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "TrackFlow | Talent Pipeline Tracker",
-  description: "TrackFlow candidate pipeline management for hiring operations.",
+  title: "TrackFlow | Logistics Modernization Across Mexico and Spain",
+  description: "TrackFlow corporate website and operations surfaces, including candidate pipeline tooling.",
 };
 
 export default function RootLayout({
