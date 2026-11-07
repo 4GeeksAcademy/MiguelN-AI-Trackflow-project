@@ -1,6 +1,90 @@
 # Development Progress
 
-Last updated: 2026-10-25
+Last updated: 2026-11-07
+
+## Update 2026-11-07 - Sales forecast: real-data run on the company dataset
+
+Goals accomplished (finishes the 2026-11-06 work against `stages-todo.png`, now with the real `contexts/company-sales.csv`, which the previous session could not read):
+- Data:
+  - The dataset is at `data/raw/trackflow_sales.csv`, the path the briefing names. It is an identical copy of `contexts/company-sales.csv`, and the CLI's default input.
+  - Verified against the briefing: 120 `consolidated` rows from 2016-01 to 2025-12, no blanks, gaps or duplicates (the cleaning report is all zeros), and every data-profile check passes.
+  - Measured patterns: yearly growth alternates high/low (9.6, 1.8, 9.4, 2.9, 8.0, 2.8, 10.1, 4.0, 7.9%), Nov-Dec +25/+24%, February −15.9%.
+- Results on the 2024-2025 test years (forecast recursively from the end of 2023):
+
+  | | XGBoost | Seasonal-naive baseline |
+  |---|---|---|
+  | MSE | 2.10e9 EUR² | 1.16e10 EUR² |
+  | RMSE, % of the mean month | 3.53% | 8.31% |
+  | MAPE | 2.75% | 7.33% |
+  | K2 = R² | 0.928 | 0.602 |
+  | Gini | 0.931 | 0.921 |
+
+  - 23 of 24 months fall inside the 80% range (±7.0% in year 1, ±7.5% in year 2). The exception is 2025-08, 0.87% under the lower edge.
+  - Parameters chosen: depth 2, 200 trees, learning rate 0.03.
+  - Runs are deterministic: two runs give identical outputs.
+- PSI noise check: `psi_shift_p_value` re-splits the pooled values at random (2000 permutations) to show how large PSI gets by chance.
+  - The seasonal-pattern PSI of 0.156 is labelled "moderate shift" by the rule of thumb, but p = 0.66, so it is within the noise of 24 test months, not a real shift.
+  - `metrics.json` and the CLI summary report `p_value_vs_no_shift` next to each PSI.
+- Fixes:
+  - If the CSV carried US/Spain rows, the US share means would have been labelled and printed as PSI values. They no longer are.
+  - `metrics.json` stores the dataset path repo-relative instead of an absolute home path.
+  - `requirements.txt` gets back its header comment and the `Flask>=3.1,<4` line, which the 2026-11-06 `uv export` had dropped.
+- Docs:
+  - `docs/SALES_FORECAST.md`: real results in place of the synthetic ones, a plain-language answer for Finance, the XGBoost justification backed by the numbers, the PSI noise check, and macOS setup without Homebrew.
+  - The `data/raw` READMEs (EN and ES) and the `data/eval` README (EN) list the new files.
+- Tests: 3 new in `tests/pipelines/test_sales_forecast.py`, for 23 in total.
+  - The 8/2 split and no-leakage rule on the real company file.
+  - The PSI p-value separates noise from a real shift.
+  - Market rows are not mislabelled as PSI.
+- Verification:
+  - Full backend suite: 876 passed, 51 skipped.
+  - `ruff format`: clean.
+  - `ruff check`: only the pre-existing E402 for the `sys.path` bootstrap in `scripts/train_sales_forecast.py`.
+  - mypy: clean without `pandas-stubs`. With the stubs it reports 24 index-typing errors in the 2026-11-06 code (`Index` vs `DatetimeIndex`, `int(Hashable)`). None are runtime bugs. They are pending the developer's decision per AGENTS.md.
+
+Still missing / next goals:
+1. Developer decision on the 24 `pandas-stubs` mypy errors (fix with typed casts or leave).
+2. "K2 Score" is read as R² (sklearn `r2_score`). If the course means D'Agostino's K² normality test on the residuals (`scipy.stats.normaltest`), it is a small addition.
+3. A permanent libomp install (Homebrew + `brew install libomp`) would remove the need for the `DYLD_LIBRARY_PATH` workaround.
+4. Forecast 2026 onwards by refitting on all 10 years. This is not built yet.
+5. Still open from 2026-11-06: the briefing's US/Los Angeles context vs the memory bank's Mexico/Monterrey.
+
+## Update 2026-11-06 - Sales forecast: monthly revenue prediction model (XGBoost)
+
+Goals accomplished (tech lead's ticket `lead-instr.png`, worked through the phases of `stages-todo.png` with `contexts/company-sales.csv` and `contexts/trackflow-sales-briefing.md`; full write-up in `docs/SALES_FORECAST.md`):
+- Environment: `uv 0.12.17` is installed. `pyproject.toml` already declared `pandas`, `scikit-learn`, `xgboost` and `matplotlib`, so neither `uv init` nor `uv add` was needed.
+- Data (`scripts/sales_forecast.py`):
+  - Contract validation against the briefing's columns and markets.
+  - Explicit, counted cleaning (exact duplicates, derivation of one missing field from the other two, refusal of conflicts, gaps and non-positive revenue).
+  - A data profile checked against the briefing (alternating 9%/3% growth, Nov-Dec peak, February dip).
+- Split: calendar years 2016-2023 for training and 2024-2025 for testing. Anything that isn't exactly 10 full years is refused, and the split is asserted disjoint and ordered.
+- Model:
+  - sklearn `Pipeline` of `StandardScaler` and `XGBRegressor`, chosen over Random Forest for data size, explainability and tuning time.
+  - Detrended target `revenue / trailing 12-month mean`, because trees can't extrapolate growth. Causal lag, rolling, seasonal and calendar features.
+  - Parameters chosen by recursive walk-forward backtests (origins 2019-2021) inside the training years.
+  - The 24 test months are forecast recursively, with no measured test value fed back.
+- Evaluation:
+  - MSE (plus RMSE as % of mean revenue), K2 = R², normalized Gini, MAE and MAPE for the model and for a seasonal-naive baseline.
+  - PSI for the seasonal pattern train vs test, for fitted vs forecast ratios, and for the US/Spain mix when those rows exist.
+  - An 80% variability range from backtest errors, per horizon year.
+- CLI `scripts/train_sales_forecast.py`: writes `metrics.json`, `forecast_test_years.csv` and `forecast_test_years.png` to `data/eval/sales_forecast/`. Exit code 2 means a contract error.
+- Tests: `tests/pipelines/test_sales_forecast.py` (20, synthetic data).
+  - The 8/2 split.
+  - No leakage: features don't change when future values change, and the end-to-end forecast is identical when the test years are multiplied ×3.
+  - Cleaning and metrics.
+- Verification (synthetic briefing-shaped data, because the real CSV is under a Copilot content exclusion):
+  - 20/20 tests pass.
+  - MAPE 1.7% vs 5.1% for the baseline, R² 0.97, 100% of test months inside the 80% range.
+  - ruff format and check clean; mypy clean on the three files.
+
+Still missing / next goals:
+1. Run on the real `contexts/company-sales.csv` (`uv run python scripts/train_sales_forecast.py`) and replace the synthetic numbers in `docs/SALES_FORECAST.md → Results`.
+2. macOS needs `brew install libomp` for XGBoost to import in `.venv`. It was verified here only in a scratch venv linked to scikit-learn's bundled libomp.
+3. The briefing names the dataset `data/raw/trackflow_sales.csv` and describes a US/Los Angeles context, which differs from the memory bank's Mexico/Monterrey. To be confirmed with the tech lead.
+4. Possible follow-ups:
+   - Forecast the months after 2025 (refit on all 10 years).
+   - Per-market models, if the CSV carries US/Spain rows.
+   - External drivers (clients, pricing).
 
 ## Update 2026-10-25 (later) - DEV-53: nightly telemetry script, status control and cron trigger
 
