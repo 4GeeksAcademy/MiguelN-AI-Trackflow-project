@@ -374,12 +374,17 @@ def fit_model(revenue_train: pd.Series, tune: bool = True) -> tuple[Pipeline, di
 
 
 def forecast_recursive(
-    model: Pipeline, history: pd.Series, months: Sequence[pd.Timestamp] | pd.DatetimeIndex
+    model: Pipeline,
+    history: pd.Series,
+    months: Sequence[pd.Timestamp] | pd.DatetimeIndex,
+    feature_columns: Sequence[str] = FEATURE_COLUMNS,
 ) -> pd.Series:
     """Forecast each month from history plus the model's own earlier forecasts.
 
     This is what forecasting "the coming months" means: at month 24 of the
     horizon the model knows nothing measured after the last history month.
+    `feature_columns` must be the columns `model` was fitted on; the default is
+    the shipped model's full set.
     """
     extended = history.astype(float).copy()
     predictions: dict[pd.Timestamp, float] = {}
@@ -387,7 +392,7 @@ def forecast_recursive(
         month = pd.Timestamp(month)
         extended.loc[month] = np.nan
         row = build_features(extended).loc[[month]]
-        ratio = float(model.predict(row[list(FEATURE_COLUMNS)])[0])
+        ratio = float(model.predict(row[list(feature_columns)])[0])
         value = ratio * float(row["base"].iloc[0])
         extended.loc[month] = value
         predictions[month] = value

@@ -10,6 +10,7 @@ This answers the ticket *"how much is the company going to sell in the coming mo
 | CLI (train + evaluate + chart) | [`scripts/train_sales_forecast.py`](../scripts/train_sales_forecast.py) |
 | Tests (8/2 split, no leakage, cleaning, metrics) | [`tests/pipelines/test_sales_forecast.py`](../tests/pipelines/test_sales_forecast.py) |
 | Outputs | `data/eval/sales_forecast/` |
+| Technical evaluation (fit diagnosis, time-aware CV, learning curves) | [`data/eval/evaluation_report.md`](../data/eval/evaluation_report.md), built by [`scripts/evaluate_sales_forecast.py`](../scripts/evaluate_sales_forecast.py) on [`scripts/sales_forecast_evaluation.py`](../scripts/sales_forecast_evaluation.py), tested in [`tests/pipelines/test_sales_forecast_evaluation.py`](../tests/pipelines/test_sales_forecast_evaluation.py) |
 
 ## How to run
 
@@ -181,3 +182,34 @@ The stakeholder asked for an "acceptable margin of error" before committing mone
 - No external drivers are used, such as clients won or lost, pricing changes, or the economy. A sudden structural change will not be anticipated.
 - The forecast is for consolidated revenue only. US and Spain are not modelled separately.
 - This run answers the ticket's feasibility question on 2024-2025. A forecast of 2026 onwards would need the model refitted on all 10 years, which is not built yet.
+
+## Technical evaluation (2026-11-08)
+
+A low test error is not enough to promote the model to staging. The tech lead's ticket asked for a formal evaluation: is the model under-fitted, over-fitted or well fitted, how stable is it, and what is the specific corrective action? The full answer, with every number, is in [`data/eval/evaluation_report.md`](../data/eval/evaluation_report.md). It uses the 8 training years only; the 2024-2025 test years are not read.
+
+```bash
+.venv/bin/python scripts/evaluate_sales_forecast.py        # writes the report, chart and JSON
+.venv/bin/python -m pytest tests/pipelines/test_sales_forecast_evaluation.py
+```
+
+Exit codes: `0` success, `2` dataset contract error, `3` a fold-chronology or fold-leakage check failed.
+
+| Output | Content |
+|---|---|
+| `data/eval/evaluation_report.md` | the report: verdict, CV, learning curves, MAE vs RMSE, diagnosis, corrective action |
+| `data/eval/learning_curve.png` | training vs validation RMSE as the training window grows |
+| `data/eval/sales_forecast/evaluation.json` | every number the report quotes |
+
+**How it evaluates.**
+- **Cross-validation:** sklearn `TimeSeriesSplit(n_splits=5, test_size=6)` with expanding windows over the 60 usable training months (2019-01..2023-12). Validation is one month ahead, the same task as the training fit, so the gap measures over-fitting. The recursive error is reported next to it.
+- **Chronology:** every fold's order is asserted.
+- **Leakage:** three tamper checks per fold prove that no lag or rolling feature reads across the fold boundary.
+- **Learning curves:** two of them. One uses the same 5 CV windows with growing `max_train_size`. The other validates on 2023 with 12 to 48 training months.
+
+**Result (shipped model).**
+- **Diagnosis: overfitting.** Validation RMSE is 4.51 ± 0.97% of mean monthly revenue against 1.34 ± 0.19% in training, a 3.4× gap, and the learning curve was still falling when the history ran out. It is not underfitting: the model beats a seasonal-naive rule in 4 of 5 folds.
+- **Which error costs more:** under-forecasting, because a revenue miss is a workload miss for warehouse staffing and carrier capacity, and peak shortfalls cost more than proportionally. RMSE is therefore the decision metric and MAE the plain-language one.
+- **Proposed corrective action (not applied):** depth-1 trees on 9 compact features. In the same CV it gives validation RMSE 4.25 ± 0.44%, so the fold-to-fold spread falls by 55% and the gap shrinks to 1.5×. The shipped model, `metrics.json` and the 2024-2025 results stay unchanged until it is approved. After approval, one confirmation run on the test years.
+- **Remaining limits, not over-fitting:**
+  - the error's sign follows the alternating growth year;
+  - the Nov-Dec peak is flattened: 5 of 6 peak validation months are under-forecast.

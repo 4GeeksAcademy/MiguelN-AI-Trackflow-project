@@ -1,6 +1,57 @@
 # Development Progress
 
-Last updated: 2026-11-07
+Last updated: 2026-11-08
+
+## Update 2026-11-08 - Sales forecast: formal technical evaluation (fit diagnosis)
+
+Goals accomplished. This is the tech lead's ticket in `lead-instr.png`, worked through the five phases of `stages-todo.png`. The ticket asks whether the forecast is under-fitted, over-fitted or well fitted, how stable it is, and what the specific corrective action is. The report is `data/eval/evaluation_report.md`, summarised in `docs/SALES_FORECAST.md → Technical evaluation`.
+- Before starting:
+  - The model reproduces exactly: a re-run gives byte-identical `metrics.json`, CSV and PNG, and its 23 tests pass.
+  - No new dependency was needed. Everything used is already in `pyproject.toml`, and any future addition goes through `uv add` only.
+- Phase 1, time-aware cross-validation (`scripts/sales_forecast_evaluation.py`):
+  - sklearn `TimeSeriesSplit(n_splits=5, test_size=6)` with expanding windows over the 60 usable training months (2019-01..2023-12, after the 36-month warm-up). Fold 1 trains on 30 months; the default sizing would have left it 10.
+  - `assert_chronological` refuses mixed, shuffled, gapped or overlapping folds.
+  - `check_fold_boundary_leakage` runs three tamper checks per fold. All pass on the real data.
+  - Metrics are reported as mean ± std (ddof=1).
+  - Validation is one month ahead, the same task as the training fit; the recursive error is reported next to it.
+- Phase 2, learning curves (`data/eval/learning_curve.png`):
+  - the same 5 CV windows with growing `max_train_size` (12 to 30 months);
+  - validation on 2023 with 12 to 48 training months.
+- Phase 3, metrics: MAE and RMSE for training and validation, in EUR and as % of mean monthly revenue.
+  - **Business cost:** under-forecasting costs more. Revenue tracks shipment volume, so a miss is a workload miss for warehouse staff and carrier capacity, and peak shortfalls cost more than proportionally.
+  - RMSE is therefore the decision metric and MAE the plain-language one. The signed bias is added because both metrics ignore direction.
+- Phase 4, diagnosis (`classify_fit`): **overfitting**.
+  - Validation RMSE is 4.51 ± 0.97% against 1.34 ± 0.19% in training (gap 3.37×). The learning-curve gap at 48 months is 3.38×, and validation was still falling (−7.5% in the last step).
+  - It is not underfitting: the model beats a seasonal-naive rule in 4 of 5 folds.
+  - **Root cause:** too much capacity for 30-60 rows. That is 17 features and depth-2 interactions, while more history does not exist.
+  - **Corrective action, proposed and not applied (developer's decision):** depth-1 trees + 9 compact features, chosen in CV over 3 alternatives. Validation RMSE 4.25 ± 0.44%: −6% on the mean, −55% on the fold spread, gap 1.46×.
+- Phase 5, tests: `tests/pipelines/test_sales_forecast_evaluation.py` (20 tests).
+  - The required chronological-order test.
+  - Refusal of broken folds.
+  - Leakage across fold boundaries, with a negative control: a centred window must be flagged.
+  - Learning-curve windows.
+  - MAE and RMSE mean ± std.
+  - The diagnosis rule and the selection rule.
+  - Test years ×3 leave the evaluation identical.
+  - Exit code 3 on a failed check.
+- CLI `scripts/evaluate_sales_forecast.py`:
+  - writes the report, chart and `data/eval/sales_forecast/evaluation.json`;
+  - deterministic (two runs give identical files) and takes about 7 s;
+  - exit codes 0 / 2 / 3.
+- `scripts/sales_forecast.py`: `forecast_recursive` gets an optional `feature_columns` (default unchanged). The shipped outputs are byte-identical after the change.
+- Docs: `docs/SALES_FORECAST.md` (section + pieces table), `data/eval/README.md`, `memory-bank/techContext.md`.
+- Verification:
+  - Full backend suite: 896 passed, 51 skipped (876 + 20 new).
+  - `ruff format`: clean.
+  - `ruff check`: clean apart from the E402 `sys.path` bootstrap shared with `train_sales_forecast.py`.
+  - mypy on the new files: clean with and without `pandas-stubs`. The 24 pre-existing stub errors in the 2026-11-06 files are unchanged.
+
+Still missing / next goals:
+1. Tech lead's decision on the corrective action. If approved, apply depth 1 + the 9 compact features in `scripts/sales_forecast.py`, re-run `train_sales_forecast.py` **once**, and compare the 2024-2025 metrics (the test years were never used to choose it).
+2. The peak is flattened: 5 of 6 Nov-Dec validation months are under-forecast, which is the expensive direction, and depth 1 + compact does not change it. An asymmetric loss (`reg:quantileerror` above the median) is the option to weigh with Thomas, a trade-off against RMSE.
+3. The growth-year bias flips sign with the briefing's alternating 9%/3% growth: an over-forecast in low years, an under-forecast in high years. A growth-regime feature or external drivers would address it.
+4. Still open from 2026-11-07: the developer's decision on the 24 `pandas-stubs` mypy errors, a permanent libomp install, and forecasting 2026 onwards.
+5. Nothing is committed yet. Commit only on the developer's request.
 
 ## Update 2026-11-07 - Sales forecast: real-data run on the company dataset
 
