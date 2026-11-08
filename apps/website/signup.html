@@ -349,7 +349,14 @@
           }
         }
 
-        var storedTheme = localStorage.getItem("trackflow-theme");
+        // Storage can be blocked (private mode, cookies disabled). The theme is a
+        // preference, so the page falls back to light rather than stopping here.
+        var storedTheme = null;
+        try {
+          storedTheme = localStorage.getItem("trackflow-theme");
+        } catch (storageError) {
+          storedTheme = null;
+        }
         var startsDark = storedTheme === "dark";
 
         if (startsDark) {
@@ -360,7 +367,11 @@
 
         toggleButton.addEventListener("click", function () {
           var isDark = document.body.classList.toggle("dark");
-          localStorage.setItem("trackflow-theme", isDark ? "dark" : "light");
+          try {
+            localStorage.setItem("trackflow-theme", isDark ? "dark" : "light");
+          } catch (storageError) {
+            // Not remembered for the next visit, but the toggle still works now.
+          }
           updateThemeUI(isDark);
         });
       })();

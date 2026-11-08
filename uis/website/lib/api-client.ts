@@ -1,3 +1,5 @@
+import { ApiError, readErrorPayload, readJsonBody, sendRequest } from "@/lib/auth-api-client";
+
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL?.trim().replace(/\/+$/, "") ?? "";
 
 export function getApiBaseUrl(): string {
@@ -12,8 +14,13 @@ export function buildApiUrl(path: string): string {
   return `${apiBaseUrl}${path.startsWith("/") ? path : `/${path}`}`;
 }
 
+/**
+ * Call against the external records API. It shares the error classes of the
+ * identity client - never its token - so one gate in `lib/friendly-error.ts`
+ * can turn either API's failure into something a reader can act on.
+ */
 export async function requestApi(path: string, init?: RequestInit): Promise<Response> {
-  const response = await fetch(buildApiUrl(path), {
+  const response = await sendRequest(buildApiUrl(path), {
     ...init,
     headers: {
       Accept: "application/json",
@@ -22,7 +29,7 @@ export async function requestApi(path: string, init?: RequestInit): Promise<Resp
   });
 
   if (!response.ok) {
-    throw new Error(`Request failed with status ${response.status}`);
+    throw new ApiError(response.status, await readErrorPayload(response));
   }
 
   return response;
@@ -38,5 +45,5 @@ export async function parseResponseJson(response: Response): Promise<unknown | n
     return null;
   }
 
-  return response.json();
+  return readJsonBody(response);
 }

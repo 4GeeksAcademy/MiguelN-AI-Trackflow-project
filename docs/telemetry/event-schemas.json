@@ -1,0 +1,3338 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "trackflow-event-schemas",
+  "title": "TrackFlow telemetry events",
+  "description": "JSON Schema draft-07. Validate any event against the root; `oneOf` selects the schema by `event_type`.",
+  "x-schemaVersion": "1.0.0",
+  "definitions": {
+    "uuid": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "envelope": {
+      "type": "object",
+      "description": "Fields every event carries. `event_type` and `properties` are narrowed per event.",
+      "required": [
+        "eventId",
+        "timestamp",
+        "sessionId",
+        "userId",
+        "event_type",
+        "schemaVersion",
+        "requestId",
+        "properties"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "eventId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Unique per event; consumers deduplicate on it."
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 UTC time the event occurred at the emitter."
+        },
+        "sessionId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Random id generated per browser tab session (and per script run); there is no server session."
+        },
+        "userId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid",
+          "description": "TinyDB user UUID; null when anonymous or the account is unknown."
+        },
+        "event_type": {
+          "type": "string",
+          "pattern": "^[a-z]+(_[a-z]+)+$",
+          "description": "entity_action name."
+        },
+        "schemaVersion": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "description": "Semantic version of this event's schema."
+        },
+        "requestId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Correlates all events and logs of one HTTP request; scripts use one id per run."
+        },
+        "properties": {
+          "type": "object",
+          "description": "Event-specific payload, narrowed per event."
+        }
+      }
+    },
+    "events": {
+      "product_created": {
+        "title": "product_created",
+        "description": "We capture product_created because we need to know how fast the catalogue grows per warehouse and who is onboarding SKUs, which allows us to plan catalogue-maintenance capacity and spot warehouses that lag in onboarding.",
+        "x-trackflow": {
+          "classification": "mandatory",
+          "category": "inventory",
+          "emitter": "backend",
+          "delivery": "batch",
+          "containsPII": false,
+          "piiHandling": "No personal data beyond the pseudonymous `userId` in the envelope."
+        },
+        "allOf": [
+          {
+            "$ref": "#/definitions/envelope"
+          },
+          {
+            "properties": {
+              "event_type": {
+                "const": "product_created"
+              },
+              "schemaVersion": {
+                "const": "1.0.0"
+              },
+              "properties": {
+                "type": "object",
+                "required": [
+                  "product_id",
+                  "sku",
+                  "warehouse",
+                  "initial_stock"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "product_id": {
+                    "type": "string",
+                    "description": "New product UUID.",
+                    "format": "uuid"
+                  },
+                  "sku": {
+                    "type": "string",
+                    "description": "Product SKU (business identifier, not personal data).",
+                    "maxLength": 100
+                  },
+                  "warehouse": {
+                    "type": "string",
+                    "description": "Warehouse of the product.",
+                    "enum": [
+                      "Monterrey",
+                      "Zaragoza"
+                    ]
+                  },
+                  "initial_stock": {
+                    "type": "integer",
+                    "description": "Always 0; stock is derived, never stored.",
+                    "minimum": 0,
+                    "maximum": 0
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "product_creation_rejected": {
+        "title": "product_creation_rejected",
+        "description": "We capture product_creation_rejected because we need to know whether operators keep trying to register duplicates or malformed products, which allows us to decide whether the creation form needs duplicate detection or clearer guidance.",
+        "x-trackflow": {
+          "classification": "identified_opportunity",
+          "category": "inventory",
+          "emitter": "backend",
+          "delivery": "batch",
+          "containsPII": false,
+          "piiHandling": "No personal data beyond the pseudonymous `userId` in the envelope."
+        },
+        "allOf": [
+          {
+            "$ref": "#/definitions/envelope"
+          },
+          {
+            "properties": {
+              "event_type": {
+                "const": "product_creation_rejected"
+              },
+              "schemaVersion": {
+                "const": "1.0.0"
+              },
+              "properties": {
+                "type": "object",
+                "required": [
+                  "reason",
+                  "sku",
+                  "warehouse"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "description": "Why it was refused.",
+                    "enum": [
+                      "duplicate_sku_warehouse",
+                      "validation_failed"
+                    ]
+                  },
+                  "sku": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "Product SKU (business identifier, not personal data).",
+                    "maxLength": 100
+                  },
+                  "warehouse": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "Warehouse of the product.",
+                    "enum": [
+                      "Monterrey",
+                      "Zaragoza",
+                      null
+                    ]
+                  },
+                  "rejected_fields": {
+                    "type": "array",
+                    "description": "Names of fields that failed validation.",
+                    "items": {
+                      "type": "string",
+                      "maxLength": 64
+                    },
+                    "maxItems": 10
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "inbound_order_created": {
+        "title": "inbound_order_created",
+        "description": "We capture inbound_order_created because we need to know how much stock enters each warehouse per day and who records it, which allows us to size receiving staff per warehouse and detect days with no receipts.",
+        "x-trackflow": {
+          "classification": "mandatory",
+          "category": "inventory",
+          "emitter": "backend",
+          "delivery": "stream",
+          "containsPII": false,
+          "piiHandling": "`userId` in the envelope is the only person reference; no names or emails."
+        },
+        "allOf": [
+          {
+            "$ref": "#/definitions/envelope"
+          },
+          {
+            "properties": {
+              "event_type": {
+                "const": "inbound_order_created"
+              },
+              "schemaVersion": {
+                "const": "1.0.0"
+              },
+              "properties": {
+                "type": "object",
+                "required": [
+                  "product_id",
+                  "sku",
+                  "warehouse",
+                  "quantity",
+                  "stock_after"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "order_id": {
+                    "type": "string",
+                    "description": "Inbound order UUID.",
+                    "format": "uuid"
+                  },
+                  "product_id": {
+                    "type": "string",
+                    "description": "Product UUID.",
+                    "format": "uuid"
+                  },
+                  "sku": {
+                    "type": "string",
+                    "description": "Product SKU (business identifier, not personal data).",
+                    "maxLength": 100
+                  },
+                  "warehouse": {
+                    "type": "string",
+                    "description": "Warehouse of the product.",
+                    "enum": [
+                      "Monterrey",
+                      "Zaragoza"
+                    ]
+                  },
+                  "quantity": {
+                    "type": "integer",
+                    "description": "Units received.",
+                    "minimum": 1,
+                    "maximum": 2147483647
+                  },
+                  "stock_after": {
+                    "type": "integer",
+                    "description": "Computed stock after the movement.",
+                    "minimum": 0
+                  },
+                  "transaction_ms": {
+                    "type": "number",
+                    "description": "Lock + insert + commit duration.",
+                    "minimum": 0
+                  },
+                  "actor_role": {
+                    "type": "string",
+                    "description": "Role of the authenticated user.",
+                    "maxLength": 32
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "outbound_order_created": {
+        "title": "outbound_order_created",
+        "description": "We capture outbound_order_created because we need to know how many outbound orders are registered per day, per warehouse and per user, which allows us to plan picking capacity and replenishment.",
+        "x-trackflow": {
+          "classification": "mandatory",
+          "category": "inventory",
+          "emitter": "backend",
+          "delivery": "stream",
+          "containsPII": false,
+          "piiHandling": "No personal data beyond the pseudonymous `userId` in the envelope."
+        },
+        "allOf": [
+          {
+            "$ref": "#/definitions/envelope"
+          },
+          {
+            "properties": {
+              "event_type": {
+                "const": "outbound_order_created"
+              },
+              "schemaVersion": {
+                "const": "1.0.0"
+              },
+              "properties": {
+                "type": "object",
+                "required": [
+                  "product_id",
+                  "sku",
+                  "warehouse",
+                  "quantity",
+                  "stock_before",
+                  "stock_after",
+                  "drained_to_zero"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "order_id": {
+                    "type": "string",
+                    "description": "Outbound order UUID.",
+                    "format": "uuid"
+                  },
+                  "product_id": {
+                    "type": "string",
+                    "description": "Product UUID.",
+                    "format": "uuid"
+                  },
+                  "sku": {
+                    "type": "string",
+                    "description": "Product SKU (business identifier, not personal data).",
+                    "maxLength": 100
+                  },
+                  "warehouse": {
+                    "type": "string",
+                    "description": "Warehouse of the product.",
+                    "enum": [
+                      "Monterrey",
+                      "Zaragoza"
+                    ]
+                  },
+                  "quantity": {
+                    "type": "integer",
+                    "description": "Units dispatched.",
+                    "minimum": 1,
+                    "maximum": 2147483647
+                  },
+                  "stock_before": {
+                    "type": "integer",
+                    "description": "Stock before the movement.",
+                    "minimum": 0
+                  },
+                  "stock_after": {
+                    "type": "integer",
+                    "description": "Stock after the movement.",
+                    "minimum": 0
+                  },
+                  "drained_to_zero": {
+                    "type": "boolean",
+                    "description": "True when this order emptied the product."
+                  },
+                  "transaction_ms": {
+                    "type": "number",
+                    "description": "Lock + validate + insert + commit duration.",
+                    "minimum": 0
+                  },
+                  "actor_role": {
+                    "type": "string",
+                    "description": "Role of the authenticated user.",
+                    "maxLength": 32
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "order_validation_failed": {
+        "title": "order_validation_failed",
+        "description": "We capture order_validation_failed because we need to know which products and fields accumulate the most validation errors, and how large the stock shortfall is, which allows us to fix confusing forms, correct stock records, or reorder products that operators keep over-requesting.",
+        "x-trackflow": {
+          "classification": "mandatory",
+          "category": "inventory",
+          "emitter": "backend",
+          "delivery": "stream",
+          "containsPII": false,
+          "piiHandling": "No personal data beyond the pseudonymous `userId` in the envelope."
+        },
+        "allOf": [
+          {
+            "$ref": "#/definitions/envelope"
+          },
+          {
+            "properties": {
+              "event_type": {
+                "const": "order_validation_failed"
+              },
+              "schemaVersion": {
+                "const": "1.0.0"
+              },
+              "properties": {
+                "type": "object",
+                "required": [
+                  "order_direction",
+                  "rejection_reason",
+                  "field",
+                  "product_id",
+                  "sku",
+                  "warehouse",
+                  "requested_quantity",
+                  "available_stock",
+                  "shortfall"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "order_direction": {
+                    "type": "string",
+                    "description": "Order type attempted.",
+                    "enum": [
+                      "inbound",
+                      "outbound"
+                    ]
+                  },
+                  "rejection_reason": {
+                    "type": "string",
+                    "description": "Rule that refused the order.",
+                    "enum": [
+                      "insufficient_stock",
+                      "product_not_found",
+                      "invalid_quantity",
+                      "malformed_payload"
+                    ]
+                  },
+                  "field": {
+                    "type": "string",
+                    "description": "Offending field.",
+                    "enum": [
+                      "quantity",
+                      "product_id",
+                      "other"
+                    ]
+                  },
+                  "product_id": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "Product UUID if it was a valid UUID.",
+                    "format": "uuid"
+                  },
+                  "sku": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "Product SKU (business identifier, not personal data).",
+                    "maxLength": 100
+                  },
+                  "warehouse": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "Warehouse of the product.",
+                    "enum": [
+                      "Monterrey",
+                      "Zaragoza",
+                      null
+                    ]
+                  },
+                  "requested_quantity": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "description": "Quantity requested, null if not an integer."
+                  },
+                  "available_stock": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "description": "Stock at refusal time, null if the product was not found.",
+                    "minimum": 0
+                  },
+                  "shortfall": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "description": "requested - available when insufficient_stock, else null.",
+                    "minimum": 1
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "inventory_discrepancy_detected": {
+        "title": "inventory_discrepancy_detected",
+        "description": "We capture inventory_discrepancy_detected because we need to know which products and warehouses have physical counts that disagree with transaction-derived stock, which allows us to investigate process or integration failures before they cause missed picks, overselling or inaccurate reports.",
+        "x-trackflow": {
+          "classification": "mandatory",
+          "category": "inventory",
+          "emitter": "backend_reconciliation_or_wms_connector",
+          "delivery": "stream",
+          "containsPII": false,
+          "piiHandling": "The envelope userId identifies the authenticated counter where available. No names, free text or customer data; source_system is a fixed enum."
+        },
+        "allOf": [
+          {
+            "$ref": "#/definitions/envelope"
+          },
+          {
+            "properties": {
+              "event_type": {
+                "const": "inventory_discrepancy_detected"
+              },
+              "schemaVersion": {
+                "const": "1.0.0"
+              },
+              "properties": {
+                "type": "object",
+                "required": [
+                  "reconciliation_id",
+                  "product_id",
+                  "sku",
+                  "warehouse",
+                  "expected_stock",
+                  "counted_stock",
+                  "variance_units",
+                  "count_method",
+                  "source_system"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "reconciliation_id": {
+                    "type": "string",
+                    "description": "Stable identifier for the count/reconciliation run.",
+                    "format": "uuid"
+                  },
+                  "product_id": {
+                    "type": "string",
+                    "description": "Product UUID.",
+                    "format": "uuid"
+                  },
+                  "sku": {
+                    "type": "string",
+                    "description": "Product SKU (business identifier, not personal data).",
+                    "maxLength": 100
+                  },
+                  "warehouse": {
+                    "type": "string",
+                    "description": "Warehouse where the count was performed.",
+                    "enum": [
+                      "Monterrey",
+                      "Zaragoza"
+                    ]
+                  },
+                  "expected_stock": {
+                    "type": "integer",
+                    "description": "Stock computed from committed inbound minus outbound orders at reconciliation time.",
+                    "minimum": 0
+                  },
+                  "counted_stock": {
+                    "type": "integer",
+                    "description": "Physical or imported quantity observed.",
+                    "minimum": 0
+                  },
+                  "variance_units": {
+                    "type": "integer",
+                    "description": "counted_stock - expected_stock; negative means fewer units were found.",
+                    "not": {
+                      "const": 0
+                    }
+                  },
+                  "count_method": {
+                    "type": "string",
+                    "description": "How the observed quantity was obtained.",
+                    "enum": [
+                      "cycle_count",
+                      "full_count",
+                      "inbound_receipt_check",
+                      "outbound_pick_check",
+                      "manual_investigation"
+                    ]
+                  },
+                  "source_system": {
+                    "type": "string",
+                    "description": "System that supplied the observation.",
+                    "enum": [
+                      "backoffice",
+                      "monterrey_wms",
+                      "zaragoza_wms",
+                      "manual",
+                      "other"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "direct_stock_edit_rejected": {
+        "title": "direct_stock_edit_rejected",
+        "description": "We capture direct_stock_edit_rejected because we need to know whether users or integrations try to bypass the inbound/outbound rule, and who, which allows us to decide on user training, tighter access, or a clearer UI when the attempts concentrate on one user or client.",
+        "x-trackflow": {
+          "classification": "mandatory",
+          "category": "inventory",
+          "emitter": "backend",
+          "delivery": "stream",
+          "containsPII": false,
+          "piiHandling": "No personal data beyond the pseudonymous `userId` in the envelope."
+        },
+        "allOf": [
+          {
+            "$ref": "#/definitions/envelope"
+          },
+          {
+            "properties": {
+              "event_type": {
+                "const": "direct_stock_edit_rejected"
+              },
+              "schemaVersion": {
+                "const": "1.0.0"
+              },
+              "properties": {
+                "type": "object",
+                "required": [
+                  "attempt_kind",
+                  "http_method",
+                  "route_template",
+                  "rejected_fields",
+                  "product_id",
+                  "response_status",
+                  "client_app"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "attempt_kind": {
+                    "type": "string",
+                    "description": "How the bypass was attempted.",
+                    "enum": [
+                      "stock_field_in_payload",
+                      "unsupported_method_on_stock_resource"
+                    ]
+                  },
+                  "http_method": {
+                    "type": "string",
+                    "description": "HTTP method used.",
+                    "enum": [
+                      "GET",
+                      "POST",
+                      "PUT",
+                      "PATCH",
+                      "DELETE"
+                    ]
+                  },
+                  "route_template": {
+                    "type": "string",
+                    "description": "Route pattern such as `/inventory/products/{id}`, never the raw path.",
+                    "maxLength": 200,
+                    "pattern": "^/"
+                  },
+                  "rejected_fields": {
+                    "type": "array",
+                    "description": "Allow-listed stock-like field names found in the payload (names only, never values).",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "current_stock",
+                        "stock",
+                        "stock_quantity",
+                        "quantity",
+                        "min_stock_threshold",
+                        "other"
+                      ]
+                    },
+                    "maxItems": 6
+                  },
+                  "product_id": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "Target product when present in the path.",
+                    "format": "uuid"
+                  },
+                  "response_status": {
+                    "type": "integer",
+                    "description": "Status returned (422, 404 or 405).",
+                    "enum": [
+                      404,
+                      405,
+                      422
+                    ]
+                  },
+                  "client_app": {
+                    "type": "string",
+                    "description": "Which client made the call, from the `X-Client-App` header.",
+                    "enum": [
+                      "website",
+                      "backoffice",
+                      "api_docs",
+                      "script",
+                      "unknown"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "stock_threshold_triggered": {
+        "title": "stock_threshold_triggered",
+        "description": "We capture stock_threshold_triggered because we need to know when and where the minimum-stock alerts fire most, which allows us to set reorder points and trigger replenishment before a warehouse stocks out.",
+        "x-trackflow": {
+          "classification": "mandatory",
+          "category": "inventory",
+          "emitter": "backend",
+          "delivery": "stream",
+          "containsPII": false,
+          "piiHandling": "No personal data beyond the pseudonymous `userId` in the envelope."
+        },
+        "allOf": [
+          {
+            "$ref": "#/definitions/envelope"
+          },
+          {
+            "properties": {
+              "event_type": {
+                "const": "stock_threshold_triggered"
+              },
+              "schemaVersion": {
+                "const": "1.0.0"
+              },
+              "properties": {
+                "type": "object",
+                "required": [
+                  "product_id",
+                  "sku",
+                  "warehouse",
+                  "stock_level_after",
+                  "threshold_band",
+                  "threshold_max_units",
+                  "previous_band"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "product_id": {
+                    "type": "string",
+                    "description": "Product UUID.",
+                    "format": "uuid"
+                  },
+                  "sku": {
+                    "type": "string",
+                    "description": "Product SKU (business identifier, not personal data).",
+                    "maxLength": 100
+                  },
+                  "warehouse": {
+                    "type": "string",
+                    "description": "Warehouse of the product.",
+                    "enum": [
+                      "Monterrey",
+                      "Zaragoza"
+                    ]
+                  },
+                  "stock_level_after": {
+                    "type": "integer",
+                    "description": "Stock after the crossing movement.",
+                    "minimum": 0
+                  },
+                  "threshold_band": {
+                    "type": "string",
+                    "description": "Band entered.",
+                    "enum": [
+                      "out_of_stock",
+                      "low"
+                    ]
+                  },
+                  "threshold_max_units": {
+                    "type": "integer",
+                    "description": "Upper bound of the band (0 or 9, the documented display thresholds).",
+                    "minimum": 0
+                  },
+                  "previous_band": {
+                    "type": "string",
+                    "description": "Band before the movement.",
+                    "enum": [
+                      "healthy",
+                      "low"
+                    ]
+                  },
+                  "triggering_order_id": {
+                    "type": "string",
+                    "description": "Outbound order that caused the crossing.",
+                    "format": "uuid"
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "stock_availability_checked": {
+        "title": "stock_availability_checked",
+        "description": "We capture stock_availability_checked because we need to know how often operators work against stale stock and how slow the check feels, which allows us to decide whether to poll, cache or push stock to the form.",
+        "x-trackflow": {
+          "classification": "identified_opportunity",
+          "category": "inventory",
+          "emitter": "frontend",
+          "delivery": "batch",
+          "containsPII": false,
+          "piiHandling": "No personal data beyond the pseudonymous `userId` in the envelope."
+        },
+        "allOf": [
+          {
+            "$ref": "#/definitions/envelope"
+          },
+          {
+            "properties": {
+              "event_type": {
+                "const": "stock_availability_checked"
+              },
+              "schemaVersion": {
+                "const": "1.0.0"
+              },
+              "properties": {
+                "type": "object",
+                "required": [
+                  "product_id",
+                  "warehouse",
+                  "context",
+                  "outcome",
+                  "stock_returned",
+                  "latency_ms"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "product_id": {
+                    "type": "string",
+                    "description": "Product UUID.",
+                    "format": "uuid"
+                  },
+                  "warehouse": {
+                    "type": "string",
+                    "description": "Warehouse of the product.",
+                    "enum": [
+                      "Monterrey",
+                      "Zaragoza"
+                    ]
+                  },
+                  "context": {
+                    "type": "string",
+                    "description": "Where the lookup happened.",
+                    "enum": [
+                      "outbound_form",
+                      "product_list"
+                    ]
+                  },
+                  "outcome": {
+                    "type": "string",
+                    "description": "Result of the lookup.",
+                    "enum": [
+                      "ok",
+                      "error"
+                    ]
+                  },
+                  "stock_returned": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "description": "Stock returned, null on error.",
+                    "minimum": 0
+                  },
+                  "latency_ms": {
+                    "type": "number",
+                    "description": "Round-trip time.",
+                    "minimum": 0
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "inventory_lock_wait_recorded": {
+        "title": "inventory_lock_wait_recorded",
+        "description": "We capture inventory_lock_wait_recorded because we need to know whether concurrent operators contend on the same product, which allows us to decide if hot products need a different concurrency strategy.",
+        "x-trackflow": {
+          "classification": "identified_opportunity",
+          "category": "inventory",
+          "emitter": "backend",
+          "delivery": "batch",
+          "containsPII": false,
+          "piiHandling": "No personal data beyond the pseudonymous `userId` in the envelope."
+        },
+        "allOf": [
+          {
+            "$ref": "#/definitions/envelope"
+          },
+          {
+            "properties": {
+              "event_type": {
+                "const": "inventory_lock_wait_recorded"
+              },
+              "schemaVersion": {
+                "const": "1.0.0"
+              },
+              "properties": {
+                "type": "object",
+                "required": [
+                  "order_direction",
+                  "warehouse",
+                  "wait_ms",
+                  "outcome"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "order_direction": {
+                    "type": "string",
+                    "description": "Movement type.",
+                    "enum": [
+                      "inbound",
+                      "outbound"
+                    ]
+                  },
+                  "warehouse": {
+                    "type": "string",
+                    "description": "Warehouse of the product.",
+                    "enum": [
+                      "Monterrey",
+                      "Zaragoza"
+                    ]
+                  },
+                  "wait_ms": {
+                    "type": "number",
+                    "description": "Time waiting for the lock.",
+                    "minimum": 0
+                  },
+                  "outcome": {
+                    "type": "string",
+                    "description": "Transaction result.",
+                    "enum": [
+                      "committed",
+                      "rolled_back"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "stock_snapshot_recorded": {
+        "title": "stock_snapshot_recorded",
+        "description": "We capture stock_snapshot_recorded because we need to know how stock evolves over time, because stock is derived and has no history, which allows us to forecast demand, slow movers and seasonal replenishment.",
+        "x-trackflow": {
+          "classification": "identified_opportunity",
+          "category": "inventory",
+          "emitter": "script",
+          "delivery": "batch",
+          "containsPII": false,
+          "piiHandling": "No personal data beyond the pseudonymous `userId` in the envelope."
+        },
+        "allOf": [
+          {
+            "$ref": "#/definitions/envelope"
+          },
+          {
+            "properties": {
+              "event_type": {
+                "const": "stock_snapshot_recorded"
+              },
+              "schemaVersion": {
+                "const": "1.0.0"
+              },
+              "properties": {
+                "type": "object",
+                "required": [
+                  "snapshot_date",
+                  "product_id",
+                  "sku",
+                  "warehouse",
+                  "stock_level",
+                  "inbound_total",
+                  "outbound_total",
+                  "band"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "snapshot_date": {
+                    "type": "string",
+                    "description": "UTC date of the snapshot.",
+                    "format": "date"
+                  },
+                  "product_id": {
+                    "type": "string",
+                    "description": "Product UUID.",
+                    "format": "uuid"
+                  },
+                  "sku": {
+                    "type": "string",
+                    "description": "Product SKU (business identifier, not personal data).",
+                    "maxLength": 100
+                  },
+                  "warehouse": {
+                    "type": "string",
+                    "description": "Warehouse of the product.",
+                    "enum": [
+                      "Monterrey",
+                      "Zaragoza"
+                    ]
+                  },
+                  "stock_level": {
+                    "type": "integer",
+                    "description": "Computed stock.",
+                    "minimum": 0
+                  },
+                  "inbound_total": {
+                    "type": "integer",
+                    "description": "Lifetime inbound units.",
+                    "minimum": 0
+                  },
+                  "outbound_total": {
+                    "type": "integer",
+                    "description": "Lifetime outbound units.",
+                    "minimum": 0
+                  },
+                  "band": {
+                    "type": "string",
+                    "description": "Display band at snapshot time.",
+                    "enum": [
+                      "out_of_stock",
+                      "low",
+                      "healthy"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "login_succeeded": {
+        "title": "login_succeeded",
+        "description": "We capture login_succeeded because we need to know daily active users and which client apps are used, which allows us to prioritise the backoffice or website and size support.",
+        "x-trackflow": {
+          "classification": "identified_opportunity",
+          "category": "authentication",
+          "emitter": "backend",
+          "delivery": "batch",
+          "containsPII": false,
+          "piiHandling": "No personal data beyond the pseudonymous `userId` in the envelope."
+        },
+        "allOf": [
+          {
+            "$ref": "#/definitions/envelope"
+          },
+          {
+            "properties": {
+              "event_type": {
+                "const": "login_succeeded"
+              },
+              "schemaVersion": {
+                "const": "1.0.0"
+              },
+              "properties": {
+                "type": "object",
+                "required": [
+                  "login_route",
+                  "client_app"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "login_route": {
+                    "type": "string",
+                    "description": "Endpoint used.",
+                    "enum": [
+                      "/auth/login",
+                      "/auth/token"
+                    ]
+                  },
+                  "client_app": {
+                    "type": "string",
+                    "description": "Which client made the call, from the `X-Client-App` header.",
+                    "enum": [
+                      "website",
+                      "backoffice",
+                      "api_docs",
+                      "script",
+                      "unknown"
+                    ]
+                  },
+                  "actor_role": {
+                    "type": "string",
+                    "description": "Role of the user.",
+                    "maxLength": 32
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "login_failed": {
+        "title": "login_failed",
+        "description": "We capture login_failed because we need to know how many failed login attempts happen per day and whether they concentrate on one identifier, which allows us to tune rate limiting, add lockout or investigate credential-stuffing.",
+        "x-trackflow": {
+          "classification": "mandatory",
+          "category": "authentication",
+          "emitter": "backend",
+          "delivery": "stream",
+          "containsPII": false,
+          "piiHandling": "The raw email and password are never emitted. `identifier_hash` uses a secret key kept out of the data store and rotated quarterly; `userId` is null for unknown accounts."
+        },
+        "allOf": [
+          {
+            "$ref": "#/definitions/envelope"
+          },
+          {
+            "properties": {
+              "event_type": {
+                "const": "login_failed"
+              },
+              "schemaVersion": {
+                "const": "1.0.0"
+              },
+              "properties": {
+                "type": "object",
+                "required": [
+                  "reason",
+                  "identifier_hash",
+                  "login_route",
+                  "client_app"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "description": "Failure class (internal only, never shown to the client).",
+                    "enum": [
+                      "unknown_account",
+                      "wrong_password",
+                      "inactive_account",
+                      "malformed_credentials"
+                    ]
+                  },
+                  "identifier_hash": {
+                    "type": "string",
+                    "description": "Keyed HMAC-SHA-256 of the submitted email, truncated to 16 hex chars.",
+                    "pattern": "^[0-9a-f]{16}$"
+                  },
+                  "login_route": {
+                    "type": "string",
+                    "description": "Endpoint used.",
+                    "enum": [
+                      "/auth/login",
+                      "/auth/token"
+                    ]
+                  },
+                  "client_app": {
+                    "type": "string",
+                    "description": "Which client made the call, from the `X-Client-App` header.",
+                    "enum": [
+                      "website",
+                      "backoffice",
+                      "api_docs",
+                      "script",
+                      "unknown"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "session_expired": {
+        "title": "session_expired",
+        "description": "We capture session_expired because we need to know how often operators lose a session mid-task, which allows us to adjust `ACCESS_TOKEN_EXPIRE_MINUTES` or add silent renewal.",
+        "x-trackflow": {
+          "classification": "identified_opportunity",
+          "category": "authentication",
+          "emitter": "frontend",
+          "delivery": "batch",
+          "containsPII": false,
+          "piiHandling": "No personal data beyond the pseudonymous `userId` in the envelope."
+        },
+        "allOf": [
+          {
+            "$ref": "#/definitions/envelope"
+          },
+          {
+            "properties": {
+              "event_type": {
+                "const": "session_expired"
+              },
+              "schemaVersion": {
+                "const": "1.0.0"
+              },
+              "properties": {
+                "type": "object",
+                "required": [
+                  "trigger",
+                  "session_age_seconds",
+                  "route_template"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "trigger": {
+                    "type": "string",
+                    "description": "How expiry was detected.",
+                    "enum": [
+                      "api_401",
+                      "client_exp_check"
+                    ]
+                  },
+                  "session_age_seconds": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "description": "Seconds since login, null if unknown.",
+                    "minimum": 0
+                  },
+                  "route_template": {
+                    "type": "string",
+                    "description": "Route pattern such as `/inventory/products/{id}`, never the raw path.",
+                    "maxLength": 200,
+                    "pattern": "^/"
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "token_rejected": {
+        "title": "token_rejected",
+        "description": "We capture token_rejected because we need to know whether stale, forged or orphaned tokens are in circulation, which allows us to investigate tampering or revisit deactivation behaviour.",
+        "x-trackflow": {
+          "classification": "identified_opportunity",
+          "category": "authentication",
+          "emitter": "backend",
+          "delivery": "batch",
+          "containsPII": false,
+          "piiHandling": "No personal data beyond the pseudonymous `userId` in the envelope."
+        },
+        "allOf": [
+          {
+            "$ref": "#/definitions/envelope"
+          },
+          {
+            "properties": {
+              "event_type": {
+                "const": "token_rejected"
+              },
+              "schemaVersion": {
+                "const": "1.0.0"
+              },
+              "properties": {
+                "type": "object",
+                "required": [
+                  "reason",
+                  "route_template"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "description": "Failure class.",
+                    "enum": [
+                      "invalid_or_expired",
+                      "missing_user_id",
+                      "user_no_longer_exists",
+                      "inactive_user"
+                    ]
+                  },
+                  "route_template": {
+                    "type": "string",
+                    "description": "Route pattern such as `/inventory/products/{id}`, never the raw path.",
+                    "maxLength": 200,
+                    "pattern": "^/"
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "user_registered": {
+        "title": "user_registered",
+        "description": "We capture user_registered because we need to know how fast the user base grows and through which client, which allows us to decide onboarding effort and which app to invest in.",
+        "x-trackflow": {
+          "classification": "identified_opportunity",
+          "category": "authentication",
+          "emitter": "backend",
+          "delivery": "batch",
+          "containsPII": false,
+          "piiHandling": "No personal data beyond the pseudonymous `userId` in the envelope."
+        },
+        "allOf": [
+          {
+            "$ref": "#/definitions/envelope"
+          },
+          {
+            "properties": {
+              "event_type": {
+                "const": "user_registered"
+              },
+              "schemaVersion": {
+                "const": "1.0.0"
+              },
+              "properties": {
+                "type": "object",
+                "required": [
+                  "client_app"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "client_app": {
+                    "type": "string",
+                    "description": "Which client made the call, from the `X-Client-App` header.",
+                    "enum": [
+                      "website",
+                      "backoffice",
+                      "api_docs",
+                      "script",
+                      "unknown"
+                    ]
+                  },
+                  "actor_role": {
+                    "type": "string",
+                    "description": "Initial role.",
+                    "maxLength": 32
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "password_reset_requested": {
+        "title": "password_reset_requested",
+        "description": "We capture password_reset_requested because we need to know how often users get locked out of their account, which allows us to invest in clearer sign-in UX or SSO.",
+        "x-trackflow": {
+          "classification": "identified_opportunity",
+          "category": "authentication",
+          "emitter": "backend",
+          "delivery": "batch",
+          "containsPII": false,
+          "piiHandling": "Deliberately omits whether the address matched an account, so telemetry cannot become an enumeration oracle."
+        },
+        "allOf": [
+          {
+            "$ref": "#/definitions/envelope"
+          },
+          {
+            "properties": {
+              "event_type": {
+                "const": "password_reset_requested"
+              },
+              "schemaVersion": {
+                "const": "1.0.0"
+              },
+              "properties": {
+                "type": "object",
+                "required": [
+                  "client_app"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "client_app": {
+                    "type": "string",
+                    "description": "Which client made the call, from the `X-Client-App` header.",
+                    "enum": [
+                      "website",
+                      "backoffice",
+                      "api_docs",
+                      "script",
+                      "unknown"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "password_reset_completed": {
+        "title": "password_reset_completed",
+        "description": "We capture password_reset_completed because we need to know how long users take to use the emailed link, which allows us to tune `PASSWORD_RESET_TOKEN_EXPIRE_MINUTES`.",
+        "x-trackflow": {
+          "classification": "identified_opportunity",
+          "category": "authentication",
+          "emitter": "backend",
+          "delivery": "batch",
+          "containsPII": false,
+          "piiHandling": "No personal data beyond the pseudonymous `userId` in the envelope."
+        },
+        "allOf": [
+          {
+            "$ref": "#/definitions/envelope"
+          },
+          {
+            "properties": {
+              "event_type": {
+                "const": "password_reset_completed"
+              },
+              "schemaVersion": {
+                "const": "1.0.0"
+              },
+              "properties": {
+                "type": "object",
+                "required": [
+                  "link_age_seconds"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "link_age_seconds": {
+                    "type": "integer",
+                    "description": "Seconds between issuing and using the link.",
+                    "minimum": 0
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "password_reset_rejected": {
+        "title": "password_reset_rejected",
+        "description": "We capture password_reset_rejected because we need to know whether links expire before use or are replayed, which allows us to extend expiry or investigate replay attempts.",
+        "x-trackflow": {
+          "classification": "identified_opportunity",
+          "category": "authentication",
+          "emitter": "backend",
+          "delivery": "batch",
+          "containsPII": false,
+          "piiHandling": "No personal data beyond the pseudonymous `userId` in the envelope."
+        },
+        "allOf": [
+          {
+            "$ref": "#/definitions/envelope"
+          },
+          {
+            "properties": {
+              "event_type": {
+                "const": "password_reset_rejected"
+              },
+              "schemaVersion": {
+                "const": "1.0.0"
+              },
+              "properties": {
+                "type": "object",
+                "required": [
+                  "reason"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "description": "Internal reason (never shown to the client).",
+                    "enum": [
+                      "forged",
+                      "expired",
+                      "unknown",
+                      "spent"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "password_changed": {
+        "title": "password_changed",
+        "description": "We capture password_changed because we need to know how many accounts rotate credentials, which allows us to judge whether a password-rotation reminder is needed.",
+        "x-trackflow": {
+          "classification": "identified_opportunity",
+          "category": "authentication",
+          "emitter": "backend",
+          "delivery": "batch",
+          "containsPII": false,
+          "piiHandling": "No personal data beyond the pseudonymous `userId` in the envelope."
+        },
+        "allOf": [
+          {
+            "$ref": "#/definitions/envelope"
+          },
+          {
+            "properties": {
+              "event_type": {
+                "const": "password_changed"
+              },
+              "schemaVersion": {
+                "const": "1.0.0"
+              },
+              "properties": {
+                "type": "object",
+                "required": [
+                  "route",
+                  "client_app"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "route": {
+                    "type": "string",
+                    "description": "Endpoint that changed it.",
+                    "enum": [
+                      "/auth/change-password",
+                      "/users/{user_id}"
+                    ]
+                  },
+                  "client_app": {
+                    "type": "string",
+                    "description": "Which client made the call, from the `X-Client-App` header.",
+                    "enum": [
+                      "website",
+                      "backoffice",
+                      "api_docs",
+                      "script",
+                      "unknown"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "password_change_rejected": {
+        "title": "password_change_rejected",
+        "description": "We capture password_change_rejected because we need to know whether sessions are used by someone who does not know the current password, which allows us to flag possible hijacked sessions.",
+        "x-trackflow": {
+          "classification": "identified_opportunity",
+          "category": "authentication",
+          "emitter": "backend",
+          "delivery": "stream",
+          "containsPII": false,
+          "piiHandling": "No personal data beyond the pseudonymous `userId` in the envelope."
+        },
+        "allOf": [
+          {
+            "$ref": "#/definitions/envelope"
+          },
+          {
+            "properties": {
+              "event_type": {
+                "const": "password_change_rejected"
+              },
+              "schemaVersion": {
+                "const": "1.0.0"
+              },
+              "properties": {
+                "type": "object",
+                "required": [
+                  "reason"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "description": "Why it failed.",
+                    "enum": [
+                      "incorrect_current_password",
+                      "validation_failed"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "section_viewed": {
+        "title": "section_viewed",
+        "description": "We capture section_viewed because we need to know which sections operators visit most and in which order, which allows us to prioritise the roadmap and decide what to promote or retire in the navigation.",
+        "x-trackflow": {
+          "classification": "mandatory",
+          "category": "navigation",
+          "emitter": "frontend",
+          "delivery": "batch",
+          "containsPII": false,
+          "piiHandling": "No personal data beyond the pseudonymous `userId` in the envelope."
+        },
+        "allOf": [
+          {
+            "$ref": "#/definitions/envelope"
+          },
+          {
+            "properties": {
+              "event_type": {
+                "const": "section_viewed"
+              },
+              "schemaVersion": {
+                "const": "1.0.0"
+              },
+              "properties": {
+                "type": "object",
+                "required": [
+                  "section",
+                  "route_template",
+                  "referrer_section",
+                  "entry_type",
+                  "viewport"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "section": {
+                    "type": "string",
+                    "description": "Logical section.",
+                    "enum": [
+                      "dashboard_home",
+                      "inventory_products",
+                      "inventory_inbound_order",
+                      "inventory_outbound_order",
+                      "inventory_orders",
+                      "suppliers_list",
+                      "supplier_detail",
+                      "incidents_list",
+                      "incident_new",
+                      "incident_detail",
+                      "account",
+                      "account_change_password",
+                      "profile",
+                      "login",
+                      "register",
+                      "forgot_password",
+                      "reset_password",
+                      "public_site"
+                    ]
+                  },
+                  "route_template": {
+                    "type": "string",
+                    "description": "Route pattern such as `/inventory/products/{id}`, never the raw path.",
+                    "maxLength": 200,
+                    "pattern": "^/"
+                  },
+                  "referrer_section": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "Previous section, null if none.",
+                    "enum": [
+                      "dashboard_home",
+                      "inventory_products",
+                      "inventory_inbound_order",
+                      "inventory_outbound_order",
+                      "inventory_orders",
+                      "suppliers_list",
+                      "supplier_detail",
+                      "incidents_list",
+                      "incident_new",
+                      "incident_detail",
+                      "account",
+                      "account_change_password",
+                      "profile",
+                      "login",
+                      "register",
+                      "forgot_password",
+                      "reset_password",
+                      "public_site",
+                      null
+                    ]
+                  },
+                  "entry_type": {
+                    "type": "string",
+                    "description": "How the view started.",
+                    "enum": [
+                      "initial_load",
+                      "navigation",
+                      "reload",
+                      "back_forward"
+                    ]
+                  },
+                  "viewport": {
+                    "type": "string",
+                    "description": "Width class.",
+                    "enum": [
+                      "mobile",
+                      "tablet",
+                      "desktop"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "section_left": {
+        "title": "section_left",
+        "description": "We capture section_left because we need to know which sections hold attention and which are bounced from, which allows us to redesign or merge low-value sections.",
+        "x-trackflow": {
+          "classification": "identified_opportunity",
+          "category": "navigation",
+          "emitter": "frontend",
+          "delivery": "batch",
+          "containsPII": false,
+          "piiHandling": "No personal data beyond the pseudonymous `userId` in the envelope."
+        },
+        "allOf": [
+          {
+            "$ref": "#/definitions/envelope"
+          },
+          {
+            "properties": {
+              "event_type": {
+                "const": "section_left"
+              },
+              "schemaVersion": {
+                "const": "1.0.0"
+              },
+              "properties": {
+                "type": "object",
+                "required": [
+                  "section",
+                  "dwell_ms",
+                  "interacted"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "section": {
+                    "type": "string",
+                    "description": "Logical section.",
+                    "enum": [
+                      "dashboard_home",
+                      "inventory_products",
+                      "inventory_inbound_order",
+                      "inventory_outbound_order",
+                      "inventory_orders",
+                      "suppliers_list",
+                      "supplier_detail",
+                      "incidents_list",
+                      "incident_new",
+                      "incident_detail",
+                      "account",
+                      "account_change_password",
+                      "profile",
+                      "login",
+                      "register",
+                      "forgot_password",
+                      "reset_password",
+                      "public_site"
+                    ]
+                  },
+                  "dwell_ms": {
+                    "type": "integer",
+                    "description": "Visible time in the section.",
+                    "minimum": 0,
+                    "maximum": 86400000
+                  },
+                  "interacted": {
+                    "type": "boolean",
+                    "description": "Any click, input or submit happened."
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "flow_started": {
+        "title": "flow_started",
+        "description": "We capture flow_started because we need to know how many people begin each flow, which allows us to build the denominator for abandonment analysis.",
+        "x-trackflow": {
+          "classification": "identified_opportunity",
+          "category": "navigation",
+          "emitter": "frontend",
+          "delivery": "batch",
+          "containsPII": false,
+          "piiHandling": "No personal data beyond the pseudonymous `userId` in the envelope."
+        },
+        "allOf": [
+          {
+            "$ref": "#/definitions/envelope"
+          },
+          {
+            "properties": {
+              "event_type": {
+                "const": "flow_started"
+              },
+              "schemaVersion": {
+                "const": "1.0.0"
+              },
+              "properties": {
+                "type": "object",
+                "required": [
+                  "flow",
+                  "entry_section"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "flow": {
+                    "type": "string",
+                    "description": "Flow name.",
+                    "enum": [
+                      "inbound_order",
+                      "outbound_order",
+                      "product_creation",
+                      "incident_report",
+                      "supplier_creation",
+                      "registration",
+                      "password_reset",
+                      "password_change"
+                    ]
+                  },
+                  "entry_section": {
+                    "type": "string",
+                    "description": "Section where it began.",
+                    "enum": [
+                      "dashboard_home",
+                      "inventory_products",
+                      "inventory_inbound_order",
+                      "inventory_outbound_order",
+                      "inventory_orders",
+                      "suppliers_list",
+                      "supplier_detail",
+                      "incidents_list",
+                      "incident_new",
+                      "incident_detail",
+                      "account",
+                      "account_change_password",
+                      "profile",
+                      "login",
+                      "register",
+                      "forgot_password",
+                      "reset_password",
+                      "public_site"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "flow_completed": {
+        "title": "flow_completed",
+        "description": "We capture flow_completed because we need to know how long flows take and how many submit attempts they need, which allows us to simplify the flows that need several attempts.",
+        "x-trackflow": {
+          "classification": "identified_opportunity",
+          "category": "navigation",
+          "emitter": "frontend",
+          "delivery": "batch",
+          "containsPII": false,
+          "piiHandling": "No personal data beyond the pseudonymous `userId` in the envelope."
+        },
+        "allOf": [
+          {
+            "$ref": "#/definitions/envelope"
+          },
+          {
+            "properties": {
+              "event_type": {
+                "const": "flow_completed"
+              },
+              "schemaVersion": {
+                "const": "1.0.0"
+              },
+              "properties": {
+                "type": "object",
+                "required": [
+                  "flow",
+                  "duration_ms",
+                  "attempts"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "flow": {
+                    "type": "string",
+                    "description": "Flow name.",
+                    "enum": [
+                      "inbound_order",
+                      "outbound_order",
+                      "product_creation",
+                      "incident_report",
+                      "supplier_creation",
+                      "registration",
+                      "password_reset",
+                      "password_change"
+                    ]
+                  },
+                  "duration_ms": {
+                    "type": "integer",
+                    "description": "Start to completion.",
+                    "minimum": 0
+                  },
+                  "attempts": {
+                    "type": "integer",
+                    "description": "Submit attempts, including failures.",
+                    "minimum": 1
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "flow_abandoned": {
+        "title": "flow_abandoned",
+        "description": "We capture flow_abandoned because we need to know which flows get abandoned halfway through and at which step, which allows us to fix the step that loses operators, or remove a flow nobody finishes.",
+        "x-trackflow": {
+          "classification": "mandatory",
+          "category": "navigation",
+          "emitter": "frontend",
+          "delivery": "batch",
+          "containsPII": false,
+          "piiHandling": "No personal data beyond the pseudonymous `userId` in the envelope."
+        },
+        "allOf": [
+          {
+            "$ref": "#/definitions/envelope"
+          },
+          {
+            "properties": {
+              "event_type": {
+                "const": "flow_abandoned"
+              },
+              "schemaVersion": {
+                "const": "1.0.0"
+              },
+              "properties": {
+                "type": "object",
+                "required": [
+                  "flow",
+                  "last_step",
+                  "fields_touched",
+                  "duration_ms",
+                  "exit_reason"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "flow": {
+                    "type": "string",
+                    "description": "Flow name.",
+                    "enum": [
+                      "inbound_order",
+                      "outbound_order",
+                      "product_creation",
+                      "incident_report",
+                      "supplier_creation",
+                      "registration",
+                      "password_reset",
+                      "password_change"
+                    ]
+                  },
+                  "last_step": {
+                    "type": "string",
+                    "description": "Furthest point reached.",
+                    "enum": [
+                      "opened",
+                      "field_edited",
+                      "submit_failed",
+                      "submitted_awaiting_response"
+                    ]
+                  },
+                  "fields_touched": {
+                    "type": "integer",
+                    "description": "Number of fields edited (count only, never values).",
+                    "minimum": 0
+                  },
+                  "duration_ms": {
+                    "type": "integer",
+                    "description": "Time from start to exit.",
+                    "minimum": 0
+                  },
+                  "exit_reason": {
+                    "type": "string",
+                    "description": "How the user left.",
+                    "enum": [
+                      "navigated_away",
+                      "tab_closed",
+                      "session_expired",
+                      "idle_timeout"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "list_filter_applied": {
+        "title": "list_filter_applied",
+        "description": "We capture list_filter_applied because we need to know which filters operators rely on, which allows us to promote the filters people use as defaults or saved views.",
+        "x-trackflow": {
+          "classification": "identified_opportunity",
+          "category": "navigation",
+          "emitter": "frontend",
+          "delivery": "batch",
+          "containsPII": false,
+          "piiHandling": "No personal data beyond the pseudonymous `userId` in the envelope."
+        },
+        "allOf": [
+          {
+            "$ref": "#/definitions/envelope"
+          },
+          {
+            "properties": {
+              "event_type": {
+                "const": "list_filter_applied"
+              },
+              "schemaVersion": {
+                "const": "1.0.0"
+              },
+              "properties": {
+                "type": "object",
+                "required": [
+                  "view",
+                  "filter_keys",
+                  "result_count"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "view": {
+                    "type": "string",
+                    "description": "List view.",
+                    "enum": [
+                      "inventory_products",
+                      "inventory_orders",
+                      "suppliers_list",
+                      "incidents_list"
+                    ]
+                  },
+                  "filter_keys": {
+                    "type": "array",
+                    "description": "Names of filters used (never their values).",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "warehouse",
+                        "sku",
+                        "product_id",
+                        "status",
+                        "origin",
+                        "branch",
+                        "category",
+                        "other"
+                      ]
+                    },
+                    "maxItems": 8
+                  },
+                  "result_count": {
+                    "type": "integer",
+                    "description": "Rows returned.",
+                    "minimum": 0
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "form_validation_failed": {
+        "title": "form_validation_failed",
+        "description": "We capture form_validation_failed because we need to know which fields confuse operators, which allows us to rewrite labels, hints and defaults.",
+        "x-trackflow": {
+          "classification": "identified_opportunity",
+          "category": "navigation",
+          "emitter": "frontend",
+          "delivery": "batch",
+          "containsPII": false,
+          "piiHandling": "No personal data beyond the pseudonymous `userId` in the envelope."
+        },
+        "allOf": [
+          {
+            "$ref": "#/definitions/envelope"
+          },
+          {
+            "properties": {
+              "event_type": {
+                "const": "form_validation_failed"
+              },
+              "schemaVersion": {
+                "const": "1.0.0"
+              },
+              "properties": {
+                "type": "object",
+                "required": [
+                  "flow",
+                  "field",
+                  "error_code"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "flow": {
+                    "type": "string",
+                    "description": "Flow name.",
+                    "enum": [
+                      "inbound_order",
+                      "outbound_order",
+                      "product_creation",
+                      "incident_report",
+                      "supplier_creation",
+                      "registration",
+                      "password_reset",
+                      "password_change"
+                    ]
+                  },
+                  "field": {
+                    "type": "string",
+                    "description": "Field name from a fixed form schema.",
+                    "maxLength": 64
+                  },
+                  "error_code": {
+                    "type": "string",
+                    "description": "Error class.",
+                    "enum": [
+                      "required",
+                      "invalid_format",
+                      "out_of_range",
+                      "exceeds_available_stock",
+                      "mismatch",
+                      "other"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "ui_error_displayed": {
+        "title": "ui_error_displayed",
+        "description": "We capture ui_error_displayed because we need to know how often users see failures and which kind, which allows us to prioritise fixes by user impact.",
+        "x-trackflow": {
+          "classification": "identified_opportunity",
+          "category": "errors",
+          "emitter": "frontend",
+          "delivery": "stream",
+          "containsPII": false,
+          "piiHandling": "No personal data beyond the pseudonymous `userId` in the envelope."
+        },
+        "allOf": [
+          {
+            "$ref": "#/definitions/envelope"
+          },
+          {
+            "properties": {
+              "event_type": {
+                "const": "ui_error_displayed"
+              },
+              "schemaVersion": {
+                "const": "1.0.0"
+              },
+              "properties": {
+                "type": "object",
+                "required": [
+                  "error_class",
+                  "route_template",
+                  "http_status",
+                  "fingerprint"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "error_class": {
+                    "type": "string",
+                    "description": "Kind of failure shown.",
+                    "enum": [
+                      "network",
+                      "client_error_4xx",
+                      "server_error_5xx",
+                      "unreadable_response",
+                      "render_crash",
+                      "uncaught_exception",
+                      "unhandled_rejection"
+                    ]
+                  },
+                  "route_template": {
+                    "type": "string",
+                    "description": "Route pattern such as `/inventory/products/{id}`, never the raw path.",
+                    "maxLength": 200,
+                    "pattern": "^/"
+                  },
+                  "http_status": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "description": "Status if any.",
+                    "minimum": 100,
+                    "maximum": 599
+                  },
+                  "fingerprint": {
+                    "type": "string",
+                    "description": "Stable hash of error class + route; never the message text.",
+                    "pattern": "^[0-9a-f]{12}$"
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "api_latency_recorded": {
+        "title": "api_latency_recorded",
+        "description": "We capture api_latency_recorded because we need to know which endpoints are slow and how latency changes over time, which allows us to decide on indexing, caching and capacity before operators feel it.",
+        "x-trackflow": {
+          "classification": "mandatory",
+          "category": "performance",
+          "emitter": "backend",
+          "delivery": "batch",
+          "containsPII": false,
+          "piiHandling": "No personal data beyond the pseudonymous `userId` in the envelope."
+        },
+        "allOf": [
+          {
+            "$ref": "#/definitions/envelope"
+          },
+          {
+            "properties": {
+              "event_type": {
+                "const": "api_latency_recorded"
+              },
+              "schemaVersion": {
+                "const": "1.0.0"
+              },
+              "properties": {
+                "type": "object",
+                "required": [
+                  "route_template",
+                  "method",
+                  "status_class",
+                  "duration_ms",
+                  "sample_rate"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "route_template": {
+                    "type": "string",
+                    "description": "Route pattern such as `/inventory/products/{id}`, never the raw path.",
+                    "maxLength": 200,
+                    "pattern": "^/"
+                  },
+                  "method": {
+                    "type": "string",
+                    "description": "HTTP method.",
+                    "enum": [
+                      "GET",
+                      "POST",
+                      "PUT",
+                      "PATCH",
+                      "DELETE"
+                    ]
+                  },
+                  "status_class": {
+                    "type": "string",
+                    "description": "Response class.",
+                    "enum": [
+                      "2xx",
+                      "3xx",
+                      "4xx",
+                      "5xx"
+                    ]
+                  },
+                  "duration_ms": {
+                    "type": "number",
+                    "description": "Total handler time (matches the existing timing middleware).",
+                    "minimum": 0
+                  },
+                  "db_ms": {
+                    "type": [
+                      "number",
+                      "null"
+                    ],
+                    "description": "Database time, null if unmeasured.",
+                    "minimum": 0
+                  },
+                  "sample_rate": {
+                    "type": "number",
+                    "description": "Probability this event was kept; consumers divide by it.",
+                    "minimum": 0.01,
+                    "maximum": 1
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "api_error_recorded": {
+        "title": "api_error_recorded",
+        "description": "We capture api_error_recorded because we need to know the error rate per endpoint and which errors are domain rules versus defects, which allows us to page an engineer for 5xx and prioritise bug fixes versus UX fixes.",
+        "x-trackflow": {
+          "classification": "mandatory",
+          "category": "errors",
+          "emitter": "backend",
+          "delivery": "stream",
+          "containsPII": false,
+          "piiHandling": "No personal data beyond the pseudonymous `userId` in the envelope."
+        },
+        "allOf": [
+          {
+            "$ref": "#/definitions/envelope"
+          },
+          {
+            "properties": {
+              "event_type": {
+                "const": "api_error_recorded"
+              },
+              "schemaVersion": {
+                "const": "1.0.0"
+              },
+              "properties": {
+                "type": "object",
+                "required": [
+                  "route_template",
+                  "method",
+                  "status_code",
+                  "error_class"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "route_template": {
+                    "type": "string",
+                    "description": "Route pattern such as `/inventory/products/{id}`, never the raw path.",
+                    "maxLength": 200,
+                    "pattern": "^/"
+                  },
+                  "method": {
+                    "type": "string",
+                    "description": "HTTP method.",
+                    "enum": [
+                      "GET",
+                      "POST",
+                      "PUT",
+                      "PATCH",
+                      "DELETE"
+                    ]
+                  },
+                  "status_code": {
+                    "type": "integer",
+                    "description": "HTTP status.",
+                    "minimum": 400,
+                    "maximum": 599
+                  },
+                  "error_class": {
+                    "type": "string",
+                    "description": "Classification.",
+                    "enum": [
+                      "validation",
+                      "domain_rule",
+                      "auth",
+                      "not_found",
+                      "conflict",
+                      "unhandled"
+                    ]
+                  },
+                  "exception_type": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "Exception class name only, never the message or traceback.",
+                    "maxLength": 100
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "page_load_measured": {
+        "title": "page_load_measured",
+        "description": "We capture page_load_measured because we need to know whether real users match the lab scores recorded in `AUDIT.md`, which allows us to decide on frontend optimisation work with field data.",
+        "x-trackflow": {
+          "classification": "identified_opportunity",
+          "category": "performance",
+          "emitter": "frontend",
+          "delivery": "batch",
+          "containsPII": false,
+          "piiHandling": "No personal data beyond the pseudonymous `userId` in the envelope."
+        },
+        "allOf": [
+          {
+            "$ref": "#/definitions/envelope"
+          },
+          {
+            "properties": {
+              "event_type": {
+                "const": "page_load_measured"
+              },
+              "schemaVersion": {
+                "const": "1.0.0"
+              },
+              "properties": {
+                "type": "object",
+                "required": [
+                  "section",
+                  "metric",
+                  "value",
+                  "rating"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "section": {
+                    "type": "string",
+                    "description": "Logical section.",
+                    "enum": [
+                      "dashboard_home",
+                      "inventory_products",
+                      "inventory_inbound_order",
+                      "inventory_outbound_order",
+                      "inventory_orders",
+                      "suppliers_list",
+                      "supplier_detail",
+                      "incidents_list",
+                      "incident_new",
+                      "incident_detail",
+                      "account",
+                      "account_change_password",
+                      "profile",
+                      "login",
+                      "register",
+                      "forgot_password",
+                      "reset_password",
+                      "public_site"
+                    ]
+                  },
+                  "metric": {
+                    "type": "string",
+                    "description": "Web Vital.",
+                    "enum": [
+                      "LCP",
+                      "INP",
+                      "CLS",
+                      "FCP",
+                      "TTFB"
+                    ]
+                  },
+                  "value": {
+                    "type": "number",
+                    "description": "Final metric value.",
+                    "minimum": 0
+                  },
+                  "rating": {
+                    "type": "string",
+                    "description": "Standard rating.",
+                    "enum": [
+                      "good",
+                      "needs_improvement",
+                      "poor"
+                    ]
+                  },
+                  "connection": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "Effective connection type, null if unavailable.",
+                    "maxLength": 16
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "service_lifecycle_recorded": {
+        "title": "service_lifecycle_recorded",
+        "description": "We capture service_lifecycle_recorded because we need to know how often and why the service restarts, which allows us to fix recurring startup failures such as a database or settings fault.",
+        "x-trackflow": {
+          "classification": "identified_opportunity",
+          "category": "performance",
+          "emitter": "backend",
+          "delivery": "stream",
+          "containsPII": false,
+          "piiHandling": "No personal data beyond the pseudonymous `userId` in the envelope."
+        },
+        "allOf": [
+          {
+            "$ref": "#/definitions/envelope"
+          },
+          {
+            "properties": {
+              "event_type": {
+                "const": "service_lifecycle_recorded"
+              },
+              "schemaVersion": {
+                "const": "1.0.0"
+              },
+              "properties": {
+                "type": "object",
+                "required": [
+                  "phase",
+                  "duration_ms",
+                  "app_version"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "phase": {
+                    "type": "string",
+                    "description": "Lifecycle phase.",
+                    "enum": [
+                      "startup_succeeded",
+                      "startup_failed",
+                      "shutdown"
+                    ]
+                  },
+                  "failed_check": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "Failing startup step.",
+                    "enum": [
+                      "settings",
+                      "identity_db",
+                      "sql_connection",
+                      "schema_init",
+                      null
+                    ]
+                  },
+                  "duration_ms": {
+                    "type": "number",
+                    "description": "Time spent in the phase.",
+                    "minimum": 0
+                  },
+                  "app_version": {
+                    "type": "string",
+                    "description": "FastAPI app version.",
+                    "maxLength": 32
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "dependency_health_sampled": {
+        "title": "dependency_health_sampled",
+        "description": "We capture dependency_health_sampled because we need to know whether TinyDB, Supabase and the email provider are healthy, which allows us to trigger automatic alerts and decide when to scale or fail over.",
+        "x-trackflow": {
+          "classification": "identified_opportunity",
+          "category": "performance",
+          "emitter": "backend",
+          "delivery": "stream",
+          "containsPII": false,
+          "piiHandling": "No personal data beyond the pseudonymous `userId` in the envelope."
+        },
+        "allOf": [
+          {
+            "$ref": "#/definitions/envelope"
+          },
+          {
+            "properties": {
+              "event_type": {
+                "const": "dependency_health_sampled"
+              },
+              "schemaVersion": {
+                "const": "1.0.0"
+              },
+              "properties": {
+                "type": "object",
+                "required": [
+                  "dependency",
+                  "status",
+                  "latency_ms"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "dependency": {
+                    "type": "string",
+                    "description": "Dependency sampled.",
+                    "enum": [
+                      "tinydb",
+                      "supabase_postgres",
+                      "resend"
+                    ]
+                  },
+                  "status": {
+                    "type": "string",
+                    "description": "Health result.",
+                    "enum": [
+                      "ok",
+                      "degraded",
+                      "down"
+                    ]
+                  },
+                  "latency_ms": {
+                    "type": [
+                      "number",
+                      "null"
+                    ],
+                    "description": "Probe time, null when down.",
+                    "minimum": 0
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "email_delivery_recorded": {
+        "title": "email_delivery_recorded",
+        "description": "We capture email_delivery_recorded because we need to know whether reset emails actually leave the system, which allows us to move off the console backend or verify the sender domain.",
+        "x-trackflow": {
+          "classification": "identified_opportunity",
+          "category": "performance",
+          "emitter": "backend",
+          "delivery": "stream",
+          "containsPII": false,
+          "piiHandling": "The recipient address and message body are never emitted."
+        },
+        "allOf": [
+          {
+            "$ref": "#/definitions/envelope"
+          },
+          {
+            "properties": {
+              "event_type": {
+                "const": "email_delivery_recorded"
+              },
+              "schemaVersion": {
+                "const": "1.0.0"
+              },
+              "properties": {
+                "type": "object",
+                "required": [
+                  "template",
+                  "provider",
+                  "outcome",
+                  "latency_ms"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "template": {
+                    "type": "string",
+                    "description": "Email template.",
+                    "enum": [
+                      "password_reset"
+                    ]
+                  },
+                  "provider": {
+                    "type": "string",
+                    "description": "Backend used.",
+                    "enum": [
+                      "resend",
+                      "console"
+                    ]
+                  },
+                  "outcome": {
+                    "type": "string",
+                    "description": "Result.",
+                    "enum": [
+                      "accepted",
+                      "failed"
+                    ]
+                  },
+                  "latency_ms": {
+                    "type": "number",
+                    "description": "Provider call time.",
+                    "minimum": 0
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "telemetry_dropped": {
+        "title": "telemetry_dropped",
+        "description": "We capture telemetry_dropped because we need to know whether the telemetry itself is losing data, which allows us to resize buffers or fix a failing transport.",
+        "x-trackflow": {
+          "classification": "identified_opportunity",
+          "category": "pipeline",
+          "emitter": "backend",
+          "delivery": "batch",
+          "containsPII": false,
+          "piiHandling": "No personal data beyond the pseudonymous `userId` in the envelope."
+        },
+        "allOf": [
+          {
+            "$ref": "#/definitions/envelope"
+          },
+          {
+            "properties": {
+              "event_type": {
+                "const": "telemetry_dropped"
+              },
+              "schemaVersion": {
+                "const": "1.0.0"
+              },
+              "properties": {
+                "type": "object",
+                "required": [
+                  "emitter",
+                  "reason",
+                  "dropped_count",
+                  "window_seconds"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "emitter": {
+                    "type": "string",
+                    "description": "Which emitter dropped.",
+                    "enum": [
+                      "backend",
+                      "frontend",
+                      "script"
+                    ]
+                  },
+                  "reason": {
+                    "type": "string",
+                    "description": "Why events were dropped.",
+                    "enum": [
+                      "buffer_full",
+                      "serialization_error",
+                      "schema_rejected",
+                      "transport_failed",
+                      "deduplicated"
+                    ]
+                  },
+                  "dropped_count": {
+                    "type": "integer",
+                    "description": "Events dropped in the window.",
+                    "minimum": 1
+                  },
+                  "window_seconds": {
+                    "type": "integer",
+                    "description": "Window length.",
+                    "minimum": 1
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "incident_created": {
+        "title": "incident_created",
+        "description": "We capture incident_created because we need to know how many incidents are raised and where, which allows us to staff incident handling per branch and category.",
+        "x-trackflow": {
+          "classification": "identified_opportunity",
+          "category": "operations",
+          "emitter": "backend",
+          "delivery": "batch",
+          "containsPII": false,
+          "piiHandling": "Incident description and customer fields are never emitted."
+        },
+        "allOf": [
+          {
+            "$ref": "#/definitions/envelope"
+          },
+          {
+            "properties": {
+              "event_type": {
+                "const": "incident_created"
+              },
+              "schemaVersion": {
+                "const": "1.0.0"
+              },
+              "properties": {
+                "type": "object",
+                "required": [
+                  "incident_id",
+                  "category",
+                  "origin",
+                  "branch"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "incident_id": {
+                    "type": "string",
+                    "description": "Incident UUID.",
+                    "format": "uuid"
+                  },
+                  "category": {
+                    "type": "string",
+                    "description": "Incident category.",
+                    "enum": [
+                      "lost_parcel",
+                      "delivery_failure",
+                      "inventory_discrepancy",
+                      "carrier_issue",
+                      "returns_issue",
+                      "warehouse_incident",
+                      "system_failure",
+                      "client_complaint",
+                      "other"
+                    ]
+                  },
+                  "origin": {
+                    "type": "string",
+                    "description": "Incident origin.",
+                    "enum": [
+                      "customer",
+                      "branch",
+                      "internal"
+                    ]
+                  },
+                  "branch": {
+                    "type": "string",
+                    "description": "Facility the incident belongs to.",
+                    "enum": [
+                      "central",
+                      "la_warehouse",
+                      "la_office",
+                      "zaragoza_warehouse",
+                      "zaragoza_office"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "incident_status_changed": {
+        "title": "incident_status_changed",
+        "description": "We capture incident_status_changed because we need to know how long incidents wait before being worked, which allows us to set resolution-time targets and escalation rules.",
+        "x-trackflow": {
+          "classification": "identified_opportunity",
+          "category": "operations",
+          "emitter": "backend",
+          "delivery": "batch",
+          "containsPII": false,
+          "piiHandling": "No personal data beyond the pseudonymous `userId` in the envelope."
+        },
+        "allOf": [
+          {
+            "$ref": "#/definitions/envelope"
+          },
+          {
+            "properties": {
+              "event_type": {
+                "const": "incident_status_changed"
+              },
+              "schemaVersion": {
+                "const": "1.0.0"
+              },
+              "properties": {
+                "type": "object",
+                "required": [
+                  "incident_id",
+                  "from_status",
+                  "to_status",
+                  "age_hours"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "incident_id": {
+                    "type": "string",
+                    "description": "Incident UUID.",
+                    "format": "uuid"
+                  },
+                  "from_status": {
+                    "type": "string",
+                    "description": "Previous status.",
+                    "enum": [
+                      "open",
+                      "in_progress"
+                    ]
+                  },
+                  "to_status": {
+                    "type": "string",
+                    "description": "New status.",
+                    "enum": [
+                      "in_progress",
+                      "resolved",
+                      "discarded"
+                    ]
+                  },
+                  "age_hours": {
+                    "type": "number",
+                    "description": "Hours since creation.",
+                    "minimum": 0
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "supplier_created": {
+        "title": "supplier_created",
+        "description": "We capture supplier_created because we need to know how fast the supplier directory grows, which allows us to plan supplier onboarding.",
+        "x-trackflow": {
+          "classification": "identified_opportunity",
+          "category": "operations",
+          "emitter": "backend",
+          "delivery": "batch",
+          "containsPII": false,
+          "piiHandling": "Supplier names, contacts and prices are commercially sensitive and are never emitted."
+        },
+        "allOf": [
+          {
+            "$ref": "#/definitions/envelope"
+          },
+          {
+            "properties": {
+              "event_type": {
+                "const": "supplier_created"
+              },
+              "schemaVersion": {
+                "const": "1.0.0"
+              },
+              "properties": {
+                "type": "object",
+                "required": [
+                  "supplier_id"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "supplier_id": {
+                    "type": "integer",
+                    "description": "TinyDB document id.",
+                    "minimum": 1
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "supplier_rated": {
+        "title": "supplier_rated",
+        "description": "We capture supplier_rated because we need to know how supplier quality perception moves, which allows us to review contracts with falling ratings.",
+        "x-trackflow": {
+          "classification": "identified_opportunity",
+          "category": "operations",
+          "emitter": "backend",
+          "delivery": "batch",
+          "containsPII": false,
+          "piiHandling": "No personal data beyond the pseudonymous `userId` in the envelope."
+        },
+        "allOf": [
+          {
+            "$ref": "#/definitions/envelope"
+          },
+          {
+            "properties": {
+              "event_type": {
+                "const": "supplier_rated"
+              },
+              "schemaVersion": {
+                "const": "1.0.0"
+              },
+              "properties": {
+                "type": "object",
+                "required": [
+                  "supplier_id",
+                  "from_rating",
+                  "to_rating"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "supplier_id": {
+                    "type": "integer",
+                    "description": "TinyDB document id.",
+                    "minimum": 1
+                  },
+                  "from_rating": {
+                    "type": [
+                      "number",
+                      "null"
+                    ],
+                    "description": "Previous rating, null if none."
+                  },
+                  "to_rating": {
+                    "type": "number",
+                    "description": "New rating."
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "supplier_status_changed": {
+        "title": "supplier_status_changed",
+        "description": "We capture supplier_status_changed because we need to know how many suppliers are deactivated and when, which allows us to audit supplier churn.",
+        "x-trackflow": {
+          "classification": "identified_opportunity",
+          "category": "operations",
+          "emitter": "backend",
+          "delivery": "batch",
+          "containsPII": false,
+          "piiHandling": "No personal data beyond the pseudonymous `userId` in the envelope."
+        },
+        "allOf": [
+          {
+            "$ref": "#/definitions/envelope"
+          },
+          {
+            "properties": {
+              "event_type": {
+                "const": "supplier_status_changed"
+              },
+              "schemaVersion": {
+                "const": "1.0.0"
+              },
+              "properties": {
+                "type": "object",
+                "required": [
+                  "supplier_id",
+                  "from_status",
+                  "to_status"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "supplier_id": {
+                    "type": "integer",
+                    "description": "TinyDB document id.",
+                    "minimum": 1
+                  },
+                  "from_status": {
+                    "type": "string",
+                    "description": "Previous status.",
+                    "maxLength": 32
+                  },
+                  "to_status": {
+                    "type": "string",
+                    "description": "New status.",
+                    "maxLength": 32
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "supplier_deleted": {
+        "title": "supplier_deleted",
+        "description": "We capture supplier_deleted because we need to know whether deletions are frequent or unusual, which allows us to decide if soft-delete or confirmation is needed.",
+        "x-trackflow": {
+          "classification": "identified_opportunity",
+          "category": "operations",
+          "emitter": "backend",
+          "delivery": "stream",
+          "containsPII": false,
+          "piiHandling": "No personal data beyond the pseudonymous `userId` in the envelope."
+        },
+        "allOf": [
+          {
+            "$ref": "#/definitions/envelope"
+          },
+          {
+            "properties": {
+              "event_type": {
+                "const": "supplier_deleted"
+              },
+              "schemaVersion": {
+                "const": "1.0.0"
+              },
+              "properties": {
+                "type": "object",
+                "required": [
+                  "supplier_id"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "supplier_id": {
+                    "type": "integer",
+                    "description": "TinyDB document id.",
+                    "minimum": 1
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "profile_updated": {
+        "title": "profile_updated",
+        "description": "We capture profile_updated because we need to know which profile fields people maintain, which allows us to drop or simplify unused profile fields.",
+        "x-trackflow": {
+          "classification": "identified_opportunity",
+          "category": "operations",
+          "emitter": "backend",
+          "delivery": "batch",
+          "containsPII": false,
+          "piiHandling": "No personal data beyond the pseudonymous `userId` in the envelope."
+        },
+        "allOf": [
+          {
+            "$ref": "#/definitions/envelope"
+          },
+          {
+            "properties": {
+              "event_type": {
+                "const": "profile_updated"
+              },
+              "schemaVersion": {
+                "const": "1.0.0"
+              },
+              "properties": {
+                "type": "object",
+                "required": [
+                  "fields_changed"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "fields_changed": {
+                    "type": "array",
+                    "description": "Names of changed fields (never values).",
+                    "items": {
+                      "type": "string",
+                      "maxLength": 64
+                    },
+                    "maxItems": 20
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "seed_run_completed": {
+        "title": "seed_run_completed",
+        "description": "We capture seed_run_completed because we need to know whether data jobs finish and stay idempotent, which allows us to catch broken data loads before dashboards go stale.",
+        "x-trackflow": {
+          "classification": "identified_opportunity",
+          "category": "pipeline",
+          "emitter": "script",
+          "delivery": "batch",
+          "containsPII": false,
+          "piiHandling": "No personal data beyond the pseudonymous `userId` in the envelope."
+        },
+        "allOf": [
+          {
+            "$ref": "#/definitions/envelope"
+          },
+          {
+            "properties": {
+              "event_type": {
+                "const": "seed_run_completed"
+              },
+              "schemaVersion": {
+                "const": "1.0.0"
+              },
+              "properties": {
+                "type": "object",
+                "required": [
+                  "script",
+                  "outcome",
+                  "inserted_count",
+                  "skipped_count",
+                  "duration_ms"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "script": {
+                    "type": "string",
+                    "description": "Script name.",
+                    "enum": [
+                      "seed_incidents",
+                      "seed_inventory",
+                      "seed_performance_data"
+                    ]
+                  },
+                  "outcome": {
+                    "type": "string",
+                    "description": "Result.",
+                    "enum": [
+                      "succeeded",
+                      "failed",
+                      "refused_conflict"
+                    ]
+                  },
+                  "inserted_count": {
+                    "type": "integer",
+                    "description": "Rows inserted.",
+                    "minimum": 0
+                  },
+                  "skipped_count": {
+                    "type": "integer",
+                    "description": "Rows skipped.",
+                    "minimum": 0
+                  },
+                  "duration_ms": {
+                    "type": "integer",
+                    "description": "Run time.",
+                    "minimum": 0
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "oneOf": [
+    {
+      "$ref": "#/definitions/events/product_created"
+    },
+    {
+      "$ref": "#/definitions/events/product_creation_rejected"
+    },
+    {
+      "$ref": "#/definitions/events/inbound_order_created"
+    },
+    {
+      "$ref": "#/definitions/events/outbound_order_created"
+    },
+    {
+      "$ref": "#/definitions/events/order_validation_failed"
+    },
+    {
+      "$ref": "#/definitions/events/inventory_discrepancy_detected"
+    },
+    {
+      "$ref": "#/definitions/events/direct_stock_edit_rejected"
+    },
+    {
+      "$ref": "#/definitions/events/stock_threshold_triggered"
+    },
+    {
+      "$ref": "#/definitions/events/stock_availability_checked"
+    },
+    {
+      "$ref": "#/definitions/events/inventory_lock_wait_recorded"
+    },
+    {
+      "$ref": "#/definitions/events/stock_snapshot_recorded"
+    },
+    {
+      "$ref": "#/definitions/events/login_succeeded"
+    },
+    {
+      "$ref": "#/definitions/events/login_failed"
+    },
+    {
+      "$ref": "#/definitions/events/session_expired"
+    },
+    {
+      "$ref": "#/definitions/events/token_rejected"
+    },
+    {
+      "$ref": "#/definitions/events/user_registered"
+    },
+    {
+      "$ref": "#/definitions/events/password_reset_requested"
+    },
+    {
+      "$ref": "#/definitions/events/password_reset_completed"
+    },
+    {
+      "$ref": "#/definitions/events/password_reset_rejected"
+    },
+    {
+      "$ref": "#/definitions/events/password_changed"
+    },
+    {
+      "$ref": "#/definitions/events/password_change_rejected"
+    },
+    {
+      "$ref": "#/definitions/events/section_viewed"
+    },
+    {
+      "$ref": "#/definitions/events/section_left"
+    },
+    {
+      "$ref": "#/definitions/events/flow_started"
+    },
+    {
+      "$ref": "#/definitions/events/flow_completed"
+    },
+    {
+      "$ref": "#/definitions/events/flow_abandoned"
+    },
+    {
+      "$ref": "#/definitions/events/list_filter_applied"
+    },
+    {
+      "$ref": "#/definitions/events/form_validation_failed"
+    },
+    {
+      "$ref": "#/definitions/events/ui_error_displayed"
+    },
+    {
+      "$ref": "#/definitions/events/api_latency_recorded"
+    },
+    {
+      "$ref": "#/definitions/events/api_error_recorded"
+    },
+    {
+      "$ref": "#/definitions/events/page_load_measured"
+    },
+    {
+      "$ref": "#/definitions/events/service_lifecycle_recorded"
+    },
+    {
+      "$ref": "#/definitions/events/dependency_health_sampled"
+    },
+    {
+      "$ref": "#/definitions/events/email_delivery_recorded"
+    },
+    {
+      "$ref": "#/definitions/events/telemetry_dropped"
+    },
+    {
+      "$ref": "#/definitions/events/incident_created"
+    },
+    {
+      "$ref": "#/definitions/events/incident_status_changed"
+    },
+    {
+      "$ref": "#/definitions/events/supplier_created"
+    },
+    {
+      "$ref": "#/definitions/events/supplier_rated"
+    },
+    {
+      "$ref": "#/definitions/events/supplier_status_changed"
+    },
+    {
+      "$ref": "#/definitions/events/supplier_deleted"
+    },
+    {
+      "$ref": "#/definitions/events/profile_updated"
+    },
+    {
+      "$ref": "#/definitions/events/seed_run_completed"
+    }
+  ]
+}

@@ -1,0 +1,173 @@
+# Settings the API and the Celery worker share. The worker validates the same
+# `Settings` as the API (services/core/config.py) and must reach the same Redis
+# and database, so both read this one block.
+x-backend-environment: &backend-environment
+  APP_ENV: ${APP_ENV:?Set APP_ENV in the root .env}
+  JWT_SECRET_KEY: ${JWT_SECRET_KEY:?Set JWT_SECRET_KEY in the root .env}
+  JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+  ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-60}
+  PASSWORD_RESET_TOKEN_EXPIRE_MINUTES: ${PASSWORD_RESET_TOKEN_EXPIRE_MINUTES:-30}
+  DATABASE_URL: ${COMPOSE_DATABASE_URL:?Set COMPOSE_DATABASE_URL in the root .env}
+  RESEND_API_KEY: ${RESEND_API_KEY:-}
+  EMAIL_FROM: ${EMAIL_FROM:-TrackFlow <onboarding@resend.dev>}
+  FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-http://localhost:3000}
+  SUPABASE_URL: ${SUPABASE_URL:?Set SUPABASE_URL in the root .env}
+  SUPABASE_SECRET_KEY: ${SUPABASE_SECRET_KEY:?Set SUPABASE_SECRET_KEY in the root .env}
+  # The host .env may point REDIS_URL at localhost; inside Compose Redis is the
+  # `redis` service, hence the COMPOSE_ alias, like DATABASE_URL above.
+  REDIS_URL: ${COMPOSE_REDIS_URL:-redis://redis:6379/0}
+
+services:
+  ui:
+    build:
+      context: ./uis
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+      - "3001:3001"
+    environment:
+      NEXT_PUBLIC_RECORDS_API_URL: ${NEXT_PUBLIC_API_URL:?Set NEXT_PUBLIC_API_URL in the root .env}
+      NEXT_PUBLIC_AUTH_API_URL: /backend
+    volumes:
+      - ./uis/website:/workspace/website
+      - ./uis/backoffice:/workspace/backoffice
+      - website_node_modules:/workspace/website/node_modules
+      - backoffice_node_modules:/workspace/backoffice/node_modules
+      - website_next:/workspace/website/.next
+      - backoffice_next:/workspace/backoffice/.next
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - trackflow
+
+  api:
+    build:
+      context: .
+      dockerfile: services/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      <<: *backend-environment
+      # The TinyDB file lives outside /app/data, which now holds the pipeline
+      # code the reporting endpoints import; a volume there would hide it.
+      DB_PATH: /app/var/suppliers.json
+    volumes:
+      - .:/app
+      - api_data:/app/var
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/openapi.json', timeout=2)
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 20s
+    networks:
+      - trackflow
+
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?Set POSTGRES_DB in the root .env}
+      POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER in the root .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the root .env}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - trackflow
+
+  # Celery broker and result backend (DEV-55). `noeviction` makes a full Redis
+  # refuse new writes instead of silently dropping queued tasks or results;
+  # it only takes effect with a `maxmemory` limit. The append-only file keeps
+  # queued tasks across a restart. Published on localhost only: this Redis has
+  # no password.
+  redis:
+    image: redis:8.10-alpine
+    command:
+      - redis-server
+      - --maxmemory
+      - 256mb
+      - --maxmemory-policy
+      - noeviction
+      - --appendonly
+      - "yes"
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - trackflow
+
+  # The Celery worker: a separate process from the API, built from the same
+  # image. It runs the tasks the API enqueues (services/tasks/). The grace
+  # period lets a running report finish on `docker compose stop worker`.
+  worker:
+    build:
+      context: .
+      dockerfile: services/Dockerfile
+    command:
+      - celery
+      - -A
+      - services.tasks.celery_app:celery_app
+      - worker
+      - --loglevel=INFO
+      - --concurrency=2
+      - --hostname=worker@%h
+      - -E
+    environment: *backend-environment
+    volumes:
+      - .:/app
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    stop_grace_period: 60s
+    networks:
+      - trackflow
+
+  # Queue monitoring for development. Flower needs only the broker, so it runs
+  # the upstream image and none of the API's settings or code.
+  flower:
+    image: mher/flower:2.2.0
+    environment:
+      CELERY_BROKER_URL: ${COMPOSE_REDIS_URL:-redis://redis:6379/0}
+      FLOWER_PORT: "5555"
+    ports:
+      - "127.0.0.1:5555:5555"
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - trackflow
+
+networks:
+  trackflow:
+    name: trackflow-development
+
+volumes:
+  api_data:
+  postgres_data:
+  redis_data:
+  website_node_modules:
+  backoffice_node_modules:
+  website_next:
+  backoffice_next:

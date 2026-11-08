@@ -4,9 +4,18 @@
   "private": true,
   "description": "Root scripts for running the TrackFlow project",
   "scripts": {
-    "start": "python3 services/server.py"
-  },
-  "dependencies": {
-    "flask": "^0.2.10"
+    "start": "python3 services/server.py",
+    "api": "uv run uvicorn services.main:app --reload --port 8000",
+    "seed:suppliers": "uv run seed",
+    "seed:user": "uv run seed-user",
+    "seed:incidents": "uv run seed-incidents",
+    "seed:inventory": "uv run python -m scripts.seed_inventory",
+    "job:nightly-export": "uv run python scripts/nightly_export.py",
+    "worker": "uv run celery -A services.tasks.celery_app:celery_app worker --loglevel=INFO --concurrency=2 -E",
+    "test:api": "uv run pytest tests/ -q",
+    "install:all": "npm --prefix uis/website install && npm --prefix uis/backoffice install && python3 -m pip install -r requirements.txt",
+    "dev:website": "npm --prefix uis/website run dev",
+    "dev:backoffice": "npm --prefix uis/backoffice run dev",
+    "test:ui": "npm --prefix uis/website test && npm --prefix uis/backoffice test"
   }
 }

@@ -1,0 +1,13 @@
+.env
+.env.*
+.git
+.venv/
+**/__pycache__/
+**/*.py[cod]
+**/*.log
+**/node_modules/
+**/.next/
+**/coverage/
+**/tests/
+.coverage
+.pytest_cache/

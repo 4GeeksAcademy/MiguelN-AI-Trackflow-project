@@ -8,6 +8,23 @@
   --brand-secondary: #82a2e5;
   --brand-accent: #ff9142;
   --border-soft: rgba(130, 162, 229, 0.38);
+
+  /*
+   * Incident status marks. These are the fixed status roles from the data-viz
+   * reference palette, not series colours, and they are never reused to tell
+   * one series from another.
+   *
+   * On this white surface `--status-warning` measures 1.83:1, so it appears
+   * only as a filled mark beside a text label and an icon - never as text and
+   * never as the sole carrier of meaning. The other three clear 3:1
+   * (critical 4.80, good 3.35, muted 3.59). The chosen trio also clears the
+   * validator's CVD and normal-vision separation gates as an adjacent set,
+   * which the warning/serious pairing did not.
+   */
+  --status-critical: #d03b3b;
+  --status-warning: #fab219;
+  --status-good: #0ca30c;
+  --status-muted: #898781;
 }
 
 @theme inline {

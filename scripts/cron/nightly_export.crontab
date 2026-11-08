@@ -1,0 +1,15 @@
+# TrackFlow nightly telemetry export (ticket DEV-53). See docs/NIGHTLY_EXPORT.md.
+#
+# Every day at 03:30 in the cron daemon's timezone (UTC on servers). The
+# script always works on the previous UTC day, so the time only has to fall
+# after midnight UTC with room for late telemetry batches. 03:30 does that in
+# every zone TrackFlow runs in: UTC, Monterrey (UTC-6), Zaragoza (UTC+1/+2)
+# and US Eastern on the development Mac (UTC-4/-5). It also stays clear of
+# the hours that daylight-saving switches skip or repeat.
+#
+# Install (replaces REPO_DIR with the checkout path, keeps existing entries):
+#   sed "s|REPO_DIR|$PWD|" scripts/cron/nightly_export.crontab > /tmp/nightly.cron
+#   (crontab -l 2>/dev/null; cat /tmp/nightly.cron) | crontab -
+#
+# min hour day month weekday  command
+30 3 * * * "REPO_DIR/scripts/cron/nightly_export.sh"

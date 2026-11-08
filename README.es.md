@@ -49,6 +49,30 @@ ai-engineering-project-template/
 4. **Lee** `AGENTS.md` para saber qué skills tienes disponibles al trabajar con IA.
 5. **Construye** los entregables de cada hito dentro de `apps/`, reutilizando `packages/shared-types` y `pipelines/data` cuando convenga.
 
+## Worker en segundo plano (Celery)
+
+Las operaciones pesadas no se ejecutan dentro de la API. El endpoint las encola en Redis y responde `202 Accepted` con un `task_id`. Un worker de Celery, que es un proceso aparte, las ejecuta, y el cliente consulta `GET /tasks/{task_id}`. Hoy esto cubre el informe técnico (`POST /telemetry/report`). El diseño, los reintentos, la Dead Letter Queue y los logs están en [Async Tasks](./docs/ASYNC_TASKS.md).
+
+**Arrancarlo.** Redis tiene que estar en marcha antes. La API y el worker leen el mismo `REDIS_URL`, que por defecto es `redis://localhost:6379/0`.
+
+```sh
+docker compose up -d redis      # Redis en localhost:6379
+npm run worker                  # el worker en el host, con el .env de la raíz
+```
+
+También puedes usar `docker compose up worker`, que ejecuta el worker en Docker junto a `api`, `redis` y `flower`. Usa uno de los dos, nunca ambos: comparten Redis pero leen bases de datos distintas. El worker del host usa el `DATABASE_URL` del `.env`, y el de Compose usa el PostgreSQL de Compose.
+
+**Comprobarlo.** Flower está en http://localhost:5555 tras `docker compose up -d flower`. También puedes ejecutar `uv run celery -A services.tasks.celery_app:celery_app inspect ping`.
+
+**Pararlo.**
+
+- Pulsa `Ctrl+C` una vez en la terminal del worker. Es un apagado en caliente: el worker deja de aceptar tareas y termina las que está ejecutando.
+- Un segundo `Ctrl+C` es un apagado en frío. Se detiene en el acto, y las tareas interrumpidas vuelven a la cola.
+- En Docker, `docker compose stop worker` envía el mismo apagado en caliente, con 60 segundos de margen.
+- Desde cualquier terminal, `uv run celery -A services.tasks.celery_app:celery_app control shutdown` detiene todos los workers conectados a ese Redis.
+
+Las tareas encoladas mientras no hay ningún worker esperan en Redis y se ejecutan cuando arranca uno.
+
 ---
 
 ## Hitos (referencia)

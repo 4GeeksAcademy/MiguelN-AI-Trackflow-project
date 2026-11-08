@@ -1,7 +1,6 @@
 "use client";
 
 import { StateMessage } from "@/components/common/StateMessage";
-import { getApiBaseUrl } from "@/lib/api-client";
 import {
   applyCandidateFormValues,
   applyStatusAndStage,
@@ -13,6 +12,7 @@ import {
   toDisplayText,
   validateCandidateForm,
 } from "@/lib/candidate";
+import { RECORDS_ERROR_COPY, describeError } from "@/lib/friendly-error";
 import {
   fetchCandidateById,
   replaceCandidate,
@@ -28,9 +28,7 @@ import type { CandidateFormValues, CandidateRecord } from "@/types/candidate";
 import type { CandidateNote } from "@/types/note";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { FormEvent, useEffect, useState } from "react";
-
-const apiBaseUrl = getApiBaseUrl();
+import { FormEvent, useCallback, useEffect, useState } from "react";
 
 export default function CandidateDetailPage() {
   const params = useParams<{ id: string }>();
@@ -65,6 +63,14 @@ export default function CandidateDetailPage() {
   const [recordActionSuccess, setRecordActionSuccess] = useState<string | null>(null);
   const [noteActionError, setNoteActionError] = useState<string | null>(null);
 
+  const [candidateAttempt, setCandidateAttempt] = useState(0);
+  const [notesAttempt, setNotesAttempt] = useState(0);
+
+  const retryCandidate = useCallback(() => setCandidateAttempt((current) => current + 1), []);
+  const retryNotes = useCallback(() => setNotesAttempt((current) => current + 1), []);
+
+  // The record and its notes load, fail and retry independently: retrying the
+  // notes must not reload the record and wipe edits in progress in its form.
   useEffect(() => {
     if (!id) {
       return;
@@ -72,7 +78,7 @@ export default function CandidateDetailPage() {
 
     let active = true;
 
-    async function loadCandidateOnMount() {
+    async function loadCandidate() {
       setCandidateFetchStatus("loading");
       setCandidateFetchError(null);
 
@@ -92,12 +98,26 @@ export default function CandidateDetailPage() {
           return;
         }
 
-        setCandidateFetchError(loadError instanceof Error ? loadError.message : "Unable to load candidate");
+        setCandidateFetchError(describeError(loadError, "Could not load this candidate.", RECORDS_ERROR_COPY).message);
         setCandidateFetchStatus("error");
       }
     }
 
-    async function loadNotesOnMount() {
+    void loadCandidate();
+
+    return () => {
+      active = false;
+    };
+  }, [id, candidateAttempt]);
+
+  useEffect(() => {
+    if (!id) {
+      return;
+    }
+
+    let active = true;
+
+    async function loadNotes() {
       setNotesFetchStatus("loading");
       setNotesFetchError(null);
 
@@ -114,18 +134,19 @@ export default function CandidateDetailPage() {
           return;
         }
 
-        setNotesFetchError(loadError instanceof Error ? loadError.message : "Unable to load notes");
+        setNotesFetchError(
+          describeError(loadError, "Could not load the notes for this candidate.", RECORDS_ERROR_COPY).message,
+        );
         setNotesFetchStatus("error");
       }
     }
 
-    void loadCandidateOnMount();
-    void loadNotesOnMount();
+    void loadNotes();
 
     return () => {
       active = false;
     };
-  }, [id]);
+  }, [id, notesAttempt]);
 
   async function handleRecordUpdate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -153,7 +174,9 @@ export default function CandidateDetailPage() {
       setStageValue(getCandidateStage(nextCandidate));
       setRecordActionSuccess("Status and stage updated.");
     } catch (updateError) {
-      setRecordActionError(updateError instanceof Error ? updateError.message : "Unable to update candidate");
+      setRecordActionError(
+        describeError(updateError, "Could not update the status and stage. Try again.", RECORDS_ERROR_COPY).message,
+      );
     } finally {
       setIsSavingRecord(false);
     }
@@ -188,7 +211,9 @@ export default function CandidateDetailPage() {
       setStageValue(getCandidateStage(nextCandidate));
       setCandidateFormSuccess("Candidate details updated successfully.");
     } catch (updateError) {
-      setCandidateFormError(updateError instanceof Error ? updateError.message : "Unable to save candidate");
+      setCandidateFormError(
+        describeError(updateError, "Could not save the candidate details. Try again.", RECORDS_ERROR_COPY).message,
+      );
     } finally {
       setIsSubmittingCandidateForm(false);
     }
@@ -209,23 +234,33 @@ export default function CandidateDetailPage() {
     setIsSavingNote(true);
     setNoteActionError(null);
 
+    let isSaved = false;
+    let createdNote: CandidateNote | null = null;
+
     try {
-      const createdNote = await createCandidateNote(id, noteContent);
-
-      if (createdNote) {
-        setNotes((currentNotes) => [createdNote, ...currentNotes]);
-      } else {
-        const loadedNotes = await fetchCandidateNotes(id);
-        setNotes(loadedNotes);
-        setNotesFetchStatus("success");
-        setNotesFetchError(null);
-      }
-
-      setNewNote("");
+      createdNote = await createCandidateNote(id, noteContent);
+      isSaved = true;
     } catch (createError) {
-      setNoteActionError(createError instanceof Error ? createError.message : "Unable to add note");
+      setNoteActionError(describeError(createError, "Could not add the note. Try again.", RECORDS_ERROR_COPY).message);
     } finally {
       setIsSavingNote(false);
+    }
+
+    if (!isSaved) {
+      return;
+    }
+
+    // The note is saved from here on, so the draft is cleared before anything
+    // else can fail - a resubmit would otherwise add it twice.
+    setNewNote("");
+
+    if (createdNote) {
+      const note = createdNote;
+      setNotes((currentNotes) => [note, ...currentNotes]);
+    } else {
+      // Saved, but the API did not echo it back: reload the list to show it.
+      // A failure there is reported as a notes-loading problem, with a retry.
+      retryNotes();
     }
   }
 
@@ -241,7 +276,7 @@ export default function CandidateDetailPage() {
       await deleteCandidateNote(id, noteId);
       setNotes((currentNotes) => currentNotes.filter((note) => note.id !== noteId));
     } catch (deleteError) {
-      setNoteActionError(deleteError instanceof Error ? deleteError.message : "Unable to delete note");
+      setNoteActionError(describeError(deleteError, "Could not delete the note. Try again.", RECORDS_ERROR_COPY).message);
     } finally {
       setDeletingNoteId(null);
     }
@@ -290,14 +325,25 @@ export default function CandidateDetailPage() {
           <p className="mt-2 text-sm text-[color:var(--text-muted)]">Candidate ID: {id || "-"}</p>
         </header>
 
-        {candidateFetchStatus === "loading" ? (
-          <StateMessage tone="info">
-            Fetching record from {apiBaseUrl ? `${apiBaseUrl}/records/${id}` : "NEXT_PUBLIC_API_URL/records/{id}"}...
+        {!id ? (
+          <StateMessage tone="error">
+            This link does not name a candidate. Go back to the candidate list and open one from there.
           </StateMessage>
         ) : null}
 
+        {candidateFetchStatus === "loading" ? <StateMessage tone="info">Loading candidate...</StateMessage> : null}
+
         {candidateFetchStatus === "error" && candidateFetchError ? (
-          <StateMessage tone="error">Could not load candidate: {candidateFetchError}</StateMessage>
+          <StateMessage tone="error">
+            <p>{candidateFetchError}</p>
+            <button
+              type="button"
+              onClick={retryCandidate}
+              className="mt-3 inline-flex min-h-10 items-center rounded-xl border border-red-300 bg-white px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-100"
+            >
+              Try again
+            </button>
+          </StateMessage>
         ) : null}
 
         {candidateFetchStatus === "success" && candidate ? (
@@ -343,7 +389,7 @@ export default function CandidateDetailPage() {
 
               {recordActionError ? (
                 <StateMessage tone="error" className="mt-4">
-                  Could not update candidate: {recordActionError}
+                  {recordActionError}
                 </StateMessage>
               ) : null}
 
@@ -486,13 +532,20 @@ export default function CandidateDetailPage() {
 
               {notesFetchStatus === "error" && notesFetchError ? (
                 <StateMessage tone="error" className="mt-4">
-                  Could not load notes: {notesFetchError}
+                  <p>{notesFetchError}</p>
+                  <button
+                    type="button"
+                    onClick={retryNotes}
+                    className="mt-3 inline-flex min-h-10 items-center rounded-xl border border-red-300 bg-white px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-100"
+                  >
+                    Try again
+                  </button>
                 </StateMessage>
               ) : null}
 
               {noteActionError ? (
                 <StateMessage tone="error" className="mt-4">
-                  Note action failed: {noteActionError}
+                  {noteActionError}
                 </StateMessage>
               ) : null}
 

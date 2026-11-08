@@ -84,7 +84,7 @@ function HeroSection() {
   return (
     <section id="home" className="mx-auto grid w-full max-w-[90rem] gap-8 px-6 pb-16 pt-8 md:grid-cols-12 md:px-10">
       <div className="md:col-span-7">
-        <p className="mb-4 inline-flex items-center gap-2 rounded-full border border-[color:var(--flow-blue)]/25 bg-[color:var(--flow-blue)]/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-[color:var(--flow-blue)]">
+        <p className="mb-4 inline-flex items-center gap-2 rounded-full border border-[color:var(--flow-blue)]/25 bg-[color:var(--flow-blue)]/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-[#1f56c8]">
           TrackFlow Tech mandate
         </p>
         <h1 className="font-brand-display text-4xl font-bold leading-tight text-[color:var(--text-strong)] sm:text-5xl md:text-6xl">
@@ -120,7 +120,7 @@ function HeroSection() {
             >
               <p
                 className={`text-2xl font-bold ${
-                  metric.tone === "accent" ? "text-[color:var(--flow-accent)]" : "text-[color:var(--flow-blue)]"
+                  metric.tone === "accent" ? "text-[#b55316]" : "text-[color:var(--flow-blue)]"
                 }`}
               >
                 {metric.value}

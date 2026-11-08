@@ -1,7 +1,7 @@
 "use client";
 
 import { StateMessage } from "@/components/common/StateMessage";
-import { getApiBaseUrl } from "@/lib/api-client";
+import { RECORDS_ERROR_COPY, describeError } from "@/lib/friendly-error";
 import {
   candidateId,
   emptyCandidateFormValues,
@@ -12,9 +12,21 @@ import {
 import { createCandidate, fetchCandidates } from "@/services/candidates-service";
 import type { AsyncStatus } from "@/types/async-state";
 import type { CandidateFormValues, CandidateRecord } from "@/types/candidate";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { FormEvent, Suspense, useEffect, useMemo, useState } from "react";
+import { FormEvent, Suspense, useCallback, useEffect, useMemo, useState } from "react";
+
+const CandidateCreateModal = dynamic(
+  () => import("@/components/candidates/CandidateCreateModal").then((module) => module.CandidateCreateModal),
+  {
+    loading: () => (
+      <div role="status" className="fixed inset-0 z-50 grid place-items-center bg-black/20">
+        <span className="rounded-lg bg-white px-4 py-3 text-sm">Loading candidate form...</span>
+      </div>
+    ),
+  },
+);
 
 type CandidateListItem = {
   id: string;
@@ -25,7 +37,33 @@ type CandidateListItem = {
   stage: string;
 };
 
-const apiBaseUrl = getApiBaseUrl();
+type CandidateFilterProps = {
+  label: string;
+  placeholder: string;
+  options: string[];
+  value: string;
+  onChange: (value: string) => void;
+};
+
+function CandidateFilter({ label, placeholder, options, value, onChange }: CandidateFilterProps) {
+  return (
+    <label className="block">
+      <span className="sr-only">{label}</span>
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="w-full rounded-xl border border-[color:var(--border-soft)] bg-[color:var(--surface)] px-3 py-2 text-sm text-[color:var(--text-strong)] outline-none ring-[color:var(--flow-blue)] transition focus:ring-2"
+      >
+        <option value="">{placeholder}</option>
+        {options.map((option) => (
+          <option key={option} value={option}>
+            {option}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
 
 export default function CandidatesListPage() {
   return (
@@ -51,6 +89,7 @@ function CandidatesListContent() {
   const [searchTerm, setSearchTerm] = useState("");
   const [listStatus, setListStatus] = useState<AsyncStatus>("loading");
   const [listError, setListError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isCreatingCandidate, setIsCreatingCandidate] = useState(false);
   const [createCandidateError, setCreateCandidateError] = useState<string | null>(null);
@@ -64,6 +103,13 @@ function CandidatesListContent() {
   const statusFilter = (searchParams.get("status") ?? "").trim().toLowerCase();
   const stageFilter = (searchParams.get("stage") ?? "").trim().toLowerCase();
 
+  const retry = useCallback(() => setAttempt((current) => current + 1), []);
+
+  /**
+   * Reloads the list in place after a create. It reports its own failure on the
+   * list, with a retry, and never throws: a failed refresh must not be mistaken
+   * for a failed create by the caller.
+   */
   async function refreshCandidates(options?: { silent?: boolean }) {
     if (!options?.silent) {
       setListStatus("loading");
@@ -79,10 +125,8 @@ function CandidatesListContent() {
       setPageLimit(data.limit);
       setListStatus("success");
     } catch (loadError) {
-      const nextError = loadError instanceof Error ? loadError.message : "Unable to load candidates";
-      setListError(nextError);
+      setListError(describeError(loadError, "Could not refresh the candidate list.", RECORDS_ERROR_COPY).message);
       setListStatus("error");
-      throw new Error(nextError);
     }
   }
 
@@ -109,8 +153,7 @@ function CandidatesListContent() {
           return;
         }
 
-        const nextError = loadError instanceof Error ? loadError.message : "Unable to load candidates";
-        setListError(nextError);
+        setListError(describeError(loadError, "Could not load the candidate list.", RECORDS_ERROR_COPY).message);
         setListStatus("error");
       }
     }
@@ -120,7 +163,7 @@ function CandidatesListContent() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [attempt]);
 
   const totalLabel = useMemo(() => {
     if (listStatus === "loading") {
@@ -224,23 +267,39 @@ function CandidatesListContent() {
     setCreateCandidateError(null);
     setCreateCandidateSuccess(null);
 
+    let isCreated = false;
+
     try {
       await createCandidate(candidateFormValues);
-      await refreshCandidates({ silent: true });
-      setCandidateFormValues(emptyCandidateFormValues());
-      setCreateCandidateSuccess("Candidate created successfully.");
+      isCreated = true;
     } catch (createError) {
-      setCreateCandidateError(createError instanceof Error ? createError.message : "Unable to create candidate");
+      setCreateCandidateError(
+        describeError(
+          createError,
+          "Could not create the candidate. Check the details and try again.",
+          RECORDS_ERROR_COPY,
+        ).message,
+      );
     } finally {
       setIsCreatingCandidate(false);
     }
+
+    if (!isCreated) {
+      return;
+    }
+
+    // The record exists from here on. The form is cleared and success is shown
+    // before the list reloads, so a failed refresh cannot invite duplicate submission.
+    setCandidateFormValues(emptyCandidateFormValues());
+    setCreateCandidateSuccess("Candidate created successfully.");
+    await refreshCandidates({ silent: true });
   }
 
   return (
     <main className="px-4 py-8 sm:px-6 sm:py-10">
       <div className="mx-auto w-full max-w-6xl space-y-6">
         <section className="overflow-hidden rounded-3xl border border-[color:var(--border-soft)] bg-[color:var(--surface)]/90 p-6 shadow-[0_24px_60px_-36px_rgba(37,99,235,0.45)] sm:p-8">
-          <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-[color:var(--border-soft)] bg-[color:var(--flow-blue)]/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-[color:var(--flow-blue)]">
+          <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-[color:var(--border-soft)] bg-[color:var(--flow-blue)]/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-[#1f56c8]">
             TrackFlow Tech
           </div>
           <h1 className="font-brand-display text-3xl font-bold leading-tight text-[color:var(--text-strong)] sm:text-4xl">
@@ -261,83 +320,78 @@ function CandidatesListContent() {
             </article>
             <article className="rounded-2xl border border-[color:var(--border-soft)] bg-[color:var(--surface)] p-4">
               <p className="text-xs uppercase tracking-[0.14em] text-[color:var(--text-muted)]">Motto</p>
-              <p className="mt-2 text-sm font-semibold text-[color:var(--flow-accent)]">Faster routes, smarter deliveries</p>
+              <p className="mt-2 text-sm font-semibold text-[#b55316]">Faster routes, smarter deliveries</p>
             </article>
           </div>
         </section>
 
         <div className="rounded-3xl border border-[color:var(--border-soft)] bg-[color:var(--surface)] p-6 shadow-[0_16px_38px_-28px_rgba(37,99,235,0.35)] sm:p-8">
           <header className="mb-6 border-b border-[color:var(--border-soft)] pb-5">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <h2 className="font-brand-display text-2xl font-semibold text-[color:var(--text-strong)]">Candidate Pipeline</h2>
-              <p className="mt-2 text-sm text-[color:var(--text-muted)]">{totalLabel}</p>
-              <p className="mt-1 text-sm text-[color:var(--text-muted)]">{pageLabel}</p>
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <h2 className="font-brand-display text-2xl font-semibold text-[color:var(--text-strong)]">Candidate Pipeline</h2>
+                <p className="mt-2 text-sm text-[color:var(--text-muted)]">{totalLabel}</p>
+                <p className="mt-1 text-sm text-[color:var(--text-muted)]">{pageLabel}</p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setCreateCandidateError(null);
+                  setCreateCandidateSuccess(null);
+                  setIsCreateModalOpen(true);
+                }}
+                className="rounded-xl bg-[color:var(--flow-blue)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[color:var(--flow-soft-blue)]"
+              >
+                Register candidate
+              </button>
             </div>
+          </header>
 
-            <button
-              type="button"
-              onClick={() => {
-                setCreateCandidateError(null);
-                setCreateCandidateSuccess(null);
-                setIsCreateModalOpen(true);
-              }}
-              className="rounded-xl bg-[color:var(--flow-blue)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[color:var(--flow-soft-blue)]"
-            >
-              Register candidate
-            </button>
-          </div>
-        </header>
-
-        <section className="mb-6 grid gap-3 sm:grid-cols-3">
-          <input
-            type="search"
-            value={searchTerm}
-            onChange={(event) => setSearchTerm(event.target.value)}
-            placeholder="Search by full name or email"
-            className="rounded-xl border border-[color:var(--border-soft)] bg-[color:var(--surface)] px-3 py-2 text-sm text-[color:var(--text-strong)] outline-none ring-[color:var(--flow-blue)] transition focus:ring-2"
-          />
-
-          <select
-            value={searchParams.get("status") ?? ""}
-            onChange={(event) => updateQueryFilter("status", event.target.value)}
-            className="rounded-xl border border-[color:var(--border-soft)] bg-[color:var(--surface)] px-3 py-2 text-sm text-[color:var(--text-strong)] outline-none ring-[color:var(--flow-blue)] transition focus:ring-2"
-          >
-            <option value="">All statuses</option>
-            {statusOptions.map((status) => (
-              <option key={status} value={status}>
-                {status}
-              </option>
-            ))}
-          </select>
-
-          <select
-            value={searchParams.get("stage") ?? ""}
-            onChange={(event) => updateQueryFilter("stage", event.target.value)}
-            className="rounded-xl border border-[color:var(--border-soft)] bg-[color:var(--surface)] px-3 py-2 text-sm text-[color:var(--text-strong)] outline-none ring-[color:var(--flow-blue)] transition focus:ring-2"
-          >
-            <option value="">All stages</option>
-            {stageOptions.map((stage) => (
-              <option key={stage} value={stage}>
-                {stage}
-              </option>
-            ))}
-          </select>
-        </section>
+          <section className="mb-6 grid gap-3 sm:grid-cols-3">
+            <input
+              type="search"
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+              placeholder="Search by full name or email"
+              className="rounded-xl border border-[color:var(--border-soft)] bg-[color:var(--surface)] px-3 py-2 text-sm text-[color:var(--text-strong)] outline-none ring-[color:var(--flow-blue)] transition focus:ring-2"
+            />
+            <CandidateFilter
+              label="Filter candidates by status"
+              placeholder="All statuses"
+              options={statusOptions}
+              value={searchParams.get("status") ?? ""}
+              onChange={(value) => updateQueryFilter("status", value)}
+            />
+            <CandidateFilter
+              label="Filter candidates by stage"
+              placeholder="All stages"
+              options={stageOptions}
+              value={searchParams.get("stage") ?? ""}
+              onChange={(value) => updateQueryFilter("stage", value)}
+            />
+          </section>
 
         {listStatus === "loading" ? (
-          <StateMessage tone="info">
-            Loading candidates from {apiBaseUrl ? `${apiBaseUrl}/records` : "NEXT_PUBLIC_API_URL/records"}...
-          </StateMessage>
+          <StateMessage tone="info">Loading candidates...</StateMessage>
         ) : null}
 
         {listStatus === "error" && listError ? (
-          <StateMessage tone="error">Could not load candidates: {listError}</StateMessage>
+          <StateMessage tone="error">
+            <p>{listError}</p>
+            <button
+              type="button"
+              onClick={retry}
+              className="mt-3 inline-flex min-h-10 items-center rounded-xl border border-red-300 bg-white px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-100"
+            >
+              Try again
+            </button>
+          </StateMessage>
         ) : null}
 
         {listStatus === "success" && normalizedCandidates.length === 0 ? (
           <p className="text-[color:var(--text-muted)]">
-            No candidates were returned by {apiBaseUrl ? `${apiBaseUrl}/records` : "NEXT_PUBLIC_API_URL/records"}.
+            No candidates have been registered yet.
           </p>
         ) : null}
 
@@ -382,133 +436,24 @@ function CandidatesListContent() {
       </div>
 
       {isCreateModalOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[color:var(--flow-blue)]/35 px-4 py-6">
-          <div className="w-full max-w-2xl rounded-3xl border border-[color:var(--border-soft)] bg-[color:var(--surface)] p-6 shadow-2xl">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <h2 className="font-brand-display text-xl font-semibold text-[color:var(--text-strong)]">Register new candidate</h2>
-                <p className="mt-1 text-sm text-[color:var(--text-muted)]">
-                  Create a candidate record with the required profile and pipeline fields.
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setIsCreateModalOpen(false)}
-                className="rounded-xl border border-[color:var(--border-soft)] px-3 py-2 text-sm text-[color:var(--text-muted)] transition hover:bg-[color:var(--flow-blue)]/5"
-              >
-                Close
-              </button>
-            </div>
-
-            <form className="mt-5 grid gap-4 sm:grid-cols-2" onSubmit={handleCreateCandidate}>
-              <label className="block text-sm text-[color:var(--text-muted)] sm:col-span-2">
-                <span className="mb-1 block font-medium">Full name</span>
-                <input
-                  value={candidateFormValues.fullName}
-                  onChange={(event) => {
-                    setCreateCandidateError(null);
-                    setCreateCandidateSuccess(null);
-                    setCandidateFormValues((currentValues) => ({ ...currentValues, fullName: event.target.value }));
-                  }}
-                  className="w-full rounded-xl border border-[color:var(--border-soft)] px-3 py-2 text-[color:var(--text-strong)] outline-none transition focus:border-[color:var(--flow-blue)]"
-                  placeholder="Candidate full name"
-                />
-              </label>
-
-              <label className="block text-sm text-[color:var(--text-muted)]">
-                <span className="mb-1 block font-medium">Email</span>
-                <input
-                  type="email"
-                  value={candidateFormValues.email}
-                  onChange={(event) => {
-                    setCreateCandidateError(null);
-                    setCreateCandidateSuccess(null);
-                    setCandidateFormValues((currentValues) => ({ ...currentValues, email: event.target.value }));
-                  }}
-                  className="w-full rounded-xl border border-[color:var(--border-soft)] px-3 py-2 text-[color:var(--text-strong)] outline-none transition focus:border-[color:var(--flow-blue)]"
-                  placeholder="candidate@example.com"
-                />
-              </label>
-
-              <label className="block text-sm text-[color:var(--text-muted)]">
-                <span className="mb-1 block font-medium">Position</span>
-                <input
-                  value={candidateFormValues.position}
-                  onChange={(event) => {
-                    setCreateCandidateError(null);
-                    setCreateCandidateSuccess(null);
-                    setCandidateFormValues((currentValues) => ({ ...currentValues, position: event.target.value }));
-                  }}
-                  className="w-full rounded-xl border border-[color:var(--border-soft)] px-3 py-2 text-[color:var(--text-strong)] outline-none transition focus:border-[color:var(--flow-blue)]"
-                  placeholder="Applied position"
-                />
-              </label>
-
-              <label className="block text-sm text-[color:var(--text-muted)]">
-                <span className="mb-1 block font-medium">Status</span>
-                <input
-                  value={candidateFormValues.status}
-                  onChange={(event) => {
-                    setCreateCandidateError(null);
-                    setCreateCandidateSuccess(null);
-                    setCandidateFormValues((currentValues) => ({ ...currentValues, status: event.target.value }));
-                  }}
-                  className="w-full rounded-xl border border-[color:var(--border-soft)] px-3 py-2 text-[color:var(--text-strong)] outline-none transition focus:border-[color:var(--flow-blue)]"
-                  placeholder="Current status"
-                />
-              </label>
-
-              <label className="block text-sm text-[color:var(--text-muted)]">
-                <span className="mb-1 block font-medium">Stage</span>
-                <input
-                  value={candidateFormValues.stage}
-                  onChange={(event) => {
-                    setCreateCandidateError(null);
-                    setCreateCandidateSuccess(null);
-                    setCandidateFormValues((currentValues) => ({ ...currentValues, stage: event.target.value }));
-                  }}
-                  className="w-full rounded-xl border border-[color:var(--border-soft)] px-3 py-2 text-[color:var(--text-strong)] outline-none transition focus:border-[color:var(--flow-blue)]"
-                  placeholder="Pipeline stage"
-                />
-              </label>
-
-              <div className="flex items-center gap-3 sm:col-span-2">
-                <button
-                  type="submit"
-                  disabled={isCreatingCandidate}
-                  className="rounded-xl bg-[color:var(--flow-blue)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[color:var(--flow-soft-blue)] disabled:cursor-not-allowed disabled:bg-[color:var(--flow-soft-blue)]/70"
-                >
-                  {isCreatingCandidate ? "Creating..." : "Create candidate"}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCandidateFormValues(emptyCandidateFormValues());
-                    setCreateCandidateError(null);
-                    setCreateCandidateSuccess(null);
-                  }}
-                  className="rounded-xl border border-[color:var(--border-soft)] px-4 py-2 text-sm font-medium text-[color:var(--text-muted)] transition hover:bg-[color:var(--flow-blue)]/5"
-                >
-                  Reset
-                </button>
-              </div>
-            </form>
-
-            {createCandidateError ? (
-              <StateMessage tone="error" className="mt-4">
-                {createCandidateError}
-              </StateMessage>
-            ) : null}
-
-            {createCandidateSuccess ? (
-              <StateMessage tone="success" className="mt-4">
-                {createCandidateSuccess}
-              </StateMessage>
-            ) : null}
-          </div>
-        </div>
+        <CandidateCreateModal
+          candidateFormValues={candidateFormValues}
+          isCreatingCandidate={isCreatingCandidate}
+          createCandidateError={createCandidateError}
+          createCandidateSuccess={createCandidateSuccess}
+          onClose={() => setIsCreateModalOpen(false)}
+          onSubmit={handleCreateCandidate}
+          onFieldChange={(field, value) => {
+            setCreateCandidateError(null);
+            setCreateCandidateSuccess(null);
+            setCandidateFormValues((currentValues) => ({ ...currentValues, [field]: value }));
+          }}
+          onReset={() => {
+            setCandidateFormValues(emptyCandidateFormValues());
+            setCreateCandidateError(null);
+            setCreateCandidateSuccess(null);
+          }}
+        />
       ) : null}
     </main>
   );

@@ -49,6 +49,34 @@ ai-engineering-project-template/
 4. **Read** `AGENTS.md` so you know which skills are available when working with AI.
 5. **Build** your milestone deliverables inside `apps/`, reusing `packages/shared-types` and `pipelines/data` as needed.
 
+## TrackFlow development stack
+
+For the Dockerized Next.js and FastAPI development environment, see [Docker Development](./docs/DOCKER-DEV.md). It covers the one-time local `.env` setup, Compose startup, service URLs, and the external candidate-records API dependency.
+
+### Background worker (Celery)
+
+Heavy operations do not run inside the API. The endpoint enqueues them on Redis and answers `202 Accepted` with a `task_id`. A Celery worker, a separate process, runs them, and the client polls `GET /tasks/{task_id}`. Today that covers the technical report (`POST /telemetry/report`). The design, retries, Dead Letter Queue and logs are in [Async Tasks](./docs/ASYNC_TASKS.md).
+
+**Start it.** Redis must be running first. The API and the worker read the same `REDIS_URL`, which defaults to `redis://localhost:6379/0`.
+
+```sh
+docker compose up -d redis      # Redis on localhost:6379
+npm run worker                  # the worker on the host, reading the root .env
+```
+
+Alternatively, `docker compose up worker` runs the worker in Docker, next to `api`, `redis` and `flower`. Run one of the two, never both. They share Redis but read different databases: the host worker uses the `.env` `DATABASE_URL`, and the Compose worker uses the Compose PostgreSQL.
+
+**Check it.** Flower is at http://localhost:5555 after `docker compose up -d flower`, or run `uv run celery -A services.tasks.celery_app:celery_app inspect ping`.
+
+**Stop it.**
+
+- Press `Ctrl+C` once in the worker's terminal. This is a warm shutdown: the worker stops taking new tasks and finishes the ones it is running.
+- A second `Ctrl+C` is a cold shutdown. It stops at once, and the interrupted tasks go back to the queue.
+- In Docker, `docker compose stop worker` sends the same warm shutdown, with 60 seconds of grace.
+- From anywhere, `uv run celery -A services.tasks.celery_app:celery_app control shutdown` stops every worker connected to that Redis.
+
+Tasks enqueued while no worker is running wait in Redis and run when one starts.
+
 ---
 
 ## Milestones (reference)

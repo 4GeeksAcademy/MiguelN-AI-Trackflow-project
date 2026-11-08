@@ -1,0 +1,221 @@
+{
+  "dataset": "data/raw/trackflow_sales.csv",
+  "data_profile": {
+    "months": 120,
+    "first_month": "2016-01",
+    "last_month": "2025-12",
+    "yearly_growth_pct": {
+      "2017": 9.58,
+      "2018": 1.82,
+      "2019": 9.42,
+      "2020": 2.92,
+      "2021": 8.03,
+      "2022": 2.8,
+      "2023": 10.12,
+      "2024": 3.99,
+      "2025": 7.93
+    },
+    "seasonal_index_pct": {
+      "1": -2.5,
+      "2": -15.89,
+      "3": -3.8,
+      "4": -2.17,
+      "5": -4.34,
+      "6": -5.05,
+      "7": -3.48,
+      "8": -3.07,
+      "9": -4.84,
+      "10": -4.1,
+      "11": 25.28,
+      "12": 23.96
+    },
+    "checks": {
+      "growth_between_0_and_12_pct": true,
+      "nov_dec_uplift_15_to_40_pct": true,
+      "february_drop_5_to_20_pct": true,
+      "other_months_within_10_pct": true
+    }
+  },
+  "cleaning": {
+    "rows_read": 120,
+    "empty_rows_dropped": 0,
+    "exact_duplicates_dropped": 0,
+    "revenue_derived": 0,
+    "shipments_derived": 0,
+    "avg_revenue_derived": 0,
+    "markets_present": [
+      "consolidated"
+    ]
+  },
+  "split": {
+    "train_years": [
+      2016,
+      2017,
+      2018,
+      2019,
+      2020,
+      2021,
+      2022,
+      2023
+    ],
+    "test_years": [
+      2024,
+      2025
+    ],
+    "train_months": 96,
+    "test_months": 24,
+    "train_rows_after_warmup": 60
+  },
+  "algorithm": "XGBoost (XGBRegressor) on revenue / trailing-12-month mean",
+  "fit": {
+    "params": {
+      "max_depth": 2,
+      "n_estimators": 200,
+      "learning_rate": 0.03
+    },
+    "selection": "lowest mean absolute relative error in recursive backtests",
+    "backtest_mape_pct": 5.1,
+    "candidates": [
+      {
+        "params": {
+          "max_depth": 2,
+          "n_estimators": 200,
+          "learning_rate": 0.03
+        },
+        "backtest_mape_pct": 5.1
+      },
+      {
+        "params": {
+          "max_depth": 2,
+          "n_estimators": 200,
+          "learning_rate": 0.1
+        },
+        "backtest_mape_pct": 5.489
+      },
+      {
+        "params": {
+          "max_depth": 2,
+          "n_estimators": 400,
+          "learning_rate": 0.03
+        },
+        "backtest_mape_pct": 5.353
+      },
+      {
+        "params": {
+          "max_depth": 2,
+          "n_estimators": 400,
+          "learning_rate": 0.1
+        },
+        "backtest_mape_pct": 5.487
+      },
+      {
+        "params": {
+          "max_depth": 3,
+          "n_estimators": 200,
+          "learning_rate": 0.03
+        },
+        "backtest_mape_pct": 5.266
+      },
+      {
+        "params": {
+          "max_depth": 3,
+          "n_estimators": 200,
+          "learning_rate": 0.1
+        },
+        "backtest_mape_pct": 5.512
+      },
+      {
+        "params": {
+          "max_depth": 3,
+          "n_estimators": 400,
+          "learning_rate": 0.03
+        },
+        "backtest_mape_pct": 5.374
+      },
+      {
+        "params": {
+          "max_depth": 3,
+          "n_estimators": 400,
+          "learning_rate": 0.1
+        },
+        "backtest_mape_pct": 5.507
+      }
+    ]
+  },
+  "forecast_mode": "recursive, 24 months, no measured test month used",
+  "metrics_test": {
+    "model": {
+      "mse_eur2": 2103390564.884436,
+      "rmse_eur": 45862.736125142335,
+      "rmse_pct_of_mean_monthly_revenue": 3.5304200951179503,
+      "mse_pct_of_mean_monthly_revenue_squared": 0.12463866048012641,
+      "mae_eur": 35389.17761379379,
+      "mape_pct": 2.7545838287368936,
+      "k2_score_r2": 0.9281408296178794,
+      "gini_normalized": 0.931034573593183,
+      "mean_monthly_revenue_eur": 1299073.0533333335
+    },
+    "seasonal_naive_baseline": {
+      "mse_eur2": 11649924921.775156,
+      "rmse_eur": 107934.81793089362,
+      "rmse_pct_of_mean_monthly_revenue": 8.308602634312226,
+      "mse_pct_of_mean_monthly_revenue_squared": 0.6903287773490008,
+      "mae_eur": 93013.18628200908,
+      "mape_pct": 7.334761151188028,
+      "k2_score_r2": 0.6019978629414698,
+      "gini_normalized": 0.9210634727690143,
+      "mean_monthly_revenue_eur": 1299073.0533333335
+    }
+  },
+  "psi": {
+    "us_spain_mix_train_vs_test": null,
+    "us_spain_mix_note": "Only 'consolidated' rows present; the US/Spain (~60/40) mix cannot be measured.",
+    "seasonal_ratio_train_vs_test": 0.15584519034783473,
+    "model_ratio_fitted_train_vs_forecast_test": 0.02399231459397839,
+    "labels": {
+      "seasonal_ratio_train_vs_test": "moderate shift",
+      "model_ratio_fitted_train_vs_forecast_test": "stable"
+    },
+    "p_value_vs_no_shift": {
+      "seasonal_ratio_train_vs_test": 0.661,
+      "model_ratio_fitted_train_vs_forecast_test": 0.9975
+    },
+    "p_value_note": "Share of 2000 random train/test re-splits of the pooled values with a PSI at least as large. >= 0.05: the shift is within sampling noise for this many months, whatever the rule-of-thumb label says."
+  },
+  "variability_band": {
+    "method": "80% range: forecast x (1 +/- P80 of absolute relative error) from walk-forward recursive backtests inside the training years",
+    "backtest_origins": [
+      2019,
+      2020,
+      2021
+    ],
+    "half_width_pct_by_horizon_year": {
+      "1": 7.04,
+      "2": 7.53
+    },
+    "backtest_mean_error_pct_by_horizon_year": {
+      "1": -2.8,
+      "2": -2.4
+    },
+    "test_months_inside_band_pct": 95.8
+  },
+  "feature_importance_gain": {
+    "lag_12_ratio": 0.4018386900424957,
+    "seasonal_ratio_2y_mean": 0.1595907360315323,
+    "seasonal_ratio_last_year": 0.1466812640428543,
+    "month_cos": 0.07562147080898285,
+    "month_of_year": 0.034537702798843384,
+    "trailing_growth_yoy": 0.029631756246089935,
+    "rolling_mean_6_ratio": 0.02545623667538166,
+    "rolling_std_12_ratio": 0.021678034216165543,
+    "rolling_std_6_ratio": 0.019244428724050522,
+    "lag_3_ratio": 0.017063701525330544,
+    "month_sin": 0.01683332398533821,
+    "rolling_mean_3_ratio": 0.016319941729307175,
+    "lag_1_ratio": 0.013288205489516258,
+    "lag_2_ratio": 0.01272437535226345,
+    "rolling_std_3_ratio": 0.009490101598203182,
+    "is_peak_season": 0.0,
+    "is_february": 0.0
+  }
+}

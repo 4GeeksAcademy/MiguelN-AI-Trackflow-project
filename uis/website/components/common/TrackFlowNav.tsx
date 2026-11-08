@@ -5,6 +5,12 @@ type TrackFlowNavProps = {
   subtitle?: string;
 };
 
+/**
+ * Header for the public site. It stays a server component with static links
+ * only: no token read and no redirect, so the corporate page is untouched by
+ * authentication. Session controls live in `SessionBar`, inside the protected
+ * route group.
+ */
 export function TrackFlowNav({ subtitle = "Faster routes, smarter deliveries" }: TrackFlowNavProps) {
   return (
     <header className="sticky top-0 z-30 border-b border-[color:var(--border-soft)] bg-[color:var(--surface)/0.9] backdrop-blur-md">
@@ -12,7 +18,7 @@ export function TrackFlowNav({ subtitle = "Faster routes, smarter deliveries" }:
         aria-label="Primary"
         className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6"
       >
-        <Link href="/" className="flex items-center gap-3" aria-label="TrackFlow corporate home">
+        <Link href="/" className="flex items-center gap-3">
           <Image
             src="/trackflow-logo.png"
             alt="TrackFlow company logo"
@@ -39,6 +45,12 @@ export function TrackFlowNav({ subtitle = "Faster routes, smarter deliveries" }:
             className="text-sm font-semibold text-[color:var(--text-muted)] transition hover:text-[color:var(--flow-blue)]"
           >
             Candidates
+          </Link>
+          <Link
+            href="/login"
+            className="rounded-lg border border-[color:var(--border-soft)] px-3 py-1.5 text-sm font-semibold text-[color:var(--text-muted)] transition hover:border-[color:var(--flow-blue)] hover:text-[color:var(--flow-blue)]"
+          >
+            Sign in
           </Link>
         </div>
       </nav>

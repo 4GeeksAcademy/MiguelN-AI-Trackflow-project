@@ -1,0 +1,65 @@
+[project]
+name = "trackflow-suppliers"
+version = "0.1.0"
+description = "TrackFlow supplier directory API"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "tinydb>=4.8",
+    "pydantic[email]>=2.7",
+    "libpass[bcrypt]>=1.9",
+    "python-jose[cryptography]>=3.3",
+    "pydantic-settings>=2.4",
+    "python-multipart>=0.0.9",
+    "resend>=2.0",
+    "sqlmodel>=0.0.47",
+    "psycopg2-binary>=2.9.13",
+    "supabase>=2.33.0",
+    "pandas>=2.3",
+    "prefect>=3",
+    "celery[redis]>=5.6,<6",
+    "scikit-learn>=1.9.1",
+    "xgboost>=3.2.0",
+    "matplotlib>=3.11.2",
+]
+
+[project.scripts]
+seed = "services.suppliers.seed:main"
+seed-user = "services.users.seed:main"
+seed-incidents = "scripts.seed_incidents:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+# `trackflow_shared` is mapped in from packages/shared so the backend and the
+# /scripts tooling import one copy of the incident rules instead of two.
+# `data` holds the Prefect pipelines that `services/reporting` imports.
+packages = ["services", "scripts", "packages/shared/trackflow_shared", "data"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "real_bcrypt_cost: run bcrypt at the production cost instead of the fast test cost",
+]
+
+# `uv run pytest --cov` measures the authentication API (AUTH-088): the auth,
+# users and profiles domains and the core modules they are built on. Pass
+# `--cov=services` to measure the whole backend instead.
+[tool.coverage.run]
+source = ["services/auth", "services/users", "services/profiles", "services/core"]
+
+[tool.coverage.report]
+fail_under = 70
+show_missing = true
+
+[dependency-groups]
+dev = [
+    "httpx2>=2.13.0",
+    "httpx>=0.27",
+    "pytest-cov>=7.1.0",
+    "pytest>=8.0",
+    "time-machine>=3.5.1",
+]
