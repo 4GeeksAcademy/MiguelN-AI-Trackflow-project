@@ -26,6 +26,7 @@ const config: Config = {
     "lib/api-client.ts",
     "lib/friendly-error.ts",
     "lib/inventory.ts",
+    "lib/knowledge.ts",
     "services/auth-service.ts",
   ],
 };

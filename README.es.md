@@ -73,6 +73,18 @@ También puedes usar `docker compose up worker`, que ejecuta el worker en Docker
 
 Las tareas encoladas mientras no hay ningún worker esperan en Redis y se ejecutan cuando arranca uno.
 
+## Asistente de conocimiento (RAG)
+
+El equipo comercial pregunta en lenguaje natural sobre las políticas de TrackFlow: SLA de entrega, devoluciones, cobertura de transportistas y precios de almacenaje. Recibe una respuesta generada que cita sus fuentes. Los cuatro documentos de `docs/company-knowledge-base/` están indexados en Qdrant (`trackflow_knowledge`). `POST /knowledge/query` responde a partir de ellos, y la página del backoffice es `/knowledge`.
+
+```sh
+docker compose up -d qdrant     # Qdrant en localhost:6333
+npm run rag:setup               # indexa los documentos (se puede repetir)
+npm run rag:eval                # Recall@3 con data/eval/test-queries.json
+```
+
+Los modelos de embeddings y de generación se configuran en `.env` (ver `.env.example`). El diseño, el chunking, el umbral y las reglas del prompt están en [RAG design](./docs/rag/rag-design.md).
+
 ---
 
 ## Hitos (referencia)

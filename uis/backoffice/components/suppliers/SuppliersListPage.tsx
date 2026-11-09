@@ -195,7 +195,7 @@ function SuppliersListContent() {
               type="button"
               onClick={() => setIsCreateFormOpen((isOpen) => !isOpen)}
               aria-expanded={isCreateFormOpen}
-              className="rounded-xl bg-[color:var(--brand-primary)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[color:var(--brand-secondary)]"
+              className="rounded-xl bg-[color:var(--brand-primary)] px-4 py-2 text-sm font-semibold text-[color:var(--on-brand)] transition hover:bg-[color:var(--brand-secondary)]"
             >
               {isCreateFormOpen ? "Hide form" : "Register supplier"}
             </button>
@@ -258,7 +258,7 @@ function SuppliersListContent() {
               <button
                 type="button"
                 onClick={retry}
-                className="mt-3 inline-flex min-h-10 items-center rounded-xl border border-red-300 bg-white px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-100"
+                className="mt-3 inline-flex min-h-10 items-center rounded-xl border border-red-300 bg-[color:var(--surface)] px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-100"
               >
                 Try again
               </button>

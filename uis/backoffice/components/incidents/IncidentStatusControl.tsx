@@ -137,7 +137,7 @@ export function IncidentStatusControl({
         <button
           type="button"
           onClick={onRefresh}
-          className="self-start rounded-lg border border-red-300 bg-white px-2.5 py-1 text-xs font-semibold text-red-700 transition hover:bg-red-100"
+          className="self-start rounded-lg border border-red-300 bg-[color:var(--surface)] px-2.5 py-1 text-xs font-semibold text-red-700 transition hover:bg-red-100"
         >
           Refresh list
         </button>

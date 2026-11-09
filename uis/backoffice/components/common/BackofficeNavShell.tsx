@@ -8,6 +8,9 @@ const NAV_LINKS = [
   { href: "/", label: "Dashboard" },
   // Leadership's destination: the weekly KPIs, read from the reporting pipeline.
   { href: "/reporting", label: "Weekly report" },
+  // The commercial team's assistant: questions about SLAs, returns, carriers
+  // and storage pricing, answered from the indexed policies.
+  { href: "/knowledge", label: "Knowledge assistant" },
   { href: "/incidents", label: "Incidents" },
   // Its own entry rather than a button buried in the list: the people the
   // incident manager is for are reporting from a warehouse terminal, and the

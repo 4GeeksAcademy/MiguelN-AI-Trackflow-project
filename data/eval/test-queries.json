@@ -1,0 +1,136 @@
+{
+  "description": "Retrieval test set for the TrackFlow knowledge base (contexts/RAG-briefing.md, sections 4-5). A question counts as a hit when one of its top-3 retrieved chunks comes from expected.source_document and contains expected.text_contains (compared after whitespace normalisation). out_of_scope questions have no answer in the corpus; their best scores are used to choose the similarity threshold, never to compute Recall@3. Scored by scripts/evaluate_rag_retrieval.py.",
+  "collection": "trackflow_knowledge",
+  "k": 3,
+  "target_recall_at_k": 0.8,
+  "queries": [
+    {
+      "id": "sla-01",
+      "question": "What delivery SLA does TrackFlow commit to in the standard contract?",
+      "expected": {"source_document": "sla-delivery", "text_contains": "90% on-time deliveries per month"},
+      "tags": []
+    },
+    {
+      "id": "sla-02",
+      "question": "What compensation does a client get if on-time deliveries fall below the SLA?",
+      "expected": {"source_document": "sla-delivery", "text_contains": "5% compensation on that country's monthly fee"},
+      "tags": []
+    },
+    {
+      "id": "sla-03",
+      "question": "How long does express shipping take, and where is it available?",
+      "expected": {"source_document": "sla-delivery", "text_contains": "Express shipping: 24 to 48 hours"},
+      "tags": []
+    },
+    {
+      "id": "sla-04",
+      "question": "Can we guarantee our client's delivery times during Black Friday?",
+      "expected": {"source_document": "sla-delivery", "text_contains": "does not guarantee delivery SLA during declared high-demand dates"},
+      "tags": ["peak"]
+    },
+    {
+      "id": "sla-05",
+      "question": "How much longer can deliveries take during the January Sales in Spain?",
+      "expected": {"source_document": "sla-delivery", "text_contains": "up to an additional 40%"},
+      "tags": ["peak"]
+    },
+    {
+      "id": "ret-01",
+      "question": "What's the standard return window?",
+      "expected": {"source_document": "returns-policy", "text_contains": "Standard return window: 30 days from delivery"},
+      "tags": []
+    },
+    {
+      "id": "ret-02",
+      "question": "Who pays the shipping cost when an end customer returns a product?",
+      "expected": {"source_document": "returns-policy", "text_contains": "the return shipping cost is covered by the client brand"},
+      "tags": []
+    },
+    {
+      "id": "ret-03",
+      "question": "A customer bought an item in the United States and wants to return it in Spain. Is that handled automatically?",
+      "expected": {"source_document": "returns-policy", "text_contains": "International returns (purchased in one country, returned in another)"},
+      "tags": []
+    },
+    {
+      "id": "ret-04",
+      "question": "How does the returns process work, from the customer's request to the warehouse inspection?",
+      "expected": {"source_document": "returns-policy", "text_contains": "The end customer requests a return through the brand's portal"},
+      "tags": []
+    },
+    {
+      "id": "car-01",
+      "question": "Which carrier best covers rural Aragón?",
+      "expected": {"source_document": "carrier-coverage", "text_contains": "SEUR: best coverage in rural areas of Aragón"},
+      "tags": []
+    },
+    {
+      "id": "car-02",
+      "question": "Which carrier do we use for heavy packages in the United States?",
+      "expected": {"source_document": "carrier-coverage", "text_contains": "UPS: full national coverage, best rate for heavy packages"},
+      "tags": []
+    },
+    {
+      "id": "car-03",
+      "question": "Can an account manager pick a different carrier for a client's shipment?",
+      "expected": {"source_document": "carrier-coverage", "text_contains": "except for an exception approved by Carlos Vega"},
+      "tags": []
+    },
+    {
+      "id": "sto-01",
+      "question": "How are storage fees calculated?",
+      "expected": {"source_document": "storage-pricing", "text_contains": "charges client brands for storage based on volume occupied"},
+      "tags": []
+    },
+    {
+      "id": "sto-02",
+      "question": "Can we offer a storage discount to a client that stores 60 cubic meters a month?",
+      "expected": {"source_document": "storage-pricing", "text_contains": "can negotiate a preferential rate"},
+      "tags": []
+    },
+    {
+      "id": "sto-03",
+      "question": "Can a client get a report of how long their inventory has been sitting in the warehouse?",
+      "expected": {"source_document": "storage-pricing", "text_contains": "inventory aging report"},
+      "tags": []
+    },
+    {
+      "id": "sla-06",
+      "question": "What delivery times do we commit to for standard shipments?",
+      "expected": {"source_document": "sla-delivery", "text_contains": "Standard shipping: 3 to 5 business days"},
+      "tags": ["paraphrase"]
+    },
+    {
+      "id": "sla-07",
+      "question": "Can I promise a prospect next-day delivery during Christmas?",
+      "expected": {"source_document": "sla-delivery", "text_contains": "does not guarantee delivery SLA during declared high-demand dates"},
+      "tags": ["peak", "paraphrase"]
+    },
+    {
+      "id": "ret-05",
+      "question": "How long does a customer have to send a product back?",
+      "expected": {"source_document": "returns-policy", "text_contains": "Standard return window: 30 days from delivery"},
+      "tags": ["paraphrase"]
+    },
+    {
+      "id": "car-04",
+      "question": "My client needs us to use a carrier we don't normally work with for one route. Can we do that?",
+      "expected": {"source_document": "carrier-coverage", "text_contains": "except for an exception approved by Carlos Vega"},
+      "tags": ["paraphrase"]
+    },
+    {
+      "id": "sto-04",
+      "question": "Who approves a preferential storage rate?",
+      "expected": {"source_document": "storage-pricing", "text_contains": "that negotiation must always go through Miguel Torres"},
+      "tags": ["paraphrase"]
+    }
+  ],
+  "out_of_scope": [
+    {"id": "oos-01", "question": "What is the parental leave policy for TrackFlow employees?"},
+    {"id": "oos-02", "question": "What will the weather be like in Zaragoza next week?"},
+    {"id": "oos-03", "question": "Who won the last football World Cup?"},
+    {"id": "oos-04", "question": "How do I reset my password in the backoffice?"},
+    {"id": "oos-05", "question": "What is TrackFlow's revenue this year?"},
+    {"id": "oos-06", "question": "Do we offer refrigerated storage for perishable goods?"}
+  ]
+}

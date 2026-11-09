@@ -148,7 +148,7 @@ function FiguresTable({ report }: { report: WeeklyPerformance }) {
       <h3 id="all-figures" className="text-lg font-semibold">
         All figures for the week
       </h3>
-      <div className="mt-3 overflow-x-auto border-y border-[color:var(--border-soft)] bg-white">
+      <div className="mt-3 overflow-x-auto border-y border-[color:var(--border-soft)] bg-[color:var(--surface)]">
         <table className="w-full min-w-[720px] text-left text-sm">
           <caption className="sr-only">
             {REPORT_TITLE}, {formatWeekPeriod(report.week_start)}, by warehouse and client

@@ -16,6 +16,18 @@ x-backend-environment: &backend-environment
   # The host .env may point REDIS_URL at localhost; inside Compose Redis is the
   # `redis` service, hence the COMPOSE_ alias, like DATABASE_URL above.
   REDIS_URL: ${COMPOSE_REDIS_URL:-redis://redis:6379/0}
+  # Knowledge-base vector store (Milestone 7, RAG). Same COMPOSE_ alias pattern:
+  # the host .env points QDRANT_URL at localhost, Compose at the `qdrant` service.
+  QDRANT_URL: ${COMPOSE_QDRANT_URL:-http://qdrant:6333}
+  # The 4Geeks embeddings and generation models (OpenAI-compatible API). Empty
+  # values count as unset: the API still starts, and /knowledge/query answers 503.
+  EMBEDDING_MODEL: ${EMBEDDING_MODEL:-}
+  GENERATION_MODEL: ${GENERATION_MODEL:-}
+  LLM_BASE_URL: ${LLM_BASE_URL:-}
+  LLM_API_KEY: ${LLM_API_KEY:-}
+  EMBEDDING_BASE_URL: ${EMBEDDING_BASE_URL:-}
+  EMBEDDING_API_KEY: ${EMBEDDING_API_KEY:-}
+  LLM_TIMEOUT_SECONDS: ${LLM_TIMEOUT_SECONDS:-}
 
 services:
   ui:
@@ -60,6 +72,10 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      # service_started, not service_healthy: the API boots without Qdrant and
+      # only the knowledge endpoint needs it, per request.
+      qdrant:
+        condition: service_started
     healthcheck:
       test:
         - CMD
@@ -144,6 +160,27 @@ services:
     networks:
       - trackflow
 
+  # Vector store for the knowledge base (Milestone 7, RAG): the collection
+  # `trackflow_knowledge` that data/process setup() builds from
+  # docs/company-knowledge-base/. The image is pinned to the qdrant-client
+  # version in uv.lock (1.20); the client warns when they drift apart.
+  # Published on 127.0.0.1 only: no API key is set on this instance. The image
+  # ships no curl/wget, hence the bash /dev/tcp probe.
+  qdrant:
+    image: qdrant/qdrant:v1.20.0
+    ports:
+      - "127.0.0.1:6333:6333" # REST API and web dashboard (/dashboard)
+      - "127.0.0.1:6334:6334" # gRPC
+    volumes:
+      - qdrant_data:/qdrant/storage
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c ':> /dev/tcp/127.0.0.1/6333' || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - trackflow
+
   # Queue monitoring for development. Flower needs only the broker, so it runs
   # the upstream image and none of the API's settings or code.
   flower:
@@ -167,6 +204,7 @@ volumes:
   api_data:
   postgres_data:
   redis_data:
+  qdrant_data:
   website_node_modules:
   backoffice_node_modules:
   website_next:

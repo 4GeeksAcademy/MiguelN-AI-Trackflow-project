@@ -2,6 +2,83 @@
 
 Last updated: 2026-11-08
 
+## Update 2026-11-08 (night) - Milestone 7: first real run (Docker Qdrant + 4Geeks models)
+
+Goals accomplished:
+- Docker Desktop installed by the developer. Qdrant runs from Compose, is healthy, and is reached from `.venv`. The `docker` CLI is not on the shell PATH yet; it lives at `/Applications/Docker.app/Contents/Resources/bin`.
+- 4Geeks models configured (developer-owned `.env`) and checked against the gateway:
+  - base URL `https://llm.4geeks.ai/v1` (`/v1` required);
+  - IDs without the `litellm/` prefix;
+  - embeddings `pplx-embed-v1-0.6b` (1024 dimensions);
+  - generation `gpt-6-luna`, chosen over `deepseek-v4-flash` after both answered the same 9 questions with the same context. Both follow every briefing rule; DeepSeek adds unsourced remarks.
+- `npm run rag:setup` indexed 14 chunks (3/5/3/3) into `trackflow_knowledge`.
+- Threshold measured:
+  - On the original 15 questions (document wording) the score groups separated, and 0.48 was suggested.
+  - Real questions at 0.48 lost the "3 to 5 business days" chunk (0.444) and the Carlos Vega chunk (0.329). Both chat models then answered the delivery-times question wrongly.
+  - Added 5 `paraphrase` questions and 2 business-sounding out-of-scope ones. The groups now overlap (lowest correct 0.3285, highest out-of-scope 0.4489).
+  - `suggest_threshold` now gives a recall-first value when they overlap. **`MIN_SCORE = 0.30`.**
+  - Recall@3 = **100%** (20/20), on the ranking and with the threshold; 17 of 20 at rank 1.
+- Prompt: the `Sources:` line is left out when no passage was used (models were writing lines like "Sources: No relevant passage provided").
+- `LLM_TIMEOUT_SECONDS` setting (default 30, max 600). The gateway stalls for 30-120 s at times; the batch CLIs need `LLM_TIMEOUT_SECONDS=120`. Passed through Compose; documented in `.env.example`.
+- `docs/rag/rag-design.md`: the *Pending* sections are filled (models, dimension, threshold evidence, results, model choice).
+- Tests: backend 980 passed, 51 skipped (+8: timeout setting, recall-first suggestion). Ruff and mypy are clean.
+
+Still missing / next goals:
+1. The developer must **save** the corrected `.env` lines. The runs above passed `EMBEDDING_MODEL`, `GENERATION_MODEL` and `LLM_BASE_URL` as environment overrides, because the file on disk still held `litellm/...`, a placeholder and no `/v1`.
+2. The root `.env` lacks the Compose variables (`APP_ENV`, `COMPOSE_DATABASE_URL`, `POSTGRES_*`, `NEXT_PUBLIC_API_URL`), so the full `docker compose up` does not start. Qdrant alone was started with `--env-file docker-compose.env.example`.
+3. Try the backoffice page end to end (`npm run api` + `npm run dev:backoffice`) once `.env` is saved.
+4. Commit when asked (AGENTS.md workflow), including `data/eval/rag/retrieval_eval.json`.
+5. Still open: the geography mismatch (documents: Los Angeles; `context.md`: Monterrey).
+
+## Update 2026-11-08 (later) - Milestone 7: RAG knowledge assistant, Phases 1-6 + backoffice dark mode
+
+Goals accomplished. The CTO's ticket is `lead-instr.png`, with its phases in `stage-todo-1.png` and `stages-todo-2.png`. The brief is `contexts/RAG-briefing.md` (= the ticket's "company-BRIEFING.md"): Miguel Torres's commercial team asks policy questions in natural language and gets a generated, sourced answer in a salesperson's voice.
+- Preparation:
+  - Qdrant `v1.20.0` added to `docker-compose.yml` (localhost-only ports, `qdrant_data` volume, `QDRANT_URL` via `COMPOSE_QDRANT_URL`).
+  - `uv add qdrant-client` (1.20.0) and `uv add openai` (3.46.0, for the 4Geeks models' OpenAI-compatible API); `requirements.txt` re-exported (the Docker image installs from it).
+  - The four briefing documents were copied verbatim into `docs/company-knowledge-base/`; the user added them to `contexts/`.
+- Phase 1 (`data/process/knowledge_base.py`):
+  - `load_source_documents`;
+  - `split_into_chunks`: Markdown blocks, never cut mid-rule, intros merged with their lists, the title prefixed; 14 chunks, 3/5/3/3;
+  - `embed`: the dedicated embeddings model, NFC + whitespace normalisation;
+  - `setup()` into `trackflow_knowledge`, idempotent: uuid5 IDs, stale points deleted, the collection recreated on a vector-size change;
+  - `RagSettings` refuses the same model ID for embeddings and generation;
+  - CLI `npm run rag:setup [-- --dry-run]`.
+- Phase 2 (`data/pipelines/rag.py`):
+  - `retrieve` (k=5, `MIN_SCORE` applied twice, plain dicts);
+  - `build_messages`: salesperson voice and the briefing's four business rules; no digits in the system prompt, so every figure comes from the chunks;
+  - `generate_answer`: temperature 0, called even with no context;
+  - `query()` = `generate_answer(question, retrieve(question))`.
+- Phase 3 (`services/knowledge/`): `POST /knowledge/query` with a bearer token, `{question}` -> `{answer}` only, 503 on knowledge-base failures; the router imports only `query()`.
+- Phase 4 (`uis/backoffice`, `/knowledge`, "Knowledge assistant"):
+  - question box, example questions, distinct loading, failure and answer states;
+  - an empty or unreadable reply is an error;
+  - **dark mode for the whole backoffice**, chosen by the user over page-only: `globals.css` dark tokens plus Tailwind palette re-pointing, a new `--on-brand` token, `bg-white` -> `--surface`, all text pairs WCAG AA.
+  - Verified in Chrome (playwright-core from the scratchpad, API mocked) in light and dark: blank question blocked, loading, answer with sources, 503, empty answer. Reporting, incidents and login checked in dark mode.
+- Phase 5 tests:
+  - `tests/pipelines/test_rag.py` (22, with `retrieve` on in-memory Qdrant and a threshold-ignoring stub, and `query` with retrieval and the LLM mocked);
+  - `test_knowledge_base.py` (32), `test_rag_retrieval_eval.py` (12), `tests/test_knowledge_api.py` (10);
+  - Jest `knowledge.test.ts` (11).
+- Phase 5b: `data/eval/test-queries.json` (15 questions across the four documents, 2 about peaks, 4 out of scope) and `scripts/evaluate_rag_retrieval.py` (`npm run rag:eval`): Recall@3 on the ranking and with the threshold, plus the threshold evidence.
+- Phase 6: `docs/rag/rag-design.md` (flow, chunking, embedding practices, threshold method, prompt rules, API, UI, idempotency, eval, runbook, limitations).
+- The existing guard `test_pure_transforms_do_no_io` failed on `knowledge_base.py`. On the user's decision, `knowledge_base.py` is allow-listed as the one documented I/O module in `data/process/`; the guard still covers every other module.
+- Verification:
+  - backend 972 passed, 51 skipped (896 + 76 new);
+  - backoffice Jest 13 suites, 291 tests;
+  - `tsc` and ESLint clean;
+  - `ruff format`, `ruff check` (with the picked-up config and `--isolated`) and mypy on the new modules clean;
+  - both CLIs exit 2 with a clear message when no model is configured.
+
+Still missing / next goals:
+1. **The first real run**, now blocked only on **the 4Geeks model details** in `.env`: `EMBEDDING_MODEL`, `GENERATION_MODEL`, `LLM_BASE_URL`, `LLM_API_KEY`. Then run `npm run rag:setup` and `npm run rag:eval`.
+   - Done 2026-11-08: Docker Desktop is installed (engine 29.9.2, Compose v5.6.1). `docker compose up -d qdrant` started `qdrant/qdrant:v1.20.0`; the compose healthcheck reports healthy, the dashboard answers on `localhost:6333`, and `get_qdrant_client()` from `.venv` connects (server 1.20.0, no collections yet). Prep step 1 (Qdrant connectivity) is confirmed.
+   - The root `.env` currently fails Compose's parser (a stray character on its last line), so the full stack (`docker compose up`) cannot start until the developer fixes that line. Qdrant was started with `--env-file docker-compose.env.example`, without reading `.env`.
+2. Set `MIN_SCORE` (provisional 0.30) from the eval's threshold window. Record the model IDs, vector dimension, Recall@3 and threshold in `docs/rag/rag-design.md` (marked *Pending*), and commit `data/eval/rag/retrieval_eval.json`.
+3. Check real answers against the briefing constraints: Black Friday, international returns, storage discounts, carrier exceptions, and an out-of-scope question.
+4. Optional: Spanish questions in the eval set; `/knowledge` and `/reporting` in the telemetry section catalogue.
+5. The geography mismatch (KB documents: Los Angeles; `contexts/context.md`: Monterrey) is still open with the developer.
+6. Nothing is committed yet. Commit only on the developer's request, after the AGENTS.md pre-commit workflow.
+
 ## Update 2026-11-08 - Sales forecast: formal technical evaluation (fit diagnosis)
 
 Goals accomplished. This is the tech lead's ticket in `lead-instr.png`, worked through the five phases of `stages-todo.png`. The ticket asks whether the forecast is under-fitted, over-fitted or well fitted, how stable it is, and what the specific corrective action is. The report is `data/eval/evaluation_report.md`, summarised in `docs/SALES_FORECAST.md → Technical evaluation`.

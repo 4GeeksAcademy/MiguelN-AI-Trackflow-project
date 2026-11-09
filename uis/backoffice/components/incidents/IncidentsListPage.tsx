@@ -169,7 +169,7 @@ function IncidentsListContent() {
 
           <Link
             href="/incidents/new"
-            className="mt-6 inline-flex min-h-12 items-center rounded-xl bg-[color:var(--brand-primary)] px-6 py-3 text-base font-semibold text-white transition hover:bg-[color:var(--brand-secondary)]"
+            className="mt-6 inline-flex min-h-12 items-center rounded-xl bg-[color:var(--brand-primary)] px-6 py-3 text-base font-semibold text-[color:var(--on-brand)] transition hover:bg-[color:var(--brand-secondary)]"
           >
             Report an incident
           </Link>
@@ -264,7 +264,7 @@ function IncidentsListContent() {
               <button
                 type="button"
                 onClick={retry}
-                className="mt-3 inline-flex min-h-10 items-center rounded-xl border border-red-300 bg-white px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-100"
+                className="mt-3 inline-flex min-h-10 items-center rounded-xl border border-red-300 bg-[color:var(--surface)] px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-100"
               >
                 Try again
               </button>
@@ -294,7 +294,7 @@ function IncidentsListContent() {
                   <button
                     type="button"
                     onClick={clearFilters}
-                    className="mt-3 inline-flex min-h-10 items-center rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+                    className="mt-3 inline-flex min-h-10 items-center rounded-xl border border-slate-300 bg-[color:var(--surface)] px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
                   >
                     Clear filters
                   </button>
@@ -308,7 +308,7 @@ function IncidentsListContent() {
                   </p>
                   <Link
                     href="/incidents/new"
-                    className="mt-3 inline-flex min-h-10 items-center rounded-xl bg-[color:var(--brand-primary)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[color:var(--brand-secondary)]"
+                    className="mt-3 inline-flex min-h-10 items-center rounded-xl bg-[color:var(--brand-primary)] px-4 py-2 text-sm font-semibold text-[color:var(--on-brand)] transition hover:bg-[color:var(--brand-secondary)]"
                   >
                     Report the first incident
                   </Link>

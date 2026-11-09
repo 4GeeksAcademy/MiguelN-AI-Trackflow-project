@@ -30,4 +30,19 @@ PREFECT_API_URL=http://127.0.0.1:4200/api python data/pipelines/pipeline.py --se
 
 The database comes from `REPORTING_DATABASE_URL`, then the Prefect Secret block `trackflow-reporting-database-url`, then `DATABASE_URL`. Tests: `tests/pipelines/test_pipeline.py` (the KPI tasks, `python -m pytest tests/pipelines/test_pipeline.py`), `tests/pipelines/test_pipeline_flow.py` (the flows and subflows), `tests/test_weekly_rollup.py`, `test_collection_health.py`, `test_reporting_api.py`, and the opt-in `test_reporting_postgres.py` (`INVENTORY_TEST_DATABASE_URL`).
 
+### Knowledge assistant (RAG)
+
+Answers the commercial team's questions about TrackFlow's policies from the four documents in `docs/company-knowledge-base/` (`contexts/RAG-briefing.md`).
+
+- **Code:** `rag.py`. `query()` is the only entry point, and it is literally `generate_answer(question, retrieve(question))`:
+  - `retrieve` takes the top-k chunks from Qdrant's `trackflow_knowledge` with a score ≥ `MIN_SCORE`;
+  - `build_messages` is the prompt with the briefing's voice and business rules;
+  - `generate_answer` calls the generation model.
+- **Indexing:** `data/process/knowledge_base.py` (`setup()`, `npm run rag:setup`).
+- **API:** `POST /knowledge/query` in `services/knowledge/`.
+- **UI:** `/knowledge` in `uis/backoffice`.
+- **Eval:** `npm run rag:eval` (Recall@3 against `data/eval/test-queries.json`).
+- **Tests:** `python -m pytest tests/pipelines/test_rag.py` (plus `test_knowledge_base.py`, `test_rag_retrieval_eval.py`, `tests/test_knowledge_api.py`).
+- **Design:** [`docs/rag/rag-design.md`](../../docs/rag/rag-design.md).
+
 > _Spanish version: [README.es.md](./README.es.md)._

@@ -12,4 +12,12 @@ This folder contains **processed/intermediate data** and/or artifacts produced b
 
 Both are pure Pandas, with no I/O, clock or randomness, so the flow, the backfill and the tests share them. See `data/pipelines/PIPELINE_DESIGN.md` 2.7 and 3.7.
 
+- `knowledge_base.py`: the knowledge assistant's indexing side (Milestone 7, `contexts/RAG-briefing.md`). It has one function per step:
+  - `load_source_documents`: the four briefing documents in `docs/company-knowledge-base/`;
+  - `split_into_chunks`: paragraph or list blocks, never cut mid-rule;
+  - `embed`: the dedicated embeddings model, the same for chunks and questions;
+  - `setup`: an idempotent upsert into Qdrant's `trackflow_knowledge`.
+
+  Unlike the two modules above, it does I/O. Run it with `npm run rag:setup`; add `-- --dry-run` to print the chunks only. Retrieval and generation are in `data/pipelines/rag.py`. See `docs/rag/rag-design.md`.
+
 > _Spanish version: [README.es.md](./README.es.md)._

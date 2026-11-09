@@ -388,11 +388,19 @@ def test_the_data_layer_never_imports_services():
     assert offenders == []
 
 
+# The one documented exception: the RAG ticket (Milestone 7, Phase 1) places
+# indexing in data/process/, and indexing reads the corpus and writes to Qdrant.
+# Every other module there, present or future, must stay pure.
+IO_MODULES_IN_DATA_PROCESS = {"knowledge_base.py"}
+
+
 def test_pure_transforms_do_no_io():
     forbidden = ("sqlalchemy", "prefect", "psycopg2", "requests", "httpx", "os", "pathlib")
     offenders = [
         (path.name, module)
         for path, module in imported_modules(ROOT / "data" / "process")
-        if module.split(".")[0] in forbidden
+        if module.split(".")[0] in forbidden and path.name not in IO_MODULES_IN_DATA_PROCESS
     ]
     assert offenders == []
+    # An exception for a module that no longer exists must not linger.
+    assert all((ROOT / "data" / "process" / name).is_file() for name in IO_MODULES_IN_DATA_PROCESS)

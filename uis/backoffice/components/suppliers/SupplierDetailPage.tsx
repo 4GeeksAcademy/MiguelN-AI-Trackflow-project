@@ -81,7 +81,7 @@ export default function SupplierDetailPage({ supplierId }: SupplierDetailPagePro
               <button
                 type="button"
                 onClick={retry}
-                className="inline-flex min-h-10 items-center rounded-xl border border-red-300 bg-white px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-100"
+                className="inline-flex min-h-10 items-center rounded-xl border border-red-300 bg-[color:var(--surface)] px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-100"
               >
                 Try again
               </button>

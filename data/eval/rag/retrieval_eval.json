@@ -1,0 +1,579 @@
+{
+  "embedding_model": "downtown-miami/openrouter/perplexity/pplx-embed-v1-0.6b",
+  "collection": "trackflow_knowledge",
+  "k": 3,
+  "min_score": 0.3,
+  "target_recall_at_k": 0.8,
+  "questions": 20,
+  "recall_at_k_ranking": 1.0,
+  "recall_at_k_with_threshold": 1.0,
+  "misses": [],
+  "threshold": {
+    "lowest_correct_score": 0.3285,
+    "highest_out_of_scope_score": 0.4489,
+    "separable": false,
+    "policy": "recall-first",
+    "suggested": 0.3
+  },
+  "queries": [
+    {
+      "id": "sla-01",
+      "question": "What delivery SLA does TrackFlow commit to in the standard contract?",
+      "tags": [],
+      "expected_source_document": "sla-delivery",
+      "rank": 3,
+      "correct_score": 0.6291066,
+      "top": [
+        {
+          "source_document": "sla-delivery",
+          "chunk_index": 2,
+          "score": 0.6764
+        },
+        {
+          "source_document": "sla-delivery",
+          "chunk_index": 0,
+          "score": 0.6542
+        },
+        {
+          "source_document": "sla-delivery",
+          "chunk_index": 1,
+          "score": 0.6291
+        }
+      ]
+    },
+    {
+      "id": "sla-02",
+      "question": "What compensation does a client get if on-time deliveries fall below the SLA?",
+      "tags": [],
+      "expected_source_document": "sla-delivery",
+      "rank": 1,
+      "correct_score": 0.7119419,
+      "top": [
+        {
+          "source_document": "sla-delivery",
+          "chunk_index": 1,
+          "score": 0.7119
+        },
+        {
+          "source_document": "sla-delivery",
+          "chunk_index": 2,
+          "score": 0.4438
+        },
+        {
+          "source_document": "sla-delivery",
+          "chunk_index": 0,
+          "score": 0.3447
+        }
+      ]
+    },
+    {
+      "id": "sla-03",
+      "question": "How long does express shipping take, and where is it available?",
+      "tags": [],
+      "expected_source_document": "sla-delivery",
+      "rank": 1,
+      "correct_score": 0.5164742,
+      "top": [
+        {
+          "source_document": "sla-delivery",
+          "chunk_index": 0,
+          "score": 0.5165
+        },
+        {
+          "source_document": "carrier-coverage",
+          "chunk_index": 0,
+          "score": 0.3274
+        },
+        {
+          "source_document": "sla-delivery",
+          "chunk_index": 2,
+          "score": 0.2604
+        }
+      ]
+    },
+    {
+      "id": "sla-04",
+      "question": "Can we guarantee our client's delivery times during Black Friday?",
+      "tags": [
+        "peak"
+      ],
+      "expected_source_document": "sla-delivery",
+      "rank": 1,
+      "correct_score": 0.6062833,
+      "top": [
+        {
+          "source_document": "sla-delivery",
+          "chunk_index": 2,
+          "score": 0.6063
+        },
+        {
+          "source_document": "sla-delivery",
+          "chunk_index": 1,
+          "score": 0.3596
+        },
+        {
+          "source_document": "sla-delivery",
+          "chunk_index": 0,
+          "score": 0.3466
+        }
+      ]
+    },
+    {
+      "id": "sla-05",
+      "question": "How much longer can deliveries take during the January Sales in Spain?",
+      "tags": [
+        "peak"
+      ],
+      "expected_source_document": "sla-delivery",
+      "rank": 2,
+      "correct_score": 0.55149174,
+      "top": [
+        {
+          "source_document": "sla-delivery",
+          "chunk_index": 0,
+          "score": 0.553
+        },
+        {
+          "source_document": "sla-delivery",
+          "chunk_index": 2,
+          "score": 0.5515
+        },
+        {
+          "source_document": "carrier-coverage",
+          "chunk_index": 1,
+          "score": 0.3595
+        }
+      ]
+    },
+    {
+      "id": "ret-01",
+      "question": "What's the standard return window?",
+      "tags": [],
+      "expected_source_document": "returns-policy",
+      "rank": 1,
+      "correct_score": 0.75373924,
+      "top": [
+        {
+          "source_document": "returns-policy",
+          "chunk_index": 1,
+          "score": 0.7537
+        },
+        {
+          "source_document": "returns-policy",
+          "chunk_index": 0,
+          "score": 0.3662
+        },
+        {
+          "source_document": "returns-policy",
+          "chunk_index": 2,
+          "score": 0.3125
+        }
+      ]
+    },
+    {
+      "id": "ret-02",
+      "question": "Who pays the shipping cost when an end customer returns a product?",
+      "tags": [],
+      "expected_source_document": "returns-policy",
+      "rank": 1,
+      "correct_score": 0.6304681,
+      "top": [
+        {
+          "source_document": "returns-policy",
+          "chunk_index": 2,
+          "score": 0.6305
+        },
+        {
+          "source_document": "returns-policy",
+          "chunk_index": 0,
+          "score": 0.4457
+        },
+        {
+          "source_document": "returns-policy",
+          "chunk_index": 1,
+          "score": 0.3925
+        }
+      ]
+    },
+    {
+      "id": "ret-03",
+      "question": "A customer bought an item in the United States and wants to return it in Spain. Is that handled automatically?",
+      "tags": [],
+      "expected_source_document": "returns-policy",
+      "rank": 1,
+      "correct_score": 0.60638213,
+      "top": [
+        {
+          "source_document": "returns-policy",
+          "chunk_index": 3,
+          "score": 0.6064
+        },
+        {
+          "source_document": "returns-policy",
+          "chunk_index": 0,
+          "score": 0.4046
+        },
+        {
+          "source_document": "sla-delivery",
+          "chunk_index": 0,
+          "score": 0.3393
+        }
+      ]
+    },
+    {
+      "id": "ret-04",
+      "question": "How does the returns process work, from the customer's request to the warehouse inspection?",
+      "tags": [],
+      "expected_source_document": "returns-policy",
+      "rank": 1,
+      "correct_score": 0.6473649,
+      "top": [
+        {
+          "source_document": "returns-policy",
+          "chunk_index": 0,
+          "score": 0.6474
+        },
+        {
+          "source_document": "returns-policy",
+          "chunk_index": 1,
+          "score": 0.452
+        },
+        {
+          "source_document": "returns-policy",
+          "chunk_index": 3,
+          "score": 0.4418
+        }
+      ]
+    },
+    {
+      "id": "car-01",
+      "question": "Which carrier best covers rural Aragón?",
+      "tags": [],
+      "expected_source_document": "carrier-coverage",
+      "rank": 1,
+      "correct_score": 0.621094,
+      "top": [
+        {
+          "source_document": "carrier-coverage",
+          "chunk_index": 1,
+          "score": 0.6211
+        },
+        {
+          "source_document": "carrier-coverage",
+          "chunk_index": 0,
+          "score": 0.3007
+        },
+        {
+          "source_document": "carrier-coverage",
+          "chunk_index": 2,
+          "score": 0.2522
+        }
+      ]
+    },
+    {
+      "id": "car-02",
+      "question": "Which carrier do we use for heavy packages in the United States?",
+      "tags": [],
+      "expected_source_document": "carrier-coverage",
+      "rank": 1,
+      "correct_score": 0.52892184,
+      "top": [
+        {
+          "source_document": "carrier-coverage",
+          "chunk_index": 0,
+          "score": 0.5289
+        },
+        {
+          "source_document": "carrier-coverage",
+          "chunk_index": 1,
+          "score": 0.3539
+        },
+        {
+          "source_document": "carrier-coverage",
+          "chunk_index": 2,
+          "score": 0.3486
+        }
+      ]
+    },
+    {
+      "id": "car-03",
+      "question": "Can an account manager pick a different carrier for a client's shipment?",
+      "tags": [],
+      "expected_source_document": "carrier-coverage",
+      "rank": 1,
+      "correct_score": 0.6253758,
+      "top": [
+        {
+          "source_document": "carrier-coverage",
+          "chunk_index": 2,
+          "score": 0.6254
+        },
+        {
+          "source_document": "storage-pricing",
+          "chunk_index": 2,
+          "score": 0.3809
+        },
+        {
+          "source_document": "carrier-coverage",
+          "chunk_index": 0,
+          "score": 0.343
+        }
+      ]
+    },
+    {
+      "id": "sto-01",
+      "question": "How are storage fees calculated?",
+      "tags": [],
+      "expected_source_document": "storage-pricing",
+      "rank": 1,
+      "correct_score": 0.5466105,
+      "top": [
+        {
+          "source_document": "storage-pricing",
+          "chunk_index": 0,
+          "score": 0.5466
+        },
+        {
+          "source_document": "storage-pricing",
+          "chunk_index": 2,
+          "score": 0.4331
+        },
+        {
+          "source_document": "storage-pricing",
+          "chunk_index": 1,
+          "score": 0.3935
+        }
+      ]
+    },
+    {
+      "id": "sto-02",
+      "question": "Can we offer a storage discount to a client that stores 60 cubic meters a month?",
+      "tags": [],
+      "expected_source_document": "storage-pricing",
+      "rank": 1,
+      "correct_score": 0.7491385,
+      "top": [
+        {
+          "source_document": "storage-pricing",
+          "chunk_index": 2,
+          "score": 0.7491
+        },
+        {
+          "source_document": "storage-pricing",
+          "chunk_index": 0,
+          "score": 0.5024
+        },
+        {
+          "source_document": "storage-pricing",
+          "chunk_index": 1,
+          "score": 0.4185
+        }
+      ]
+    },
+    {
+      "id": "sto-03",
+      "question": "Can a client get a report of how long their inventory has been sitting in the warehouse?",
+      "tags": [],
+      "expected_source_document": "storage-pricing",
+      "rank": 1,
+      "correct_score": 0.60118425,
+      "top": [
+        {
+          "source_document": "storage-pricing",
+          "chunk_index": 1,
+          "score": 0.6012
+        },
+        {
+          "source_document": "storage-pricing",
+          "chunk_index": 0,
+          "score": 0.3668
+        },
+        {
+          "source_document": "returns-policy",
+          "chunk_index": 0,
+          "score": 0.2914
+        }
+      ]
+    },
+    {
+      "id": "sla-06",
+      "question": "What delivery times do we commit to for standard shipments?",
+      "tags": [
+        "paraphrase"
+      ],
+      "expected_source_document": "sla-delivery",
+      "rank": 2,
+      "correct_score": 0.44435334,
+      "top": [
+        {
+          "source_document": "sla-delivery",
+          "chunk_index": 1,
+          "score": 0.4816
+        },
+        {
+          "source_document": "sla-delivery",
+          "chunk_index": 0,
+          "score": 0.4444
+        },
+        {
+          "source_document": "returns-policy",
+          "chunk_index": 1,
+          "score": 0.4031
+        }
+      ]
+    },
+    {
+      "id": "sla-07",
+      "question": "Can I promise a prospect next-day delivery during Christmas?",
+      "tags": [
+        "peak",
+        "paraphrase"
+      ],
+      "expected_source_document": "sla-delivery",
+      "rank": 1,
+      "correct_score": 0.48436642,
+      "top": [
+        {
+          "source_document": "sla-delivery",
+          "chunk_index": 2,
+          "score": 0.4844
+        },
+        {
+          "source_document": "sla-delivery",
+          "chunk_index": 0,
+          "score": 0.2662
+        },
+        {
+          "source_document": "sla-delivery",
+          "chunk_index": 1,
+          "score": 0.2646
+        }
+      ]
+    },
+    {
+      "id": "ret-05",
+      "question": "How long does a customer have to send a product back?",
+      "tags": [
+        "paraphrase"
+      ],
+      "expected_source_document": "returns-policy",
+      "rank": 1,
+      "correct_score": 0.6227114,
+      "top": [
+        {
+          "source_document": "returns-policy",
+          "chunk_index": 1,
+          "score": 0.6227
+        },
+        {
+          "source_document": "returns-policy",
+          "chunk_index": 0,
+          "score": 0.415
+        },
+        {
+          "source_document": "returns-policy",
+          "chunk_index": 2,
+          "score": 0.3973
+        }
+      ]
+    },
+    {
+      "id": "car-04",
+      "question": "My client needs us to use a carrier we don't normally work with for one route. Can we do that?",
+      "tags": [
+        "paraphrase"
+      ],
+      "expected_source_document": "carrier-coverage",
+      "rank": 1,
+      "correct_score": 0.32851365,
+      "top": [
+        {
+          "source_document": "carrier-coverage",
+          "chunk_index": 2,
+          "score": 0.3285
+        },
+        {
+          "source_document": "carrier-coverage",
+          "chunk_index": 0,
+          "score": 0.3036
+        },
+        {
+          "source_document": "carrier-coverage",
+          "chunk_index": 1,
+          "score": 0.281
+        }
+      ]
+    },
+    {
+      "id": "sto-04",
+      "question": "Who approves a preferential storage rate?",
+      "tags": [
+        "paraphrase"
+      ],
+      "expected_source_document": "storage-pricing",
+      "rank": 1,
+      "correct_score": 0.54171145,
+      "top": [
+        {
+          "source_document": "storage-pricing",
+          "chunk_index": 2,
+          "score": 0.5417
+        },
+        {
+          "source_document": "storage-pricing",
+          "chunk_index": 1,
+          "score": 0.3808
+        },
+        {
+          "source_document": "storage-pricing",
+          "chunk_index": 0,
+          "score": 0.337
+        }
+      ]
+    }
+  ],
+  "out_of_scope": [
+    {
+      "id": "oos-01",
+      "question": "What is the parental leave policy for TrackFlow employees?",
+      "top_score": 0.4489,
+      "top_source_document": "sla-delivery",
+      "passes_threshold": true
+    },
+    {
+      "id": "oos-02",
+      "question": "What will the weather be like in Zaragoza next week?",
+      "top_score": 0.3461,
+      "top_source_document": "carrier-coverage",
+      "passes_threshold": true
+    },
+    {
+      "id": "oos-03",
+      "question": "Who won the last football World Cup?",
+      "top_score": 0.0931,
+      "top_source_document": "carrier-coverage",
+      "passes_threshold": false
+    },
+    {
+      "id": "oos-04",
+      "question": "How do I reset my password in the backoffice?",
+      "top_score": 0.2007,
+      "top_source_document": "returns-policy",
+      "passes_threshold": false
+    },
+    {
+      "id": "oos-05",
+      "question": "What is TrackFlow's revenue this year?",
+      "top_score": 0.3845,
+      "top_source_document": "sla-delivery",
+      "passes_threshold": true
+    },
+    {
+      "id": "oos-06",
+      "question": "Do we offer refrigerated storage for perishable goods?",
+      "top_score": 0.3186,
+      "top_source_document": "storage-pricing",
+      "passes_threshold": true
+    }
+  ]
+}
