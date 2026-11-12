@@ -1,14 +1,28 @@
 """The agent graph: node contracts, transitions, compilation and its checks.
 
     START -> receive_question
-               --route_question--> END                                  (empty question)
-               --route_question--> retrieve
-                                     --route_context--> generate_answer -> END        (context)
-                                     --route_context--> answer_no_information -> END  (none)
+               --route_question--> END                                    (empty question)
+               --route_question--> plan_sources
+    plan_sources  --route_after_plan-->     lookup_ticket | lookup_stock | retrieve
+    lookup_ticket --route_after_ticket-->   lookup_stock | retrieve | generate_answer
+                                            | answer_lookup_failed
+    lookup_stock  --route_after_stock-->    retrieve | generate_answer | answer_lookup_failed
+    retrieve      --route_after_retrieve--> generate_answer | answer_lookup_failed
+                                            | answer_no_information
+    generate_answer, answer_lookup_failed, answer_no_information -> END
 
-Every transition after `receive_question` and `retrieve` is a decision with an
-explicit `path_map`, and every decision is written to the run's stream with
-its reason, so the trace shows why each step ran, not only that it did.
+`plan_sources` asks the model which sources the question needs; the planned
+sources then run in `SOURCE_ORDER` (ticket, stock, knowledge base). After the
+last one, the evidence decides the answer:
+
+- something to answer from (chunks, or a lookup that succeeded) -> generate it,
+  with the fixed notice of any lookup that failed put in front;
+- nothing, because a lookup failed -> `answer_lookup_failed`, a fixed answer;
+- nothing at all -> `answer_no_information`, a fixed answer.
+
+Every transition after a node is a decision with an explicit `path_map`, and
+every decision is written to the run's stream with its reason, so the trace
+shows why each step ran, not only that it did.
 
 `build_agent_graph()` compiles the graph and refuses a structurally wrong one
 before any run (`AgentGraphBuildError`). LangGraph's own `compile()` already
@@ -25,7 +39,7 @@ from collections import defaultdict, deque
 from collections.abc import Callable, Hashable, Iterable, Mapping
 from dataclasses import dataclass
 from functools import lru_cache
-from typing import Any, Final, Protocol
+from typing import Any, Final, Protocol, cast
 
 from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.checkpoint.sqlite import SqliteSaver
@@ -34,19 +48,37 @@ from langgraph.graph import END, START, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 
 from data.pipelines import rag
-from services.agent import nodes
+from services.agent import nodes, planner
 from services.agent.config import get_agent_settings
 from services.agent.errors import AgentContractError, AgentGraphBuildError
 from services.agent.state import (
+    ANSWER_LOOKUP_FAILED,
     ANSWER_NO_INFORMATION,
     EMPTY_QUESTION,
     GENERATE_ANSWER,
+    INCIDENT_MANAGER,
+    INCIDENTS_UNAVAILABLE_ANSWER,
+    INVENTORY_MANAGER,
+    KNOWLEDGE_BASE,
+    LOOKUP_FIELDS,
+    LOOKUP_STOCK,
+    LOOKUP_TICKET,
     NO_INFORMATION_ANSWER,
+    NODE_OF_SOURCE,
+    PLAN_SOURCES,
     RECEIVE_QUESTION,
+    RESULT_FIELD_OF_SOURCE,
     RETRIEVE,
+    SOURCE_ORDER,
     STATE_KEYS,
+    STOCK_NOT_FOUND_ANSWER,
+    STOCK_UNAVAILABLE_ANSWER,
+    TICKET_NOT_FOUND_ANSWER,
+    TICKET_UNAVAILABLE_ANSWER,
     AgentState,
+    lookup_succeeded,
 )
+from services.agent.tools.contracts import MAX_PRODUCTS, MAX_TICKETS
 
 
 class NodeAction(Protocol):
@@ -80,13 +112,41 @@ class ConditionalEdge:
 # --- Routing -----------------------------------------------------------------------
 
 ROUTE_QUESTION: Final = "route_question"
-ROUTE_CONTEXT: Final = "route_context"
+ROUTE_AFTER_PLAN: Final = "route_after_plan"
+ROUTE_AFTER_TICKET: Final = "route_after_ticket"
+ROUTE_AFTER_STOCK: Final = "route_after_stock"
+ROUTE_AFTER_RETRIEVE: Final = "route_after_retrieve"
 
-QUESTION_PATHS: Final[Mapping[str, str]] = {"retrieve": RETRIEVE, "rejected": END}
-CONTEXT_PATHS: Final[Mapping[str, str]] = {
-    "generate": GENERATE_ANSWER,
-    "no_information": ANSWER_NO_INFORMATION,
-}
+# Decisions: a source's name sends the run to the node that consults it; the
+# other three are the ways a run can be answered.
+GENERATE: Final = "generate"
+LOOKUP_FAILED: Final = "lookup_failed"
+NO_INFORMATION: Final = "no_information"
+
+
+def _sources_after(source: str | None) -> tuple[str, ...]:
+    return SOURCE_ORDER if source is None else SOURCE_ORDER[SOURCE_ORDER.index(source) + 1 :]
+
+
+def _paths_after(source: str | None) -> dict[str, str]:
+    """Every destination possible once `source` (None: the plan) has run."""
+    paths = {later: NODE_OF_SOURCE[later] for later in _sources_after(source)}
+    if source is not None:
+        # The answer decisions a run can reach from here: no_information needs
+        # the knowledge base to have been searched, and a lookup to have failed
+        # needs a lookup to have run.
+        paths[GENERATE] = GENERATE_ANSWER
+        paths[LOOKUP_FAILED] = ANSWER_LOOKUP_FAILED
+        if source == KNOWLEDGE_BASE:
+            paths[NO_INFORMATION] = ANSWER_NO_INFORMATION
+    return paths
+
+
+QUESTION_PATHS: Final[Mapping[str, str]] = {"plan": PLAN_SOURCES, "rejected": END}
+PLAN_PATHS: Final[Mapping[str, str]] = _paths_after(None)
+TICKET_PATHS: Final[Mapping[str, str]] = _paths_after(INCIDENT_MANAGER)
+STOCK_PATHS: Final[Mapping[str, str]] = _paths_after(INVENTORY_MANAGER)
+RETRIEVE_PATHS: Final[Mapping[str, str]] = _paths_after(KNOWLEDGE_BASE)
 
 
 def _decide(edge: str, paths: Mapping[str, str], decision: str, reason: str) -> str:
@@ -100,7 +160,7 @@ def _decide(edge: str, paths: Mapping[str, str], decision: str, reason: str) -> 
 
 
 def route_question(state: AgentState) -> str:
-    """An empty question ends the run; anything else goes to retrieval."""
+    """An empty question ends the run; anything else goes to source planning."""
     if state.get("error"):
         return _decide(
             ROUTE_QUESTION,
@@ -108,26 +168,92 @@ def route_question(state: AgentState) -> str:
             "rejected",
             f"{RECEIVE_QUESTION} refused the question: {state['error']}",
         )
-    return _decide(ROUTE_QUESTION, QUESTION_PATHS, "retrieve", "the question is not empty")
+    return _decide(ROUTE_QUESTION, QUESTION_PATHS, "plan", "the question is not empty")
 
 
-def route_context(state: AgentState) -> str:
-    """Generate only from retrieved context; with none, answer honestly instead."""
-    hits = len(state.get("context") or [])
-    threshold = f"{rag.MIN_SCORE:.2f}"
-    if hits:
+def _planned_sources(state: AgentState) -> list[str]:
+    steps = (state.get("plan") or {}).get("steps") or []
+    planned = {step.get("source") for step in steps}
+    return [source for source in SOURCE_ORDER if source in planned]
+
+
+def _describe_step(step: dict[str, Any]) -> str:
+    arguments = ", ".join(f"{key}={value!r}" for key, value in step.get("arguments", {}).items())
+    return f"{step.get('source')} ({step.get('tool')}{f': {arguments}' if arguments else ''})"
+
+
+def route_after_plan(state: AgentState) -> str:
+    """Start with the first planned source; the plan always has at least one."""
+    plan = state.get("plan") or {}
+    planned = _planned_sources(state)
+    if not planned:
         return _decide(
-            ROUTE_CONTEXT,
-            CONTEXT_PATHS,
-            "generate",
-            f"{hits} chunk(s) scored at least {threshold}",
+            ROUTE_AFTER_PLAN, PLAN_PATHS, KNOWLEDGE_BASE, "the plan is empty: knowledge base"
         )
-    return _decide(
-        ROUTE_CONTEXT,
-        CONTEXT_PATHS,
-        "no_information",
-        f"no chunk scored at least {threshold}",
-    )
+    chosen = " then ".join(_describe_step(step) for step in plan.get("steps") or [])
+    if plan.get("decided_by") == "fallback":
+        why = "; ".join(plan.get("ignored") or []) or "no reason recorded"
+        reason = f"planner fell back to {chosen}: {why}"
+    else:
+        reason = f"planner chose {chosen}"
+        if plan.get("ignored"):
+            reason += f" (ignored: {'; '.join(plan['ignored'])})"
+    return _decide(ROUTE_AFTER_PLAN, PLAN_PATHS, planned[0], reason)
+
+
+def _describe_lookup(source: str, result: dict[str, Any]) -> str:
+    outcome = result.get("outcome")
+    if outcome == "ok":
+        found = result.get("total", 0)
+        unit = "ticket(s)" if source == INCIDENT_MANAGER else "product(s)"
+        return f"{source} ok ({found} {unit})"
+    failure = result.get("failure")
+    return f"{source} {outcome}{f' ({failure})' if failure else ''}"
+
+
+def answer_decision(state: AgentState) -> tuple[str, str]:
+    """(decision, reason) once every planned source has run."""
+    chunks = len(state.get("context") or [])
+    lookups = [
+        (source, cast("dict[str, Any] | None", state.get(field))) for source, field in LOOKUP_FIELDS
+    ]
+    ran = [(source, result) for source, result in lookups if result is not None]
+    found = [source for source, result in ran if lookup_succeeded(result)]
+    failed = [source for source, result in ran if not lookup_succeeded(result)]
+
+    parts = [_describe_lookup(source, result) for source, result in ran]
+    if "context" in state:
+        parts.append(f"{chunks} chunk(s) scored at least {rag.MIN_SCORE:.2f}")
+    summary = "; ".join(parts)
+
+    if chunks or found:
+        notice = f"; the failed lookup of {', '.join(failed)} is stated as such" if failed else ""
+        return GENERATE, f"evidence to answer from: {summary}{notice}"
+    if failed:
+        return LOOKUP_FAILED, f"no evidence and a lookup failed: {summary}"
+    return NO_INFORMATION, f"no evidence: {summary}"
+
+
+def _route_after(edge: str, source: str, paths: Mapping[str, str]) -> Router:
+    def route(state: AgentState) -> str:
+        pending = [
+            later
+            for later in _sources_after(source)
+            if later in _planned_sources(state) and RESULT_FIELD_OF_SOURCE[later] not in state
+        ]
+        if pending:
+            return _decide(edge, paths, pending[0], f"the plan still needs {', '.join(pending)}")
+        decision, reason = answer_decision(state)
+        return _decide(edge, paths, decision, reason)
+
+    route.__name__ = edge
+    route.__doc__ = f"After {NODE_OF_SOURCE[source]}: the next planned source, or the answer."
+    return route
+
+
+route_after_ticket = _route_after(ROUTE_AFTER_TICKET, INCIDENT_MANAGER, TICKET_PATHS)
+route_after_stock = _route_after(ROUTE_AFTER_STOCK, INVENTORY_MANAGER, STOCK_PATHS)
+route_after_retrieve = _route_after(ROUTE_AFTER_RETRIEVE, KNOWLEDGE_BASE, RETRIEVE_PATHS)
 
 
 # --- Declarations ------------------------------------------------------------------
@@ -140,6 +266,24 @@ NODES: Final[tuple[NodeSpec, ...]] = (
         writes=frozenset({"question", "error"}),
     ),
     NodeSpec(
+        PLAN_SOURCES,
+        nodes.plan_sources,
+        reads=frozenset({"question"}),
+        writes=frozenset({"plan"}),
+    ),
+    NodeSpec(
+        LOOKUP_TICKET,
+        nodes.lookup_ticket,
+        reads=frozenset({"plan"}),
+        writes=frozenset({"ticket_lookup"}),
+    ),
+    NodeSpec(
+        LOOKUP_STOCK,
+        nodes.lookup_stock,
+        reads=frozenset({"plan"}),
+        writes=frozenset({"stock_lookup"}),
+    ),
+    NodeSpec(
         RETRIEVE,
         nodes.retrieve,
         reads=frozenset({"question"}),
@@ -148,7 +292,13 @@ NODES: Final[tuple[NodeSpec, ...]] = (
     NodeSpec(
         GENERATE_ANSWER,
         nodes.generate_answer,
-        reads=frozenset({"question", "context"}),
+        reads=frozenset({"question", "context", "ticket_lookup", "stock_lookup"}),
+        writes=frozenset({"answer"}),
+    ),
+    NodeSpec(
+        ANSWER_LOOKUP_FAILED,
+        nodes.answer_lookup_failed,
+        reads=frozenset({"ticket_lookup", "stock_lookup"}),
         writes=frozenset({"answer"}),
     ),
     NodeSpec(
@@ -162,12 +312,16 @@ NODES: Final[tuple[NodeSpec, ...]] = (
 EDGES: Final[tuple[tuple[str, str], ...]] = (
     (START, RECEIVE_QUESTION),
     (GENERATE_ANSWER, END),
+    (ANSWER_LOOKUP_FAILED, END),
     (ANSWER_NO_INFORMATION, END),
 )
 
 CONDITIONAL_EDGES: Final[tuple[ConditionalEdge, ...]] = (
     ConditionalEdge(RECEIVE_QUESTION, route_question, QUESTION_PATHS),
-    ConditionalEdge(RETRIEVE, route_context, CONTEXT_PATHS),
+    ConditionalEdge(PLAN_SOURCES, route_after_plan, PLAN_PATHS),
+    ConditionalEdge(LOOKUP_TICKET, route_after_ticket, TICKET_PATHS),
+    ConditionalEdge(LOOKUP_STOCK, route_after_stock, STOCK_PATHS),
+    ConditionalEdge(RETRIEVE, route_after_retrieve, RETRIEVE_PATHS),
 )
 
 # What each node reads: the run trace stores only these fields as a node's input.
@@ -294,7 +448,10 @@ def graph_fingerprint() -> str:
     """A short hash of everything that decides what a run does.
 
     Stored on every run and in the recorded eval traces, so evals can refuse
-    traces recorded by a different graph, prompt or threshold.
+    traces recorded by a different graph, prompt, threshold, tool schema or
+    fallback text. Service URLs, credentials and the tool timeout are
+    deployment settings and stay out of it; the recorder writes the timeout
+    into the recording instead.
     """
     payload = {
         "nodes": [
@@ -318,6 +475,20 @@ def graph_fingerprint() -> str:
         "temperature": rag.GENERATION_TEMPERATURE,
         "empty_question": EMPTY_QUESTION,
         "no_information_answer": NO_INFORMATION_ANSWER,
+        "planner": {
+            "prompt": planner.PLANNER_PROMPT,
+            "temperature": planner.PLANNER_TEMPERATURE,
+            "tools": planner.tool_definitions(),
+        },
+        "source_order": list(SOURCE_ORDER),
+        "tools": {"max_tickets": MAX_TICKETS, "max_products": MAX_PRODUCTS},
+        "fallback_answers": [
+            TICKET_NOT_FOUND_ANSWER,
+            TICKET_UNAVAILABLE_ANSWER,
+            INCIDENTS_UNAVAILABLE_ANSWER,
+            STOCK_NOT_FOUND_ANSWER,
+            STOCK_UNAVAILABLE_ANSWER,
+        ],
     }
     digest = hashlib.sha256(json.dumps(payload, sort_keys=True).encode("utf-8"))
     return digest.hexdigest()[:16]

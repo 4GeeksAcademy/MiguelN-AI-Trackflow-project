@@ -1,8 +1,9 @@
 """`POST /agent/query` and `GET /agent/runs/{run_id}`: the graph over HTTP.
 
 Most tests run the real compiled graph inside the app (built by the lifespan,
-checkpointed in the per-test store) with `rag.retrieve` / `rag.generate_answer`
-faked, so a status code is checked against what the graph actually decided.
+checkpointed in the per-test store) with `rag.retrieve` / `rag.generate_answer`,
+the planner and the tools faked, so a status code is checked against what the
+graph actually decided.
 """
 
 import uuid
@@ -12,18 +13,25 @@ from typing import Any
 import pytest
 from fastapi.testclient import TestClient
 
-from data.pipelines import rag
 from data.process.knowledge_base import KnowledgeBaseError
 from services.agent import graph as agent_graph
 from services.agent import nodes, runner
 from services.agent.errors import AgentGraphBuildError
 from services.agent.graph import NodeSpec
-from services.agent.state import EMPTY_QUESTION, NO_INFORMATION_ANSWER
+from services.agent.state import EMPTY_QUESTION, NO_INFORMATION_ANSWER, TICKET_UNAVAILABLE_ANSWER
 from services.agent.tracing import get_trace_store
 from services.core import security
 from services.knowledge.models import MAX_QUESTION_LENGTH
 from services.main import app
-from tests.pipelines.test_agent_graph import ANSWER, CHUNK, FakeRag
+from tests.pipelines.test_agent_graph import (
+    ANSWER,
+    CHUNK,
+    FakeRag,
+    install_fakes,
+    plan,
+    step,
+    ticket_result,
+)
 from tests.test_knowledge_api import code_identifiers
 
 ROUTER_SOURCE = (Path(__file__).resolve().parents[1] / "services/agent/router.py").read_text()
@@ -47,15 +55,7 @@ def api(client, monkeypatch):
 
 @pytest.fixture
 def fake_rag(monkeypatch):
-    fake = FakeRag()
-    monkeypatch.setattr(rag, "retrieve", fake.retrieve)
-    monkeypatch.setattr(rag, "generate_answer", fake.generate_answer)
-
-    def monolithic_query(question: str) -> str:
-        raise AssertionError("The agent must never call rag.query()")
-
-    monkeypatch.setattr(rag, "query", monolithic_query)
-    return fake
+    return install_fakes(monkeypatch, FakeRag())
 
 
 def ask(client: TestClient, headers: dict[str, str], body: Any) -> Any:
@@ -128,8 +128,39 @@ def test_router_holds_no_rag_or_graph_logic():
         "get_agent_graph",
         "StateGraph",
         "embed",
+        "planner",
+        "choose_sources",
+        "lookup_ticket",
+        "lookup_stock",
+        "httpx",
+        "incidents",
+        "inventory",
     }
     assert not identifiers & forbidden
+
+
+def test_a_ticket_question_is_answered_from_the_live_lookup(api, fake_rag):
+    client, headers = api
+    fake_rag.plan = plan(step("incident_manager", reference="12"))
+
+    response = ask(client, headers, {"question": "What's the status of ticket 12?"})
+
+    assert response.status_code == 200
+    assert fake_rag.retrieve_calls == []
+    trace = client.get(f"/agent/runs/{response.json()['run_id']}", headers=headers).json()
+    assert trace["sources"] == ["incident_manager"]
+
+
+def test_an_incident_manager_outage_is_a_200_with_the_honest_answer(api, fake_rag):
+    client, headers = api
+    fake_rag.plan = plan(step("incident_manager", reference="12"))
+    fake_rag.ticket = ticket_result("unavailable", failure="timeout")
+
+    response = ask(client, headers, {"question": "What's the status of ticket 12?"})
+
+    assert response.status_code == 200, "a failed tool is a recovery path, not an error"
+    assert response.json()["answer"] == TICKET_UNAVAILABLE_ANSWER.format(reference="TRF-000012")
+    assert fake_rag.generate_calls == []
 
 
 @pytest.mark.parametrize("question", ["", "   ", "\n\t"])
@@ -212,15 +243,18 @@ def test_the_trace_of_a_run_is_readable_by_its_owner(api, fake_rag):
     assert trace["status"] == "completed"
     assert trace["outcome"] == "answered"
     assert "user_id" not in trace
+    assert trace["sources"] == ["knowledge_base"]
     assert [(e["kind"], e["name"]) for e in trace["events"]] == [
         ("node", "receive_question"),
         ("edge", "route_question"),
+        ("node", "plan_sources"),
+        ("edge", "route_after_plan"),
         ("node", "retrieve"),
-        ("edge", "route_context"),
+        ("edge", "route_after_retrieve"),
         ("node", "generate_answer"),
     ]
-    assert trace["events"][2]["output"] == {"context": [CHUNK]}
-    assert trace["events"][3]["output"]["to"] == "generate_answer"
+    assert trace["events"][4]["output"] == {"context": [CHUNK]}
+    assert trace["events"][5]["output"]["to"] == "generate_answer"
 
 
 def test_another_users_run_is_not_found(api, fake_rag):

@@ -1,9 +1,10 @@
 """The knowledge agent graph, offline: structure, nodes, routes, checkpoints, resume and trace.
 
-`rag.retrieve` and `rag.generate_answer` are replaced by fakes, `rag.query` is
-made to fail (the graph must never call it), and `offline_rag` makes any real
-Qdrant or model client fail loudly. The live behaviour is covered by the
-recorded-trace evals in `test_agent_evals.py`.
+`rag.retrieve`, `rag.generate_answer`, the planner and both tools are replaced
+by fakes, `rag.query` is made to fail (the graph must never call it), and
+`offline_rag` makes any real Qdrant or model client fail loudly. By default the
+fake planner plans the knowledge base alone, the Part 1 route. The live
+behaviour is covered by the recorded-trace evals in `test_agent_evals.py`.
 """
 
 from typing import Any
@@ -16,7 +17,7 @@ from langgraph.graph import END, START
 from data.pipelines import rag
 from data.process.knowledge_base import KnowledgeBaseError
 from services.agent import graph as agent_graph
-from services.agent import nodes, runner
+from services.agent import nodes, planner, runner
 from services.agent.config import get_agent_settings
 from services.agent.errors import (
     AgentContractError,
@@ -29,22 +30,44 @@ from services.agent.graph import (
     CONDITIONAL_EDGES,
     EDGES,
     NODES,
+    RETRIEVE_PATHS,
     ConditionalEdge,
     NodeSpec,
     build_agent_graph,
     graph_fingerprint,
-    route_context,
+    route_after_plan,
+    route_after_retrieve,
+    route_after_stock,
+    route_after_ticket,
     route_question,
 )
 from services.agent.runner import resume_run, run_agent
 from services.agent.state import (
+    ANSWER_LOOKUP_FAILED,
     ANSWER_NO_INFORMATION,
     EMPTY_QUESTION,
     GENERATE_ANSWER,
+    INCIDENTS_UNAVAILABLE_ANSWER,
+    LOOKUP_STOCK,
+    LOOKUP_TICKET,
     NO_INFORMATION_ANSWER,
+    PLAN_SOURCES,
     RECEIVE_QUESTION,
     RETRIEVE,
+    STOCK_NOT_FOUND_ANSWER,
+    STOCK_UNAVAILABLE_ANSWER,
+    TICKET_NOT_FOUND_ANSWER,
+    TICKET_UNAVAILABLE_ANSWER,
+    derive_outcome,
 )
+from services.agent.tools import incidents, inventory
+from services.agent.tools.contracts import (
+    StockLookupInput,
+    StockLookupResult,
+    TicketLookupInput,
+    TicketLookupResult,
+)
+from services.agent.tools.passages import stock_passages, ticket_passages
 from services.agent.tracing import TraceStore
 from tests.pipelines.rag_support import offline_rag  # noqa: F401  (fixture)
 
@@ -59,9 +82,82 @@ CHUNK: dict[str, Any] = {
 }
 ANSWER = "The standard return window is 30 days from delivery."
 
+TICKET_RECORD: dict[str, Any] = {
+    "id": "6c7f3b0e-5a1d-4a8e-9a43-0f5f0e7d2a11",
+    "reference": "TRF-000012",
+    "title": "Wrong postcode assigned during label generation",
+    "description": "The label shows the wrong postcode.",
+    "category": "delivery_failure",
+    "origin": "customer",
+    "branch": "central",
+    "status": "in_progress",
+    "created_at": "2026-10-20T04:21:51Z",
+    "updated_at": "2026-10-21T09:00:00Z",
+}
+PRODUCT_RECORD: dict[str, Any] = {
+    "id": "395dfc8e-bb1e-5f97-b0d5-ea06f9af7b0e",
+    "name": "Black Running Shoes - Size 42",
+    "sku": "SHOE-BLK-42",
+    "warehouse": "Monterrey",
+    "current_stock": 45,
+}
+
+
+def step(source: str, **arguments: Any) -> dict[str, Any]:
+    return {"source": source, "tool": planner.TOOL_OF_SOURCE[source], "arguments": arguments}
+
+
+def plan(*steps: dict[str, Any], decided_by: str = "model", ignored=()) -> dict[str, Any]:
+    return {"decided_by": decided_by, "steps": list(steps), "ignored": list(ignored)}
+
+
+KNOWLEDGE_PLAN = plan(step("knowledge_base"))
+
+
+def ticket_result(
+    outcome: str = "ok", *, reference: str | None = "12", failure: str | None = None
+) -> TicketLookupResult:
+    """A ticket lookup's result as `incidents.lookup_ticket` returns it."""
+    request = (
+        TicketLookupInput(reference=reference) if reference else TicketLookupInput(status="open")
+    )
+    found = outcome == "ok"
+    return TicketLookupResult.model_validate(
+        {
+            "request": request,
+            "outcome": outcome,
+            "endpoint": "GET /api/incidents?reference=TRF-000012",
+            "reference": "TRF-000012" if reference == "12" else reference,
+            "tickets": [TICKET_RECORD] if found else [],
+            "total": 1 if found else 0,
+            "failure": failure,
+            "http_status": None if failure in {"timeout", "unreachable"} else 200,
+            "duration_ms": 3.0,
+        }
+    )
+
+
+def stock_result(
+    outcome: str = "ok", *, product: str = "black running shoes", failure: str | None = None
+) -> StockLookupResult:
+    found = outcome == "ok"
+    return StockLookupResult.model_validate(
+        {
+            "request": StockLookupInput(product=product),
+            "outcome": outcome,
+            "endpoint": "GET /inventory/products",
+            "products": [PRODUCT_RECORD] if found else [],
+            "total": 1 if found else 0,
+            "failure": failure,
+            "http_status": 200,
+            "duration_ms": 4.0,
+        }
+    )
+
 
 class FakeRag:
-    """Stands in for `rag.retrieve` and `rag.generate_answer`, recording every call."""
+    """Stands in for `rag.retrieve`, `rag.generate_answer`, the planner and both tools,
+    recording every call."""
 
     def __init__(self) -> None:
         self.context: list[dict[str, Any]] = [dict(CHUNK)]
@@ -70,6 +166,24 @@ class FakeRag:
         self.generate_error: Exception | None = None
         self.retrieve_calls: list[str] = []
         self.generate_calls: list[tuple[str, list[dict[str, Any]]]] = []
+        self.plan: dict[str, Any] = KNOWLEDGE_PLAN
+        self.ticket: TicketLookupResult = ticket_result()
+        self.stock: StockLookupResult = stock_result()
+        self.plan_calls: list[str] = []
+        self.ticket_calls: list[TicketLookupInput] = []
+        self.stock_calls: list[StockLookupInput] = []
+
+    def choose_sources(self, question: str) -> dict[str, Any]:
+        self.plan_calls.append(question)
+        return dict(self.plan)
+
+    def lookup_ticket(self, request: TicketLookupInput, **_: Any) -> TicketLookupResult:
+        self.ticket_calls.append(request)
+        return self.ticket
+
+    def lookup_stock(self, request: StockLookupInput, **_: Any) -> StockLookupResult:
+        self.stock_calls.append(request)
+        return self.stock
 
     def retrieve(self, question: str) -> list[dict[str, Any]]:
         self.retrieve_calls.append(question)
@@ -84,17 +198,24 @@ class FakeRag:
         return self.answer
 
 
-@pytest.fixture
-def fake_rag(monkeypatch, offline_rag):  # noqa: F811
-    fake = FakeRag()
+def install_fakes(monkeypatch, fake: FakeRag) -> FakeRag:
+    """Route every external call the graph makes to `fake`."""
     monkeypatch.setattr(rag, "retrieve", fake.retrieve)
     monkeypatch.setattr(rag, "generate_answer", fake.generate_answer)
+    monkeypatch.setattr(planner, "choose_sources", fake.choose_sources)
+    monkeypatch.setattr(incidents, "lookup_ticket", fake.lookup_ticket)
+    monkeypatch.setattr(inventory, "lookup_stock", fake.lookup_stock)
 
     def monolithic_query(question: str) -> str:
         raise AssertionError("The graph must never call rag.query()")
 
     monkeypatch.setattr(rag, "query", monolithic_query)
     return fake
+
+
+@pytest.fixture
+def fake_rag(monkeypatch, offline_rag):  # noqa: F811
+    return install_fakes(monkeypatch, FakeRag())
 
 
 @pytest.fixture
@@ -123,38 +244,64 @@ def with_node(spec: NodeSpec) -> tuple[NodeSpec, ...]:
 # --- Compilation -----------------------------------------------------------------------
 
 
-def test_the_shipped_graph_compiles_with_its_four_nodes():
+def test_the_shipped_graph_compiles_with_its_eight_nodes():
     drawn = build_agent_graph().get_graph()
 
     assert set(drawn.nodes) == {
         START,
         RECEIVE_QUESTION,
+        PLAN_SOURCES,
+        LOOKUP_TICKET,
+        LOOKUP_STOCK,
         RETRIEVE,
         GENERATE_ANSWER,
+        ANSWER_LOOKUP_FAILED,
         ANSWER_NO_INFORMATION,
         END,
     }
 
 
+DECISIONS = {
+    (RECEIVE_QUESTION, PLAN_SOURCES),
+    (RECEIVE_QUESTION, END),
+    (PLAN_SOURCES, LOOKUP_TICKET),
+    (PLAN_SOURCES, LOOKUP_STOCK),
+    (PLAN_SOURCES, RETRIEVE),
+    (LOOKUP_TICKET, LOOKUP_STOCK),
+    (LOOKUP_TICKET, RETRIEVE),
+    (LOOKUP_TICKET, GENERATE_ANSWER),
+    (LOOKUP_TICKET, ANSWER_LOOKUP_FAILED),
+    (LOOKUP_STOCK, RETRIEVE),
+    (LOOKUP_STOCK, GENERATE_ANSWER),
+    (LOOKUP_STOCK, ANSWER_LOOKUP_FAILED),
+    (RETRIEVE, GENERATE_ANSWER),
+    (RETRIEVE, ANSWER_LOOKUP_FAILED),
+    (RETRIEVE, ANSWER_NO_INFORMATION),
+}
+
+
 def test_the_compiled_graph_has_exactly_the_declared_transitions():
     drawn = build_agent_graph().get_graph()
 
-    assert {(edge.source, edge.target) for edge in drawn.edges} == {
+    assert {(edge.source, edge.target) for edge in drawn.edges} == DECISIONS | {
         (START, RECEIVE_QUESTION),
-        (RECEIVE_QUESTION, RETRIEVE),
-        (RECEIVE_QUESTION, END),
-        (RETRIEVE, GENERATE_ANSWER),
-        (RETRIEVE, ANSWER_NO_INFORMATION),
         (GENERATE_ANSWER, END),
+        (ANSWER_LOOKUP_FAILED, END),
         (ANSWER_NO_INFORMATION, END),
     }
     conditional = {(e.source, e.target) for e in drawn.edges if e.conditional}
-    assert conditional == {
-        (RECEIVE_QUESTION, RETRIEVE),
-        (RECEIVE_QUESTION, END),
-        (RETRIEVE, GENERATE_ANSWER),
-        (RETRIEVE, ANSWER_NO_INFORMATION),
+    assert conditional == DECISIONS
+
+
+def test_each_tool_is_its_own_node_reached_only_through_a_decision():
+    tool_nodes = {LOOKUP_TICKET, LOOKUP_STOCK}
+    by_name = {spec.name: spec for spec in NODES}
+
+    assert {spec.writes for name, spec in by_name.items() if name in tool_nodes} == {
+        frozenset({"ticket_lookup"}),
+        frozenset({"stock_lookup"}),
     }
+    assert not any(target in tool_nodes for _, target in EDGES)
 
 
 def test_the_application_graph_is_checkpointed_in_the_agent_store():
@@ -184,12 +331,12 @@ BROKEN_GRAPHS = {
     ),
     "decision to an unknown node": (
         {
-            "conditional_edges": (
-                CONDITIONAL_EDGES[0],
+            "conditional_edges": CONDITIONAL_EDGES[:-1]
+            + (
                 ConditionalEdge(
                     RETRIEVE,
-                    route_context,
-                    {"generate": "generate_v2", "no_information": ANSWER_NO_INFORMATION},
+                    route_after_retrieve,
+                    {**RETRIEVE_PATHS, "generate": "generate_v2"},
                 ),
             )
         },
@@ -280,9 +427,18 @@ def test_generate_answer_uses_the_context_it_is_given(fake_rag):
     assert fake_rag.retrieve_calls == []
 
 
-@pytest.mark.parametrize("state", [{"question": "q"}, {"question": "q", "context": []}])
-def test_generate_answer_refuses_to_generate_without_context(fake_rag, state):
-    with pytest.raises(AgentContractError, match="needs the context"):
+@pytest.mark.parametrize(
+    "state",
+    [
+        {"question": "q"},
+        {"question": "q", "context": []},
+        {"question": "q", "context": [], "ticket_lookup": "not_found"},
+    ],
+)
+def test_generate_answer_refuses_to_generate_without_evidence(fake_rag, state):
+    if state.get("ticket_lookup"):
+        state["ticket_lookup"] = ticket_result("not_found", reference="482").model_dump(mode="json")
+    with pytest.raises(AgentContractError, match="needs evidence"):
         nodes.generate_answer(state)
     assert fake_rag.generate_calls == []
 
@@ -294,11 +450,52 @@ def test_answer_no_information_answers_without_any_model(fake_rag):
     assert fake_rag.generate_calls == []
 
 
+def _dumped(result) -> dict[str, Any]:
+    return result.model_dump(mode="json")
+
+
 def test_the_routers_decide_from_the_state_alone():
-    assert route_question({"question": "q"}) == "retrieve"
+    both = plan(step("incident_manager", reference="12"), step("knowledge_base"))
+    found = _dumped(ticket_result())
+    gone = _dumped(ticket_result("not_found", reference="482"))
+
+    assert route_question({"question": "q"}) == "plan"
     assert route_question({"question": "", "error": EMPTY_QUESTION}) == "rejected"
-    assert route_context({"question": "q", "context": [CHUNK]}) == "generate"
-    assert route_context({"question": "q", "context": []}) == "no_information"
+    assert route_after_plan({"question": "q", "plan": KNOWLEDGE_PLAN}) == "knowledge_base"
+    assert route_after_plan({"question": "q", "plan": both}) == "incident_manager"
+    assert route_after_ticket({"question": "q", "plan": both, "ticket_lookup": gone}) == (
+        "knowledge_base"
+    )
+    ticket_only = plan(step("incident_manager", reference="12"))
+    assert route_after_ticket({"question": "q", "plan": ticket_only, "ticket_lookup": found}) == (
+        "generate"
+    )
+    assert route_after_ticket({"question": "q", "plan": ticket_only, "ticket_lookup": gone}) == (
+        "lookup_failed"
+    )
+    stock_only = plan(step("inventory_manager", product="shoes"))
+    assert route_after_stock(
+        {"question": "q", "plan": stock_only, "stock_lookup": _dumped(stock_result("not_found"))}
+    ) == ("lookup_failed")
+    assert route_after_retrieve({"question": "q", "context": [CHUNK]}) == "generate"
+    assert route_after_retrieve({"question": "q", "context": []}) == "no_information"
+    assert route_after_retrieve(
+        {"question": "q", "plan": both, "ticket_lookup": gone, "context": [CHUNK]}
+    ) == ("generate")
+    assert route_after_retrieve(
+        {"question": "q", "plan": both, "ticket_lookup": gone, "context": []}
+    ) == ("lookup_failed")
+
+
+def test_the_outcome_counts_a_successful_lookup_as_an_answer():
+    found = _dumped(ticket_result())
+    gone = _dumped(ticket_result("unavailable", failure="timeout"))
+
+    assert derive_outcome({"question": "q", "ticket_lookup": found, "answer": "a"}) == "answered"
+    assert derive_outcome({"question": "q", "ticket_lookup": gone, "answer": "a"}) == (
+        "no_information"
+    )
+    assert derive_outcome({"question": "", "error": EMPTY_QUESTION}) == "rejected"
 
 
 # --- Routes --------------------------------------------------------------------------------
@@ -312,6 +509,7 @@ def test_an_empty_question_ends_the_run_before_retrieval(fake_rag, graph, store,
     assert result.error == EMPTY_QUESTION
     assert result.answer is None
     assert fake_rag.retrieve_calls == []
+    assert fake_rag.plan_calls == [], "an empty question is never planned"
     trace = store.get_trace(result.run_id)
     assert trace.node_names() == [RECEIVE_QUESTION]
     (decision,) = trace.edge_events()
@@ -327,11 +525,16 @@ def test_no_context_routes_to_the_honest_answer_without_generating(fake_rag, gra
     assert result.answer == NO_INFORMATION_ANSWER
     assert fake_rag.generate_calls == []
     trace = store.get_trace(result.run_id)
-    assert trace.node_names() == [RECEIVE_QUESTION, RETRIEVE, ANSWER_NO_INFORMATION]
+    assert trace.node_names() == [
+        RECEIVE_QUESTION,
+        PLAN_SOURCES,
+        RETRIEVE,
+        ANSWER_NO_INFORMATION,
+    ]
     assert trace.edge_events()[-1].output == {
         "decision": "no_information",
         "to": ANSWER_NO_INFORMATION,
-        "reason": f"no chunk scored at least {rag.MIN_SCORE:.2f}",
+        "reason": f"no evidence: 0 chunk(s) scored at least {rag.MIN_SCORE:.2f}",
     }
 
 
@@ -355,9 +558,10 @@ def test_every_transition_is_checkpointed(fake_rag, graph, store):
     assert steps == [
         (-1, (START,)),
         (0, (RECEIVE_QUESTION,)),
-        (1, (RETRIEVE,)),
-        (2, (GENERATE_ANSWER,)),
-        (3, ()),
+        (1, (PLAN_SOURCES,)),
+        (2, (RETRIEVE,)),
+        (3, (GENERATE_ANSWER,)),
+        (4, ()),
     ]
     assert history[0].values["context"] == [CHUNK]
     assert history[0].values["answer"] == ANSWER
@@ -371,7 +575,7 @@ def test_checkpoints_and_traces_outlive_the_process(fake_rag):
 
     assert reopened.get_state(config(result.run_id)).values["answer"] == ANSWER
     trace = TraceStore(get_agent_settings().agent_store_path).get_trace(result.run_id)
-    assert trace.node_names() == [RECEIVE_QUESTION, RETRIEVE, GENERATE_ANSWER]
+    assert trace.node_names() == [RECEIVE_QUESTION, PLAN_SOURCES, RETRIEVE, GENERATE_ANSWER]
 
 
 def test_a_failed_run_resumes_from_the_failed_node_without_retrieving_again(fake_rag, graph, store):
@@ -394,6 +598,7 @@ def test_a_failed_run_resumes_from_the_failed_node_without_retrieving_again(fake
     assert result.outcome == "answered"
     assert result.answer == ANSWER
     assert fake_rag.retrieve_calls == ["Return window?"]  # retrieval was not repeated
+    assert fake_rag.plan_calls == ["Return window?"]  # nor was planning
     assert len(fake_rag.generate_calls) == 2
     resumed = store.get_trace(run_id)
     assert resumed.status == "completed"
@@ -401,6 +606,7 @@ def test_a_failed_run_resumes_from_the_failed_node_without_retrieving_again(fake
     assert resumed.error_node is None
     assert [(e.attempt, e.name, e.status) for e in resumed.events if e.kind == "node"] == [
         (1, RECEIVE_QUESTION, "ok"),
+        (1, PLAN_SOURCES, "ok"),
         (1, RETRIEVE, "ok"),
         (1, GENERATE_ANSWER, "error"),
         (2, GENERATE_ANSWER, "ok"),
@@ -417,8 +623,8 @@ def test_a_retrieval_failure_stops_the_run_at_retrieve(fake_rag, graph, store):
     assert failure.value.retryable is True
     assert fake_rag.generate_calls == []
     trace = store.get_trace(failure.value.run_id)
-    assert trace.node_names() == [RECEIVE_QUESTION, RETRIEVE]
-    assert trace.edge_events()[-1].name == "route_question"  # no decision after the failure
+    assert trace.node_names() == [RECEIVE_QUESTION, PLAN_SOURCES, RETRIEVE]
+    assert trace.edge_events()[-1].name == "route_after_plan"  # no decision after the failure
 
 
 def test_an_unexpected_error_keeps_only_its_class_in_the_trace(fake_rag, graph, store):
@@ -473,22 +679,36 @@ def test_the_trace_records_nodes_and_decisions_in_order(fake_rag, graph, store):
     assert [(e.seq, e.kind, e.name) for e in trace.events] == [
         (1, "node", RECEIVE_QUESTION),
         (2, "edge", "route_question"),
-        (3, "node", RETRIEVE),
-        (4, "edge", "route_context"),
-        (5, "node", GENERATE_ANSWER),
+        (3, "node", PLAN_SOURCES),
+        (4, "edge", "route_after_plan"),
+        (5, "node", RETRIEVE),
+        (6, "edge", "route_after_retrieve"),
+        (7, "node", GENERATE_ANSWER),
     ]
-    receive, decide_question, retrieved, decide_context, generated = trace.events
+    receive, decide_question, planned, decide_plan, retrieved, decide_answer, generated = (
+        trace.events
+    )
     assert receive.input == {"question": "  Return window? "}
     assert receive.output == {"question": "Return window?"}
     assert decide_question.output == {
-        "decision": "retrieve",
-        "to": RETRIEVE,
+        "decision": "plan",
+        "to": PLAN_SOURCES,
         "reason": "the question is not empty",
+    }
+    assert planned.input == {"question": "Return window?"}
+    assert planned.output == {"plan": KNOWLEDGE_PLAN}
+    assert decide_plan.output == {
+        "decision": "knowledge_base",
+        "to": RETRIEVE,
+        "reason": "planner chose knowledge_base (search_knowledge_base)",
     }
     assert retrieved.input == {"question": "Return window?"}  # only what the node reads
     assert retrieved.output == {"context": [CHUNK]}
-    assert decide_context.output["reason"] == f"1 chunk(s) scored at least {rag.MIN_SCORE:.2f}"
+    assert decide_answer.output["reason"] == (
+        f"evidence to answer from: 1 chunk(s) scored at least {rag.MIN_SCORE:.2f}"
+    )
     assert generated.input == {"context": [CHUNK], "question": "Return window?"}
+    assert trace.sources() == ["knowledge_base"]
     assert generated.output == {"answer": ANSWER}
     assert all(e.duration_ms >= 0 for e in trace.events if e.kind == "node")
 
@@ -503,6 +723,7 @@ def test_traces_are_queryable_after_the_run(fake_rag, graph, store):
     assert [run.run_id for run in reopened.list_runs(user_id="user-1")] == [first.run_id]
     assert reopened.get_trace(first.run_id).node_names() == [
         RECEIVE_QUESTION,
+        PLAN_SOURCES,
         RETRIEVE,
         GENERATE_ANSWER,
     ]
@@ -526,3 +747,229 @@ def test_the_fingerprint_changes_with_the_prompt_or_the_threshold(monkeypatch):
     monkeypatch.setattr(rag, "SYSTEM_PROMPT", prompt)
     monkeypatch.setattr(rag, "MIN_SCORE", 0.48)
     assert graph_fingerprint() != shipped
+
+
+# --- Tool routes -----------------------------------------------------------------------
+
+
+def test_a_ticket_question_is_answered_from_the_live_ticket_without_the_rag(fake_rag, graph, store):
+    fake_rag.plan = plan(step("incident_manager", reference="12"))
+
+    result = ask("What's the status of ticket 12?", graph, store)
+
+    assert result.outcome == "answered"
+    assert result.answer == ANSWER
+    assert fake_rag.retrieve_calls == [], "the knowledge base was not searched"
+    assert fake_rag.ticket_calls == [TicketLookupInput(reference="12")]
+    assert fake_rag.generate_calls == [
+        ("What's the status of ticket 12?", ticket_passages(fake_rag.ticket))
+    ]
+    trace = store.get_trace(result.run_id)
+    assert trace.node_names() == [RECEIVE_QUESTION, PLAN_SOURCES, LOOKUP_TICKET, GENERATE_ANSWER]
+    assert trace.sources() == ["incident_manager"]
+    lookup = trace.node_events(LOOKUP_TICKET)[0]
+    assert lookup.input == {"plan": fake_rag.plan}
+    assert lookup.output["ticket_lookup"]["tickets"][0]["status"] == "in_progress"
+
+
+@pytest.mark.parametrize(
+    ("result", "answer"),
+    [
+        (
+            ticket_result("not_found", reference="482"),
+            TICKET_NOT_FOUND_ANSWER.format(reference="482"),
+        ),
+        (
+            ticket_result("unavailable", failure="timeout"),
+            TICKET_UNAVAILABLE_ANSWER.format(reference="TRF-000012"),
+        ),
+        (
+            ticket_result("unavailable", reference=None, failure="unreachable"),
+            INCIDENTS_UNAVAILABLE_ANSWER,
+        ),
+    ],
+    ids=["not found", "timeout", "search unreachable"],
+)
+def test_a_failed_ticket_lookup_gets_an_honest_fixed_answer(fake_rag, graph, store, result, answer):
+    fake_rag.plan = plan(step("incident_manager", reference="12"))
+    fake_rag.ticket = result
+
+    outcome = ask("What's the status of ticket 12?", graph, store)
+
+    assert outcome.answer == answer
+    assert outcome.outcome == "no_information"
+    assert fake_rag.generate_calls == [], "no model writes a status it does not have"
+    trace = store.get_trace(outcome.run_id)
+    assert trace.node_names() == [
+        RECEIVE_QUESTION,
+        PLAN_SOURCES,
+        LOOKUP_TICKET,
+        ANSWER_LOOKUP_FAILED,
+    ]
+    decision = trace.edge_events()[-1].output
+    assert decision["decision"] == "lookup_failed"
+    assert decision["reason"].startswith("no evidence and a lookup failed: incident_manager")
+
+
+def test_a_question_needing_both_consults_the_ticket_then_the_knowledge_base(
+    fake_rag, graph, store
+):
+    fake_rag.plan = plan(step("incident_manager", reference="12"), step("knowledge_base"))
+
+    result = ask("Ticket 12: status and our lost parcel policy?", graph, store)
+
+    assert result.outcome == "answered"
+    assert fake_rag.generate_calls == [
+        (
+            "Ticket 12: status and our lost parcel policy?",
+            ticket_passages(fake_rag.ticket) + [CHUNK],
+        )
+    ]
+    trace = store.get_trace(result.run_id)
+    assert trace.node_names() == [
+        RECEIVE_QUESTION,
+        PLAN_SOURCES,
+        LOOKUP_TICKET,
+        RETRIEVE,
+        GENERATE_ANSWER,
+    ]
+    assert trace.sources() == ["incident_manager", "knowledge_base"]
+    after_ticket = [e for e in trace.edge_events() if e.name == "route_after_ticket"][0]
+    assert after_ticket.output == {
+        "decision": "knowledge_base",
+        "to": RETRIEVE,
+        "reason": "the plan still needs knowledge_base",
+    }
+
+
+def test_a_failed_lookup_is_stated_and_the_rest_still_answered(fake_rag, graph, store):
+    fake_rag.plan = plan(step("incident_manager", reference="12"), step("knowledge_base"))
+    fake_rag.ticket = ticket_result("unavailable", failure="timeout")
+
+    result = ask("Ticket 12: status and our lost parcel policy?", graph, store)
+
+    notice = TICKET_UNAVAILABLE_ANSWER.format(reference="TRF-000012")
+    assert result.outcome == "answered"
+    assert result.answer == f"{notice}\n\n{ANSWER}"
+    ((_, passages),) = fake_rag.generate_calls
+    assert passages == [CHUNK], "the failed lookup never reaches the model"
+
+
+def test_a_failed_lookup_with_nothing_retrieved_gets_the_fixed_answer(fake_rag, graph, store):
+    fake_rag.plan = plan(step("incident_manager", reference="482"), step("knowledge_base"))
+    fake_rag.ticket = ticket_result("not_found", reference="482")
+    fake_rag.context = []
+
+    result = ask("Ticket 482 and the return policy?", graph, store)
+
+    assert result.answer == TICKET_NOT_FOUND_ANSWER.format(reference="482")
+    assert store.get_trace(result.run_id).node_names()[-1] == ANSWER_LOOKUP_FAILED
+
+
+def test_a_stock_question_is_answered_from_the_live_inventory(fake_rag, graph, store):
+    fake_rag.plan = plan(step("inventory_manager", product="black running shoes"))
+
+    result = ask("Do we have stock of the black running shoes?", graph, store)
+
+    assert result.outcome == "answered"
+    assert fake_rag.stock_calls == [StockLookupInput(product="black running shoes")]
+    ((_, passages),) = fake_rag.generate_calls
+    assert passages == stock_passages(fake_rag.stock)
+    assert "Current stock: 45 units" in passages[0]["text"]
+    trace = store.get_trace(result.run_id)
+    assert trace.node_names() == [RECEIVE_QUESTION, PLAN_SOURCES, LOOKUP_STOCK, GENERATE_ANSWER]
+    assert trace.sources() == ["inventory_manager"]
+
+
+@pytest.mark.parametrize(
+    ("result", "answer"),
+    [
+        (stock_result("not_found", product="red umbrella"), STOCK_NOT_FOUND_ANSWER),
+        (
+            stock_result("unavailable", product="red umbrella", failure="timeout"),
+            STOCK_UNAVAILABLE_ANSWER,
+        ),
+    ],
+    ids=["not found", "unavailable"],
+)
+def test_a_failed_stock_lookup_gets_an_honest_fixed_answer(fake_rag, graph, store, result, answer):
+    fake_rag.plan = plan(step("inventory_manager", product="red umbrella"))
+    fake_rag.stock = result
+
+    outcome = ask("Do we have red umbrellas?", graph, store)
+
+    assert outcome.answer == answer.format(product="red umbrella")
+    assert fake_rag.generate_calls == []
+
+
+def test_every_planned_source_runs_once_in_the_fixed_order(fake_rag, graph, store):
+    fake_rag.plan = plan(
+        step("incident_manager", reference="12"),
+        step("inventory_manager", product="shoes"),
+        step("knowledge_base"),
+    )
+
+    result = ask("Ticket 12, shoe stock and the return policy?", graph, store)
+
+    trace = store.get_trace(result.run_id)
+    assert trace.node_names() == [
+        RECEIVE_QUESTION,
+        PLAN_SOURCES,
+        LOOKUP_TICKET,
+        LOOKUP_STOCK,
+        RETRIEVE,
+        GENERATE_ANSWER,
+    ]
+    assert trace.sources() == ["incident_manager", "inventory_manager", "knowledge_base"]
+    assert (
+        len(fake_rag.ticket_calls),
+        len(fake_rag.stock_calls),
+        len(fake_rag.retrieve_calls),
+    ) == (
+        1,
+        1,
+        1,
+    )
+
+
+def test_a_planner_fallback_takes_the_knowledge_base_route_and_says_why(fake_rag, graph, store):
+    fake_rag.plan = plan(
+        step("knowledge_base"),
+        decided_by="fallback",
+        ignored=["the planner model is unavailable (APITimeoutError)"],
+    )
+
+    result = ask("What's the standard return window?", graph, store)
+
+    assert result.outcome == "answered"
+    decision = store.get_trace(result.run_id).edge_events()[1].output
+    assert decision["to"] == RETRIEVE
+    assert decision["reason"] == (
+        "planner fell back to knowledge_base (search_knowledge_base): "
+        "the planner model is unavailable (APITimeoutError)"
+    )
+
+
+def test_a_lookup_node_refuses_to_run_without_its_planned_step(fake_rag):
+    with pytest.raises(AgentContractError, match="no 'incident_manager' step"):
+        nodes.lookup_ticket({"question": "q", "plan": KNOWLEDGE_PLAN})
+    assert fake_rag.ticket_calls == []
+
+
+def test_the_fallback_node_refuses_to_run_when_nothing_failed(fake_rag):
+    with pytest.raises(AgentContractError, match="no lookup failed"):
+        nodes.answer_lookup_failed({"question": "q", "ticket_lookup": _dumped(ticket_result())})
+
+
+def test_a_tool_bug_still_fails_the_run_instead_of_hiding_it(fake_rag, graph, store, monkeypatch):
+    def broken_lookup(request, **_):
+        raise TypeError("a programming error, not a service failure")
+
+    monkeypatch.setattr(incidents, "lookup_ticket", broken_lookup)
+    fake_rag.plan = plan(step("incident_manager", reference="12"))
+
+    with pytest.raises(AgentRunError) as failure:
+        ask("What's the status of ticket 12?", graph, store)
+
+    assert failure.value.node == LOOKUP_TICKET
+    assert failure.value.retryable is False

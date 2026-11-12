@@ -66,12 +66,20 @@ Stored in TinyDB, table `incidents`, alongside the existing `suppliers`,
 - `SLA_CRITICAL_CATEGORIES` names `lost_parcel` and `carrier_issue` once, for
   the SLA filter the CEO and carrier ops need.
 
-### One internal field
+### The helpdesk reference
 
 `IncidentInDB` carries `source_incident_id`: the `incident_id` of the helpdesk
-record a seeded incident came from. It is how the seed stays idempotent. It is
-absent from `IncidentResponse`, so it is not part of the API contract, and it is
-`None` on anything created through the form.
+record a seeded incident came from (`TRF-000123`). It is how the seed stays
+idempotent, and it is `None` on anything created through the form.
+
+Since 2026-11-11 the API publishes it **read-only** as `reference` on
+`IncidentResponse`, because it is the number support staff quote ("ticket 482")
+and the knowledge agent's ticket tool has to find a ticket by it
+(`docs/agent/agent-graph.md`). No request model accepts `reference`, so it can
+never be set or changed over HTTP. The format and the normalisation of short
+forms ("482", "TRF-482" -> "TRF-000482") are one shared rule in
+`packages/shared/trackflow_shared/incidents.py` (`REFERENCE_PATTERN`,
+`normalize_reference`).
 
 ## Lifecycle
 
@@ -95,13 +103,19 @@ commercially sensitive data the way `/suppliers` does.
 | Method | Path | Returns |
 |---|---|---|
 | `POST` | `/api/incidents` | 201 with the created incident; 400 on any invalid field |
-| `GET` | `/api/incidents` | 200 with a list, newest first. Filters: `status`, `origin`, `branch`, `category` |
+| `GET` | `/api/incidents` | 200 with a list, newest first. Filters: `status`, `origin`, `branch`, `category`, `reference` |
 | `GET` | `/api/incidents/summary` | 200 with totals by status, category, origin and branch |
 | `GET` | `/api/incidents/{id}` | 200 with the incident; 404 if unknown |
 | `PATCH` | `/api/incidents/{id}/status` | 200 with the incident; 400 on an invalid transition; 404 if unknown |
 
 Filters combine with AND, and an unknown filter *value* is a 400 rather than a
-silently empty list.
+silently empty list. `reference` must be the canonical form (`TRF-000123`; a
+400 naming the field otherwise) and matches it exactly, so it returns at most one
+incident: an empty list means no ticket has that reference. Each reference is
+its own read-cache key.
+
+The routes have no authentication, so a backend caller - the agent's ticket
+tool - sends no credentials either.
 
 `/summary` is declared before `/{id}` in the router. An incident id is an
 arbitrary string, so the parameterised route would otherwise match the literal

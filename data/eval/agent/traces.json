@@ -1,25 +1,26 @@
 {
   "description": "Recorded knowledge agent runs, one per case in eval-cases.json. Written by `npm run agent:record`; read by tests/pipelines/test_agent_evals.py.",
-  "recorded_at": "2026-11-12T02:55:26+00:00",
-  "graph_version": "b80c9d0318e7aba2",
+  "recorded_at": "2026-11-12T04:28:14+00:00",
+  "graph_version": "faabff53fa40c2ca",
   "embedding_model": "downtown-miami/openrouter/perplexity/pplx-embed-v1-0.6b",
   "generation_model": "downtown-miami/openrouter/openai/gpt-6-luna",
   "min_score": 0.3,
+  "tool_timeout_seconds": 4.0,
   "cases": [
     {
       "id": "route-empty-question",
       "question": "   ",
       "trace": {
-        "run_id": "b499a053-1b12-4245-9842-908c126e0308",
+        "run_id": "bf01b163-8e27-4eca-8eda-c5e065534c99",
         "user_id": null,
-        "graph_version": "b80c9d0318e7aba2",
+        "graph_version": "faabff53fa40c2ca",
         "question": "   ",
         "status": "completed",
         "outcome": "rejected",
         "answer": null,
         "attempts": 1,
-        "started_at": "2026-11-12T02:53:55.311+00:00",
-        "finished_at": "2026-11-12T02:53:55.316+00:00",
+        "started_at": "2026-11-12T04:24:06.873+00:00",
+        "finished_at": "2026-11-12T04:24:06.878+00:00",
         "error_node": null,
         "error_type": null,
         "error_message": null,
@@ -30,9 +31,9 @@
             "kind": "node",
             "name": "receive_question",
             "status": "ok",
-            "started_at": "2026-11-12T02:53:55.314+00:00",
-            "finished_at": "2026-11-12T02:53:55.314+00:00",
-            "duration_ms": 0.253,
+            "started_at": "2026-11-12T04:24:06.875+00:00",
+            "finished_at": "2026-11-12T04:24:06.876+00:00",
+            "duration_ms": 0.263,
             "input": {
               "question": "   "
             },
@@ -49,8 +50,8 @@
             "kind": "edge",
             "name": "route_question",
             "status": "ok",
-            "started_at": "2026-11-12T02:53:55.314+00:00",
-            "finished_at": "2026-11-12T02:53:55.314+00:00",
+            "started_at": "2026-11-12T04:24:06.876+00:00",
+            "finished_at": "2026-11-12T04:24:06.876+00:00",
             "duration_ms": null,
             "input": null,
             "output": {
@@ -68,16 +69,16 @@
       "id": "route-no-information-unrelated",
       "question": "Who won the last football World Cup?",
       "trace": {
-        "run_id": "049fdaae-879d-4a65-9ab0-d3e6e4313b11",
+        "run_id": "af48001a-db74-4d13-95e7-bbe177bdd730",
         "user_id": null,
-        "graph_version": "b80c9d0318e7aba2",
+        "graph_version": "faabff53fa40c2ca",
         "question": "Who won the last football World Cup?",
         "status": "completed",
         "outcome": "no_information",
         "answer": "I don't have information about that in TrackFlow's knowledge base, so I can't answer it reliably. Please confirm it with the responsible TrackFlow team.",
         "attempts": 1,
-        "started_at": "2026-11-12T02:53:55.317+00:00",
-        "finished_at": "2026-11-12T02:53:55.996+00:00",
+        "started_at": "2026-11-12T04:24:06.880+00:00",
+        "finished_at": "2026-11-12T04:24:09.292+00:00",
         "error_node": null,
         "error_type": null,
         "error_message": null,
@@ -88,9 +89,9 @@
             "kind": "node",
             "name": "receive_question",
             "status": "ok",
-            "started_at": "2026-11-12T02:53:55.319+00:00",
-            "finished_at": "2026-11-12T02:53:55.319+00:00",
-            "duration_ms": 0.203,
+            "started_at": "2026-11-12T04:24:06.882+00:00",
+            "finished_at": "2026-11-12T04:24:06.882+00:00",
+            "duration_ms": 0.216,
             "input": {
               "question": "Who won the last football World Cup?"
             },
@@ -106,13 +107,13 @@
             "kind": "edge",
             "name": "route_question",
             "status": "ok",
-            "started_at": "2026-11-12T02:53:55.319+00:00",
-            "finished_at": "2026-11-12T02:53:55.319+00:00",
+            "started_at": "2026-11-12T04:24:06.882+00:00",
+            "finished_at": "2026-11-12T04:24:06.882+00:00",
             "duration_ms": null,
             "input": null,
             "output": {
-              "decision": "retrieve",
-              "to": "retrieve",
+              "decision": "plan",
+              "to": "plan_sources",
               "reason": "the question is not empty"
             },
             "error_type": null,
@@ -122,11 +123,57 @@
             "seq": 3,
             "attempt": 1,
             "kind": "node",
+            "name": "plan_sources",
+            "status": "ok",
+            "started_at": "2026-11-12T04:24:06.884+00:00",
+            "finished_at": "2026-11-12T04:24:08.673+00:00",
+            "duration_ms": 1789.271,
+            "input": {
+              "question": "Who won the last football World Cup?"
+            },
+            "output": {
+              "plan": {
+                "decided_by": "model",
+                "steps": [
+                  {
+                    "source": "knowledge_base",
+                    "tool": "search_knowledge_base",
+                    "arguments": {}
+                  }
+                ],
+                "ignored": []
+              }
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 4,
+            "attempt": 1,
+            "kind": "edge",
+            "name": "route_after_plan",
+            "status": "ok",
+            "started_at": "2026-11-12T04:24:08.673+00:00",
+            "finished_at": "2026-11-12T04:24:08.673+00:00",
+            "duration_ms": null,
+            "input": null,
+            "output": {
+              "decision": "knowledge_base",
+              "to": "retrieve",
+              "reason": "planner chose knowledge_base (search_knowledge_base)"
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 5,
+            "attempt": 1,
+            "kind": "node",
             "name": "retrieve",
             "status": "ok",
-            "started_at": "2026-11-12T02:53:55.321+00:00",
-            "finished_at": "2026-11-12T02:53:55.991+00:00",
-            "duration_ms": 670.687,
+            "started_at": "2026-11-12T04:24:08.677+00:00",
+            "finished_at": "2026-11-12T04:24:09.288+00:00",
+            "duration_ms": 610.834,
             "input": {
               "question": "Who won the last football World Cup?"
             },
@@ -137,32 +184,32 @@
             "error_message": null
           },
           {
-            "seq": 4,
+            "seq": 6,
             "attempt": 1,
             "kind": "edge",
-            "name": "route_context",
+            "name": "route_after_retrieve",
             "status": "ok",
-            "started_at": "2026-11-12T02:53:55.991+00:00",
-            "finished_at": "2026-11-12T02:53:55.991+00:00",
+            "started_at": "2026-11-12T04:24:09.287+00:00",
+            "finished_at": "2026-11-12T04:24:09.287+00:00",
             "duration_ms": null,
             "input": null,
             "output": {
               "decision": "no_information",
               "to": "answer_no_information",
-              "reason": "no chunk scored at least 0.30"
+              "reason": "no evidence: 0 chunk(s) scored at least 0.30"
             },
             "error_type": null,
             "error_message": null
           },
           {
-            "seq": 5,
+            "seq": 7,
             "attempt": 1,
             "kind": "node",
             "name": "answer_no_information",
             "status": "ok",
-            "started_at": "2026-11-12T02:53:55.995+00:00",
-            "finished_at": "2026-11-12T02:53:55.995+00:00",
-            "duration_ms": 0.259,
+            "started_at": "2026-11-12T04:24:09.290+00:00",
+            "finished_at": "2026-11-12T04:24:09.291+00:00",
+            "duration_ms": 0.302,
             "input": {},
             "output": {
               "answer": "I don't have information about that in TrackFlow's knowledge base, so I can't answer it reliably. Please confirm it with the responsible TrackFlow team."
@@ -177,16 +224,16 @@
       "id": "route-no-information-near-threshold",
       "question": "How do I reset my password in the backoffice?",
       "trace": {
-        "run_id": "a1af8545-36fe-414f-b87f-333ad3547813",
+        "run_id": "64a13609-c50b-4b2b-a1ea-f896756d0472",
         "user_id": null,
-        "graph_version": "b80c9d0318e7aba2",
+        "graph_version": "faabff53fa40c2ca",
         "question": "How do I reset my password in the backoffice?",
         "status": "completed",
         "outcome": "no_information",
         "answer": "I don't have information about that in TrackFlow's knowledge base, so I can't answer it reliably. Please confirm it with the responsible TrackFlow team.",
         "attempts": 1,
-        "started_at": "2026-11-12T02:53:55.998+00:00",
-        "finished_at": "2026-11-12T02:53:56.241+00:00",
+        "started_at": "2026-11-12T04:24:09.296+00:00",
+        "finished_at": "2026-11-12T04:24:12.557+00:00",
         "error_node": null,
         "error_type": null,
         "error_message": null,
@@ -197,9 +244,9 @@
             "kind": "node",
             "name": "receive_question",
             "status": "ok",
-            "started_at": "2026-11-12T02:53:55.999+00:00",
-            "finished_at": "2026-11-12T02:53:56.000+00:00",
-            "duration_ms": 0.228,
+            "started_at": "2026-11-12T04:24:09.299+00:00",
+            "finished_at": "2026-11-12T04:24:09.299+00:00",
+            "duration_ms": 0.295,
             "input": {
               "question": "How do I reset my password in the backoffice?"
             },
@@ -215,13 +262,13 @@
             "kind": "edge",
             "name": "route_question",
             "status": "ok",
-            "started_at": "2026-11-12T02:53:56.000+00:00",
-            "finished_at": "2026-11-12T02:53:56.000+00:00",
+            "started_at": "2026-11-12T04:24:09.299+00:00",
+            "finished_at": "2026-11-12T04:24:09.299+00:00",
             "duration_ms": null,
             "input": null,
             "output": {
-              "decision": "retrieve",
-              "to": "retrieve",
+              "decision": "plan",
+              "to": "plan_sources",
               "reason": "the question is not empty"
             },
             "error_type": null,
@@ -231,11 +278,57 @@
             "seq": 3,
             "attempt": 1,
             "kind": "node",
+            "name": "plan_sources",
+            "status": "ok",
+            "started_at": "2026-11-12T04:24:09.302+00:00",
+            "finished_at": "2026-11-12T04:24:12.205+00:00",
+            "duration_ms": 2903.371,
+            "input": {
+              "question": "How do I reset my password in the backoffice?"
+            },
+            "output": {
+              "plan": {
+                "decided_by": "model",
+                "steps": [
+                  {
+                    "source": "knowledge_base",
+                    "tool": "search_knowledge_base",
+                    "arguments": {}
+                  }
+                ],
+                "ignored": []
+              }
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 4,
+            "attempt": 1,
+            "kind": "edge",
+            "name": "route_after_plan",
+            "status": "ok",
+            "started_at": "2026-11-12T04:24:12.205+00:00",
+            "finished_at": "2026-11-12T04:24:12.205+00:00",
+            "duration_ms": null,
+            "input": null,
+            "output": {
+              "decision": "knowledge_base",
+              "to": "retrieve",
+              "reason": "planner chose knowledge_base (search_knowledge_base)"
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 5,
+            "attempt": 1,
+            "kind": "node",
             "name": "retrieve",
             "status": "ok",
-            "started_at": "2026-11-12T02:53:56.002+00:00",
-            "finished_at": "2026-11-12T02:53:56.237+00:00",
-            "duration_ms": 234.969,
+            "started_at": "2026-11-12T04:24:12.211+00:00",
+            "finished_at": "2026-11-12T04:24:12.551+00:00",
+            "duration_ms": 340.037,
             "input": {
               "question": "How do I reset my password in the backoffice?"
             },
@@ -246,32 +339,32 @@
             "error_message": null
           },
           {
-            "seq": 4,
+            "seq": 6,
             "attempt": 1,
             "kind": "edge",
-            "name": "route_context",
+            "name": "route_after_retrieve",
             "status": "ok",
-            "started_at": "2026-11-12T02:53:56.237+00:00",
-            "finished_at": "2026-11-12T02:53:56.237+00:00",
+            "started_at": "2026-11-12T04:24:12.551+00:00",
+            "finished_at": "2026-11-12T04:24:12.551+00:00",
             "duration_ms": null,
             "input": null,
             "output": {
               "decision": "no_information",
               "to": "answer_no_information",
-              "reason": "no chunk scored at least 0.30"
+              "reason": "no evidence: 0 chunk(s) scored at least 0.30"
             },
             "error_type": null,
             "error_message": null
           },
           {
-            "seq": 5,
+            "seq": 7,
             "attempt": 1,
             "kind": "node",
             "name": "answer_no_information",
             "status": "ok",
-            "started_at": "2026-11-12T02:53:56.240+00:00",
-            "finished_at": "2026-11-12T02:53:56.240+00:00",
-            "duration_ms": 0.235,
+            "started_at": "2026-11-12T04:24:12.555+00:00",
+            "finished_at": "2026-11-12T04:24:12.556+00:00",
+            "duration_ms": 0.283,
             "input": {},
             "output": {
               "answer": "I don't have information about that in TrackFlow's knowledge base, so I can't answer it reliably. Please confirm it with the responsible TrackFlow team."
@@ -286,16 +379,16 @@
       "id": "grounding-standard-delivery-times",
       "question": "What delivery times do we commit to for standard shipments?",
       "trace": {
-        "run_id": "1946afaf-845c-494a-9267-ce016cd36026",
+        "run_id": "7a832bfc-b3a6-4e78-9613-c6eb791dcbd5",
         "user_id": null,
-        "graph_version": "b80c9d0318e7aba2",
+        "graph_version": "faabff53fa40c2ca",
         "question": "What delivery times do we commit to for standard shipments?",
         "status": "completed",
         "outcome": "answered",
-        "answer": "Standard shipments are **3 to 5 business days within the same country**. Delivery times are not guaranteed during Black Friday, Christmas, or January Sales in Spain; they may extend by up to an additional 40%, and this must be communicated proactively in advance.\n\nSources: sla-delivery — Delivery SLA (delivery commitments); sla-delivery — Delivery SLA (high-demand dates)",
+        "answer": "Standard shipping is **3 to 5 business days within the same country**. Delivery times are not guaranteed during Black Friday, Christmas, or January Sales in Spain; they may extend by up to an additional 40%, and this must be communicated proactively in advance.\n\nSources: sla-delivery — Delivery SLA (standard shipping); sla-delivery — Delivery SLA (high-demand dates)",
         "attempts": 1,
-        "started_at": "2026-11-12T02:53:56.243+00:00",
-        "finished_at": "2026-11-12T02:54:00.169+00:00",
+        "started_at": "2026-11-12T04:24:12.561+00:00",
+        "finished_at": "2026-11-12T04:24:17.220+00:00",
         "error_node": null,
         "error_type": null,
         "error_message": null,
@@ -306,9 +399,9 @@
             "kind": "node",
             "name": "receive_question",
             "status": "ok",
-            "started_at": "2026-11-12T02:53:56.244+00:00",
-            "finished_at": "2026-11-12T02:53:56.244+00:00",
-            "duration_ms": 0.2,
+            "started_at": "2026-11-12T04:24:12.563+00:00",
+            "finished_at": "2026-11-12T04:24:12.564+00:00",
+            "duration_ms": 0.316,
             "input": {
               "question": "What delivery times do we commit to for standard shipments?"
             },
@@ -324,13 +417,13 @@
             "kind": "edge",
             "name": "route_question",
             "status": "ok",
-            "started_at": "2026-11-12T02:53:56.244+00:00",
-            "finished_at": "2026-11-12T02:53:56.244+00:00",
+            "started_at": "2026-11-12T04:24:12.564+00:00",
+            "finished_at": "2026-11-12T04:24:12.564+00:00",
             "duration_ms": null,
             "input": null,
             "output": {
-              "decision": "retrieve",
-              "to": "retrieve",
+              "decision": "plan",
+              "to": "plan_sources",
               "reason": "the question is not empty"
             },
             "error_type": null,
@@ -340,11 +433,57 @@
             "seq": 3,
             "attempt": 1,
             "kind": "node",
+            "name": "plan_sources",
+            "status": "ok",
+            "started_at": "2026-11-12T04:24:12.566+00:00",
+            "finished_at": "2026-11-12T04:24:13.790+00:00",
+            "duration_ms": 1224.379,
+            "input": {
+              "question": "What delivery times do we commit to for standard shipments?"
+            },
+            "output": {
+              "plan": {
+                "decided_by": "model",
+                "steps": [
+                  {
+                    "source": "knowledge_base",
+                    "tool": "search_knowledge_base",
+                    "arguments": {}
+                  }
+                ],
+                "ignored": []
+              }
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 4,
+            "attempt": 1,
+            "kind": "edge",
+            "name": "route_after_plan",
+            "status": "ok",
+            "started_at": "2026-11-12T04:24:13.790+00:00",
+            "finished_at": "2026-11-12T04:24:13.790+00:00",
+            "duration_ms": null,
+            "input": null,
+            "output": {
+              "decision": "knowledge_base",
+              "to": "retrieve",
+              "reason": "planner chose knowledge_base (search_knowledge_base)"
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 5,
+            "attempt": 1,
+            "kind": "node",
             "name": "retrieve",
             "status": "ok",
-            "started_at": "2026-11-12T02:53:56.246+00:00",
-            "finished_at": "2026-11-12T02:53:56.493+00:00",
-            "duration_ms": 247.127,
+            "started_at": "2026-11-12T04:24:13.793+00:00",
+            "finished_at": "2026-11-12T04:24:14.109+00:00",
+            "duration_ms": 315.351,
             "input": {
               "question": "What delivery times do we commit to for standard shipments?"
             },
@@ -392,32 +531,32 @@
             "error_message": null
           },
           {
-            "seq": 4,
+            "seq": 6,
             "attempt": 1,
             "kind": "edge",
-            "name": "route_context",
+            "name": "route_after_retrieve",
             "status": "ok",
-            "started_at": "2026-11-12T02:53:56.493+00:00",
-            "finished_at": "2026-11-12T02:53:56.493+00:00",
+            "started_at": "2026-11-12T04:24:14.109+00:00",
+            "finished_at": "2026-11-12T04:24:14.109+00:00",
             "duration_ms": null,
             "input": null,
             "output": {
               "decision": "generate",
               "to": "generate_answer",
-              "reason": "4 chunk(s) scored at least 0.30"
+              "reason": "evidence to answer from: 4 chunk(s) scored at least 0.30"
             },
             "error_type": null,
             "error_message": null
           },
           {
-            "seq": 5,
+            "seq": 7,
             "attempt": 1,
             "kind": "node",
             "name": "generate_answer",
             "status": "ok",
-            "started_at": "2026-11-12T02:53:56.498+00:00",
-            "finished_at": "2026-11-12T02:54:00.164+00:00",
-            "duration_ms": 3666.25,
+            "started_at": "2026-11-12T04:24:14.112+00:00",
+            "finished_at": "2026-11-12T04:24:17.217+00:00",
+            "duration_ms": 3104.927,
             "input": {
               "context": [
                 {
@@ -460,7 +599,7 @@
               "question": "What delivery times do we commit to for standard shipments?"
             },
             "output": {
-              "answer": "Standard shipments are **3 to 5 business days within the same country**. Delivery times are not guaranteed during Black Friday, Christmas, or January Sales in Spain; they may extend by up to an additional 40%, and this must be communicated proactively in advance.\n\nSources: sla-delivery — Delivery SLA (delivery commitments); sla-delivery — Delivery SLA (high-demand dates)"
+              "answer": "Standard shipping is **3 to 5 business days within the same country**. Delivery times are not guaranteed during Black Friday, Christmas, or January Sales in Spain; they may extend by up to an additional 40%, and this must be communicated proactively in advance.\n\nSources: sla-delivery — Delivery SLA (standard shipping); sla-delivery — Delivery SLA (high-demand dates)"
             },
             "error_type": null,
             "error_message": null
@@ -472,16 +611,16 @@
       "id": "grounding-black-friday-sla",
       "question": "Can we guarantee our client's delivery times during Black Friday?",
       "trace": {
-        "run_id": "b2feba53-14be-4cc0-a843-3214a7d99bb9",
+        "run_id": "7e948183-777e-43db-a421-e9db0bd06bfe",
         "user_id": null,
-        "graph_version": "b80c9d0318e7aba2",
+        "graph_version": "faabff53fa40c2ca",
         "question": "Can we guarantee our client's delivery times during Black Friday?",
         "status": "completed",
         "outcome": "answered",
-        "answer": "No. TrackFlow does not guarantee delivery times during Black Friday; they may extend by up to an additional 40%, and this must be communicated proactively to clients in advance.\n\nSources: sla-delivery — Delivery SLA",
+        "answer": "No. TrackFlow does not guarantee delivery times or the delivery SLA during Black Friday. Delivery times may extend by up to an additional 40%, and this must be communicated to the client proactively in advance.\n\nSources: sla-delivery — Delivery SLA",
         "attempts": 1,
-        "started_at": "2026-11-12T02:54:00.172+00:00",
-        "finished_at": "2026-11-12T02:54:07.337+00:00",
+        "started_at": "2026-11-12T04:24:17.224+00:00",
+        "finished_at": "2026-11-12T04:25:27.683+00:00",
         "error_node": null,
         "error_type": null,
         "error_message": null,
@@ -492,9 +631,9 @@
             "kind": "node",
             "name": "receive_question",
             "status": "ok",
-            "started_at": "2026-11-12T02:54:00.174+00:00",
-            "finished_at": "2026-11-12T02:54:00.175+00:00",
-            "duration_ms": 0.379,
+            "started_at": "2026-11-12T04:24:17.226+00:00",
+            "finished_at": "2026-11-12T04:24:17.226+00:00",
+            "duration_ms": 0.377,
             "input": {
               "question": "Can we guarantee our client's delivery times during Black Friday?"
             },
@@ -510,13 +649,13 @@
             "kind": "edge",
             "name": "route_question",
             "status": "ok",
-            "started_at": "2026-11-12T02:54:00.175+00:00",
-            "finished_at": "2026-11-12T02:54:00.175+00:00",
+            "started_at": "2026-11-12T04:24:17.226+00:00",
+            "finished_at": "2026-11-12T04:24:17.226+00:00",
             "duration_ms": null,
             "input": null,
             "output": {
-              "decision": "retrieve",
-              "to": "retrieve",
+              "decision": "plan",
+              "to": "plan_sources",
               "reason": "the question is not empty"
             },
             "error_type": null,
@@ -526,11 +665,57 @@
             "seq": 3,
             "attempt": 1,
             "kind": "node",
+            "name": "plan_sources",
+            "status": "ok",
+            "started_at": "2026-11-12T04:24:17.229+00:00",
+            "finished_at": "2026-11-12T04:25:23.802+00:00",
+            "duration_ms": 66573.656,
+            "input": {
+              "question": "Can we guarantee our client's delivery times during Black Friday?"
+            },
+            "output": {
+              "plan": {
+                "decided_by": "model",
+                "steps": [
+                  {
+                    "source": "knowledge_base",
+                    "tool": "search_knowledge_base",
+                    "arguments": {}
+                  }
+                ],
+                "ignored": []
+              }
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 4,
+            "attempt": 1,
+            "kind": "edge",
+            "name": "route_after_plan",
+            "status": "ok",
+            "started_at": "2026-11-12T04:25:23.802+00:00",
+            "finished_at": "2026-11-12T04:25:23.802+00:00",
+            "duration_ms": null,
+            "input": null,
+            "output": {
+              "decision": "knowledge_base",
+              "to": "retrieve",
+              "reason": "planner chose knowledge_base (search_knowledge_base)"
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 5,
+            "attempt": 1,
+            "kind": "node",
             "name": "retrieve",
             "status": "ok",
-            "started_at": "2026-11-12T02:54:00.178+00:00",
-            "finished_at": "2026-11-12T02:54:00.482+00:00",
-            "duration_ms": 304.603,
+            "started_at": "2026-11-12T04:25:23.805+00:00",
+            "finished_at": "2026-11-12T04:25:24.276+00:00",
+            "duration_ms": 470.805,
             "input": {
               "question": "Can we guarantee our client's delivery times during Black Friday?"
             },
@@ -569,32 +754,32 @@
             "error_message": null
           },
           {
-            "seq": 4,
+            "seq": 6,
             "attempt": 1,
             "kind": "edge",
-            "name": "route_context",
+            "name": "route_after_retrieve",
             "status": "ok",
-            "started_at": "2026-11-12T02:54:00.482+00:00",
-            "finished_at": "2026-11-12T02:54:00.482+00:00",
+            "started_at": "2026-11-12T04:25:24.276+00:00",
+            "finished_at": "2026-11-12T04:25:24.276+00:00",
             "duration_ms": null,
             "input": null,
             "output": {
               "decision": "generate",
               "to": "generate_answer",
-              "reason": "3 chunk(s) scored at least 0.30"
+              "reason": "evidence to answer from: 3 chunk(s) scored at least 0.30"
             },
             "error_type": null,
             "error_message": null
           },
           {
-            "seq": 5,
+            "seq": 7,
             "attempt": 1,
             "kind": "node",
             "name": "generate_answer",
             "status": "ok",
-            "started_at": "2026-11-12T02:54:00.488+00:00",
-            "finished_at": "2026-11-12T02:54:07.331+00:00",
-            "duration_ms": 6843.655,
+            "started_at": "2026-11-12T04:25:24.279+00:00",
+            "finished_at": "2026-11-12T04:25:27.681+00:00",
+            "duration_ms": 3402.619,
             "input": {
               "context": [
                 {
@@ -628,7 +813,7 @@
               "question": "Can we guarantee our client's delivery times during Black Friday?"
             },
             "output": {
-              "answer": "No. TrackFlow does not guarantee delivery times during Black Friday; they may extend by up to an additional 40%, and this must be communicated proactively to clients in advance.\n\nSources: sla-delivery — Delivery SLA"
+              "answer": "No. TrackFlow does not guarantee delivery times or the delivery SLA during Black Friday. Delivery times may extend by up to an additional 40%, and this must be communicated to the client proactively in advance.\n\nSources: sla-delivery — Delivery SLA"
             },
             "error_type": null,
             "error_message": null
@@ -640,16 +825,16 @@
       "id": "grounding-international-returns",
       "question": "A customer bought an item in the United States and wants to return it in Spain. Is that handled automatically?",
       "trace": {
-        "run_id": "c9a0388c-065a-437c-9219-aaf697f93483",
+        "run_id": "91152f65-6635-488f-a1cd-df0ef8aa337b",
         "user_id": null,
-        "graph_version": "b80c9d0318e7aba2",
+        "graph_version": "faabff53fa40c2ca",
         "question": "A customer bought an item in the United States and wants to return it in Spain. Is that handled automatically?",
         "status": "completed",
         "outcome": "answered",
-        "answer": "No. Because the item was purchased in the United States and is being returned in Spain, the return is not covered by the standard automated process. It must be handled manually by Sofía Ramos’s Returns team.\n\nSources: returns-policy — Returns Policy",
+        "answer": "No. A return from the United States to Spain is an international return, so it is not handled through the standard automated process; Sofía Ramos’s Returns team handles it manually.\n\nSources: returns-policy — Returns Policy",
         "attempts": 1,
-        "started_at": "2026-11-12T02:54:07.340+00:00",
-        "finished_at": "2026-11-12T02:54:09.686+00:00",
+        "started_at": "2026-11-12T04:25:27.686+00:00",
+        "finished_at": "2026-11-12T04:25:30.247+00:00",
         "error_node": null,
         "error_type": null,
         "error_message": null,
@@ -660,9 +845,9 @@
             "kind": "node",
             "name": "receive_question",
             "status": "ok",
-            "started_at": "2026-11-12T02:54:07.344+00:00",
-            "finished_at": "2026-11-12T02:54:07.344+00:00",
-            "duration_ms": 0.427,
+            "started_at": "2026-11-12T04:25:27.689+00:00",
+            "finished_at": "2026-11-12T04:25:27.689+00:00",
+            "duration_ms": 0.219,
             "input": {
               "question": "A customer bought an item in the United States and wants to return it in Spain. Is that handled automatically?"
             },
@@ -678,13 +863,13 @@
             "kind": "edge",
             "name": "route_question",
             "status": "ok",
-            "started_at": "2026-11-12T02:54:07.344+00:00",
-            "finished_at": "2026-11-12T02:54:07.344+00:00",
+            "started_at": "2026-11-12T04:25:27.689+00:00",
+            "finished_at": "2026-11-12T04:25:27.689+00:00",
             "duration_ms": null,
             "input": null,
             "output": {
-              "decision": "retrieve",
-              "to": "retrieve",
+              "decision": "plan",
+              "to": "plan_sources",
               "reason": "the question is not empty"
             },
             "error_type": null,
@@ -694,11 +879,57 @@
             "seq": 3,
             "attempt": 1,
             "kind": "node",
+            "name": "plan_sources",
+            "status": "ok",
+            "started_at": "2026-11-12T04:25:27.691+00:00",
+            "finished_at": "2026-11-12T04:25:28.670+00:00",
+            "duration_ms": 979.69,
+            "input": {
+              "question": "A customer bought an item in the United States and wants to return it in Spain. Is that handled automatically?"
+            },
+            "output": {
+              "plan": {
+                "decided_by": "model",
+                "steps": [
+                  {
+                    "source": "knowledge_base",
+                    "tool": "search_knowledge_base",
+                    "arguments": {}
+                  }
+                ],
+                "ignored": []
+              }
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 4,
+            "attempt": 1,
+            "kind": "edge",
+            "name": "route_after_plan",
+            "status": "ok",
+            "started_at": "2026-11-12T04:25:28.670+00:00",
+            "finished_at": "2026-11-12T04:25:28.670+00:00",
+            "duration_ms": null,
+            "input": null,
+            "output": {
+              "decision": "knowledge_base",
+              "to": "retrieve",
+              "reason": "planner chose knowledge_base (search_knowledge_base)"
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 5,
+            "attempt": 1,
+            "kind": "node",
             "name": "retrieve",
             "status": "ok",
-            "started_at": "2026-11-12T02:54:07.348+00:00",
-            "finished_at": "2026-11-12T02:54:08.021+00:00",
-            "duration_ms": 672.225,
+            "started_at": "2026-11-12T04:25:28.674+00:00",
+            "finished_at": "2026-11-12T04:25:28.969+00:00",
+            "duration_ms": 295.538,
             "input": {
               "question": "A customer bought an item in the United States and wants to return it in Spain. Is that handled automatically?"
             },
@@ -755,32 +986,32 @@
             "error_message": null
           },
           {
-            "seq": 4,
+            "seq": 6,
             "attempt": 1,
             "kind": "edge",
-            "name": "route_context",
+            "name": "route_after_retrieve",
             "status": "ok",
-            "started_at": "2026-11-12T02:54:08.021+00:00",
-            "finished_at": "2026-11-12T02:54:08.021+00:00",
+            "started_at": "2026-11-12T04:25:28.969+00:00",
+            "finished_at": "2026-11-12T04:25:28.969+00:00",
             "duration_ms": null,
             "input": null,
             "output": {
               "decision": "generate",
               "to": "generate_answer",
-              "reason": "5 chunk(s) scored at least 0.30"
+              "reason": "evidence to answer from: 5 chunk(s) scored at least 0.30"
             },
             "error_type": null,
             "error_message": null
           },
           {
-            "seq": 5,
+            "seq": 7,
             "attempt": 1,
             "kind": "node",
             "name": "generate_answer",
             "status": "ok",
-            "started_at": "2026-11-12T02:54:08.025+00:00",
-            "finished_at": "2026-11-12T02:54:09.680+00:00",
-            "duration_ms": 1654.639,
+            "started_at": "2026-11-12T04:25:28.973+00:00",
+            "finished_at": "2026-11-12T04:25:30.242+00:00",
+            "duration_ms": 1269.538,
             "input": {
               "context": [
                 {
@@ -832,7 +1063,7 @@
               "question": "A customer bought an item in the United States and wants to return it in Spain. Is that handled automatically?"
             },
             "output": {
-              "answer": "No. Because the item was purchased in the United States and is being returned in Spain, the return is not covered by the standard automated process. It must be handled manually by Sofía Ramos’s Returns team.\n\nSources: returns-policy — Returns Policy"
+              "answer": "No. A return from the United States to Spain is an international return, so it is not handled through the standard automated process; Sofía Ramos’s Returns team handles it manually.\n\nSources: returns-policy — Returns Policy"
             },
             "error_type": null,
             "error_message": null
@@ -844,16 +1075,16 @@
       "id": "grounding-storage-discount",
       "question": "Can we offer a storage discount to a client that stores 60 cubic meters a month?",
       "trace": {
-        "run_id": "b0d8cba1-8512-4293-8fe6-d07d42b5952b",
+        "run_id": "954b8089-bf07-40a7-b1f7-b12008782c8e",
         "user_id": null,
-        "graph_version": "b80c9d0318e7aba2",
+        "graph_version": "faabff53fa40c2ca",
         "question": "Can we offer a storage discount to a client that stores 60 cubic meters a month?",
         "status": "completed",
         "outcome": "answered",
-        "answer": "A client storing 60 cubic meters a month meets the threshold to negotiate a preferential storage rate, but we can’t offer or promise a discount without Miguel Torres’s approval.\n\nSources: storage-pricing — Storage Pricing",
+        "answer": "Yes, a client storing 60 cubic meters a month meets the threshold to negotiate a preferential rate, but you cannot offer or promise a discount without Miguel Torres’s approval.\n\nSources: storage-pricing — Storage Pricing",
         "attempts": 1,
-        "started_at": "2026-11-12T02:54:09.690+00:00",
-        "finished_at": "2026-11-12T02:54:18.513+00:00",
+        "started_at": "2026-11-12T04:25:30.251+00:00",
+        "finished_at": "2026-11-12T04:25:34.436+00:00",
         "error_node": null,
         "error_type": null,
         "error_message": null,
@@ -864,9 +1095,9 @@
             "kind": "node",
             "name": "receive_question",
             "status": "ok",
-            "started_at": "2026-11-12T02:54:09.694+00:00",
-            "finished_at": "2026-11-12T02:54:09.694+00:00",
-            "duration_ms": 0.452,
+            "started_at": "2026-11-12T04:25:30.254+00:00",
+            "finished_at": "2026-11-12T04:25:30.254+00:00",
+            "duration_ms": 0.316,
             "input": {
               "question": "Can we offer a storage discount to a client that stores 60 cubic meters a month?"
             },
@@ -882,13 +1113,13 @@
             "kind": "edge",
             "name": "route_question",
             "status": "ok",
-            "started_at": "2026-11-12T02:54:09.694+00:00",
-            "finished_at": "2026-11-12T02:54:09.694+00:00",
+            "started_at": "2026-11-12T04:25:30.254+00:00",
+            "finished_at": "2026-11-12T04:25:30.254+00:00",
             "duration_ms": null,
             "input": null,
             "output": {
-              "decision": "retrieve",
-              "to": "retrieve",
+              "decision": "plan",
+              "to": "plan_sources",
               "reason": "the question is not empty"
             },
             "error_type": null,
@@ -898,11 +1129,57 @@
             "seq": 3,
             "attempt": 1,
             "kind": "node",
+            "name": "plan_sources",
+            "status": "ok",
+            "started_at": "2026-11-12T04:25:30.257+00:00",
+            "finished_at": "2026-11-12T04:25:32.205+00:00",
+            "duration_ms": 1948.553,
+            "input": {
+              "question": "Can we offer a storage discount to a client that stores 60 cubic meters a month?"
+            },
+            "output": {
+              "plan": {
+                "decided_by": "model",
+                "steps": [
+                  {
+                    "source": "knowledge_base",
+                    "tool": "search_knowledge_base",
+                    "arguments": {}
+                  }
+                ],
+                "ignored": []
+              }
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 4,
+            "attempt": 1,
+            "kind": "edge",
+            "name": "route_after_plan",
+            "status": "ok",
+            "started_at": "2026-11-12T04:25:32.205+00:00",
+            "finished_at": "2026-11-12T04:25:32.205+00:00",
+            "duration_ms": null,
+            "input": null,
+            "output": {
+              "decision": "knowledge_base",
+              "to": "retrieve",
+              "reason": "planner chose knowledge_base (search_knowledge_base)"
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 5,
+            "attempt": 1,
+            "kind": "node",
             "name": "retrieve",
             "status": "ok",
-            "started_at": "2026-11-12T02:54:09.698+00:00",
-            "finished_at": "2026-11-12T02:54:15.189+00:00",
-            "duration_ms": 5491.433,
+            "started_at": "2026-11-12T04:25:32.211+00:00",
+            "finished_at": "2026-11-12T04:25:32.520+00:00",
+            "duration_ms": 309.062,
             "input": {
               "question": "Can we offer a storage discount to a client that stores 60 cubic meters a month?"
             },
@@ -941,32 +1218,32 @@
             "error_message": null
           },
           {
-            "seq": 4,
+            "seq": 6,
             "attempt": 1,
             "kind": "edge",
-            "name": "route_context",
+            "name": "route_after_retrieve",
             "status": "ok",
-            "started_at": "2026-11-12T02:54:15.189+00:00",
-            "finished_at": "2026-11-12T02:54:15.189+00:00",
+            "started_at": "2026-11-12T04:25:32.520+00:00",
+            "finished_at": "2026-11-12T04:25:32.520+00:00",
             "duration_ms": null,
             "input": null,
             "output": {
               "decision": "generate",
               "to": "generate_answer",
-              "reason": "3 chunk(s) scored at least 0.30"
+              "reason": "evidence to answer from: 3 chunk(s) scored at least 0.30"
             },
             "error_type": null,
             "error_message": null
           },
           {
-            "seq": 5,
+            "seq": 7,
             "attempt": 1,
             "kind": "node",
             "name": "generate_answer",
             "status": "ok",
-            "started_at": "2026-11-12T02:54:15.194+00:00",
-            "finished_at": "2026-11-12T02:54:18.508+00:00",
-            "duration_ms": 3314.543,
+            "started_at": "2026-11-12T04:25:32.523+00:00",
+            "finished_at": "2026-11-12T04:25:34.434+00:00",
+            "duration_ms": 1910.878,
             "input": {
               "context": [
                 {
@@ -1000,7 +1277,7 @@
               "question": "Can we offer a storage discount to a client that stores 60 cubic meters a month?"
             },
             "output": {
-              "answer": "A client storing 60 cubic meters a month meets the threshold to negotiate a preferential storage rate, but we can’t offer or promise a discount without Miguel Torres’s approval.\n\nSources: storage-pricing — Storage Pricing"
+              "answer": "Yes, a client storing 60 cubic meters a month meets the threshold to negotiate a preferential rate, but you cannot offer or promise a discount without Miguel Torres’s approval.\n\nSources: storage-pricing — Storage Pricing"
             },
             "error_type": null,
             "error_message": null
@@ -1012,16 +1289,16 @@
       "id": "grounding-carrier-exception",
       "question": "My client needs us to use a carrier we don't normally work with for one route. Can we do that?",
       "trace": {
-        "run_id": "64efcdca-559b-4de2-8c11-b8ff9f2171bb",
+        "run_id": "054e4eb8-80d1-4c76-94ed-c65bd34bfe91",
         "user_id": null,
-        "graph_version": "b80c9d0318e7aba2",
+        "graph_version": "faabff53fa40c2ca",
         "question": "My client needs us to use a carrier we don't normally work with for one route. Can we do that?",
         "status": "completed",
         "outcome": "answered",
-        "answer": "The system assigns the carrier for each shipment. Using a carrier outside the usual options for a route would require approval from Carlos Vega, Head of Carrier Operations; it isn’t something we can guarantee.\n\nSources: carrier-coverage — Carrier Coverage",
+        "answer": "Carrier exceptions require approval from Carlos Vega, Head of Carrier Operations. The system otherwise assigns the carrier based on destination, weight, product type, and urgency.\n\nSources: carrier-coverage — Carrier Coverage",
         "attempts": 1,
-        "started_at": "2026-11-12T02:54:18.516+00:00",
-        "finished_at": "2026-11-12T02:54:21.748+00:00",
+        "started_at": "2026-11-12T04:25:34.441+00:00",
+        "finished_at": "2026-11-12T04:25:37.581+00:00",
         "error_node": null,
         "error_type": null,
         "error_message": null,
@@ -1032,9 +1309,9 @@
             "kind": "node",
             "name": "receive_question",
             "status": "ok",
-            "started_at": "2026-11-12T02:54:18.519+00:00",
-            "finished_at": "2026-11-12T02:54:18.519+00:00",
-            "duration_ms": 0.385,
+            "started_at": "2026-11-12T04:25:34.443+00:00",
+            "finished_at": "2026-11-12T04:25:34.443+00:00",
+            "duration_ms": 0.681,
             "input": {
               "question": "My client needs us to use a carrier we don't normally work with for one route. Can we do that?"
             },
@@ -1050,13 +1327,13 @@
             "kind": "edge",
             "name": "route_question",
             "status": "ok",
-            "started_at": "2026-11-12T02:54:18.519+00:00",
-            "finished_at": "2026-11-12T02:54:18.519+00:00",
+            "started_at": "2026-11-12T04:25:34.443+00:00",
+            "finished_at": "2026-11-12T04:25:34.443+00:00",
             "duration_ms": null,
             "input": null,
             "output": {
-              "decision": "retrieve",
-              "to": "retrieve",
+              "decision": "plan",
+              "to": "plan_sources",
               "reason": "the question is not empty"
             },
             "error_type": null,
@@ -1066,11 +1343,57 @@
             "seq": 3,
             "attempt": 1,
             "kind": "node",
+            "name": "plan_sources",
+            "status": "ok",
+            "started_at": "2026-11-12T04:25:34.446+00:00",
+            "finished_at": "2026-11-12T04:25:35.622+00:00",
+            "duration_ms": 1176.245,
+            "input": {
+              "question": "My client needs us to use a carrier we don't normally work with for one route. Can we do that?"
+            },
+            "output": {
+              "plan": {
+                "decided_by": "model",
+                "steps": [
+                  {
+                    "source": "knowledge_base",
+                    "tool": "search_knowledge_base",
+                    "arguments": {}
+                  }
+                ],
+                "ignored": []
+              }
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 4,
+            "attempt": 1,
+            "kind": "edge",
+            "name": "route_after_plan",
+            "status": "ok",
+            "started_at": "2026-11-12T04:25:35.622+00:00",
+            "finished_at": "2026-11-12T04:25:35.622+00:00",
+            "duration_ms": null,
+            "input": null,
+            "output": {
+              "decision": "knowledge_base",
+              "to": "retrieve",
+              "reason": "planner chose knowledge_base (search_knowledge_base)"
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 5,
+            "attempt": 1,
+            "kind": "node",
             "name": "retrieve",
             "status": "ok",
-            "started_at": "2026-11-12T02:54:18.523+00:00",
-            "finished_at": "2026-11-12T02:54:18.847+00:00",
-            "duration_ms": 323.966,
+            "started_at": "2026-11-12T04:25:35.627+00:00",
+            "finished_at": "2026-11-12T04:25:35.895+00:00",
+            "duration_ms": 268.619,
             "input": {
               "question": "My client needs us to use a carrier we don't normally work with for one route. Can we do that?"
             },
@@ -1100,32 +1423,32 @@
             "error_message": null
           },
           {
-            "seq": 4,
+            "seq": 6,
             "attempt": 1,
             "kind": "edge",
-            "name": "route_context",
+            "name": "route_after_retrieve",
             "status": "ok",
-            "started_at": "2026-11-12T02:54:18.847+00:00",
-            "finished_at": "2026-11-12T02:54:18.847+00:00",
+            "started_at": "2026-11-12T04:25:35.895+00:00",
+            "finished_at": "2026-11-12T04:25:35.895+00:00",
             "duration_ms": null,
             "input": null,
             "output": {
               "decision": "generate",
               "to": "generate_answer",
-              "reason": "2 chunk(s) scored at least 0.30"
+              "reason": "evidence to answer from: 2 chunk(s) scored at least 0.30"
             },
             "error_type": null,
             "error_message": null
           },
           {
-            "seq": 5,
+            "seq": 7,
             "attempt": 1,
             "kind": "node",
             "name": "generate_answer",
             "status": "ok",
-            "started_at": "2026-11-12T02:54:18.851+00:00",
-            "finished_at": "2026-11-12T02:54:21.742+00:00",
-            "duration_ms": 2890.525,
+            "started_at": "2026-11-12T04:25:35.902+00:00",
+            "finished_at": "2026-11-12T04:25:37.578+00:00",
+            "duration_ms": 1676.559,
             "input": {
               "context": [
                 {
@@ -1150,7 +1473,7 @@
               "question": "My client needs us to use a carrier we don't normally work with for one route. Can we do that?"
             },
             "output": {
-              "answer": "The system assigns the carrier for each shipment. Using a carrier outside the usual options for a route would require approval from Carlos Vega, Head of Carrier Operations; it isn’t something we can guarantee.\n\nSources: carrier-coverage — Carrier Coverage"
+              "answer": "Carrier exceptions require approval from Carlos Vega, Head of Carrier Operations. The system otherwise assigns the carrier based on destination, weight, product type, and urgency.\n\nSources: carrier-coverage — Carrier Coverage"
             },
             "error_type": null,
             "error_message": null
@@ -1162,16 +1485,16 @@
       "id": "grounding-return-window",
       "question": "What's the standard return window?",
       "trace": {
-        "run_id": "e2bf1aa3-8246-4f08-ac36-008cb7ae6021",
+        "run_id": "f7fa8deb-8ace-4939-93ca-2392f8e3d86a",
         "user_id": null,
-        "graph_version": "b80c9d0318e7aba2",
+        "graph_version": "faabff53fa40c2ca",
         "question": "What's the standard return window?",
         "status": "completed",
         "outcome": "answered",
         "answer": "The standard return window is 30 days from delivery, unless your contract specifies a different window.\n\nSources: returns-policy — Returns Policy › Standard return window",
         "attempts": 1,
-        "started_at": "2026-11-12T02:54:21.752+00:00",
-        "finished_at": "2026-11-12T02:55:23.923+00:00",
+        "started_at": "2026-11-12T04:25:37.584+00:00",
+        "finished_at": "2026-11-12T04:25:40.548+00:00",
         "error_node": null,
         "error_type": null,
         "error_message": null,
@@ -1182,9 +1505,9 @@
             "kind": "node",
             "name": "receive_question",
             "status": "ok",
-            "started_at": "2026-11-12T02:54:21.756+00:00",
-            "finished_at": "2026-11-12T02:54:21.756+00:00",
-            "duration_ms": 0.471,
+            "started_at": "2026-11-12T04:25:37.587+00:00",
+            "finished_at": "2026-11-12T04:25:37.587+00:00",
+            "duration_ms": 0.332,
             "input": {
               "question": "What's the standard return window?"
             },
@@ -1200,13 +1523,13 @@
             "kind": "edge",
             "name": "route_question",
             "status": "ok",
-            "started_at": "2026-11-12T02:54:21.756+00:00",
-            "finished_at": "2026-11-12T02:54:21.756+00:00",
+            "started_at": "2026-11-12T04:25:37.587+00:00",
+            "finished_at": "2026-11-12T04:25:37.587+00:00",
             "duration_ms": null,
             "input": null,
             "output": {
-              "decision": "retrieve",
-              "to": "retrieve",
+              "decision": "plan",
+              "to": "plan_sources",
               "reason": "the question is not empty"
             },
             "error_type": null,
@@ -1216,11 +1539,57 @@
             "seq": 3,
             "attempt": 1,
             "kind": "node",
+            "name": "plan_sources",
+            "status": "ok",
+            "started_at": "2026-11-12T04:25:37.590+00:00",
+            "finished_at": "2026-11-12T04:25:38.727+00:00",
+            "duration_ms": 1136.38,
+            "input": {
+              "question": "What's the standard return window?"
+            },
+            "output": {
+              "plan": {
+                "decided_by": "model",
+                "steps": [
+                  {
+                    "source": "knowledge_base",
+                    "tool": "search_knowledge_base",
+                    "arguments": {}
+                  }
+                ],
+                "ignored": []
+              }
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 4,
+            "attempt": 1,
+            "kind": "edge",
+            "name": "route_after_plan",
+            "status": "ok",
+            "started_at": "2026-11-12T04:25:38.727+00:00",
+            "finished_at": "2026-11-12T04:25:38.727+00:00",
+            "duration_ms": null,
+            "input": null,
+            "output": {
+              "decision": "knowledge_base",
+              "to": "retrieve",
+              "reason": "planner chose knowledge_base (search_knowledge_base)"
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 5,
+            "attempt": 1,
+            "kind": "node",
             "name": "retrieve",
             "status": "ok",
-            "started_at": "2026-11-12T02:54:21.760+00:00",
-            "finished_at": "2026-11-12T02:54:22.314+00:00",
-            "duration_ms": 553.946,
+            "started_at": "2026-11-12T04:25:38.738+00:00",
+            "finished_at": "2026-11-12T04:25:39.523+00:00",
+            "duration_ms": 784.509,
             "input": {
               "question": "What's the standard return window?"
             },
@@ -1268,32 +1637,32 @@
             "error_message": null
           },
           {
-            "seq": 4,
+            "seq": 6,
             "attempt": 1,
             "kind": "edge",
-            "name": "route_context",
+            "name": "route_after_retrieve",
             "status": "ok",
-            "started_at": "2026-11-12T02:54:22.314+00:00",
-            "finished_at": "2026-11-12T02:54:22.314+00:00",
+            "started_at": "2026-11-12T04:25:39.523+00:00",
+            "finished_at": "2026-11-12T04:25:39.523+00:00",
             "duration_ms": null,
             "input": null,
             "output": {
               "decision": "generate",
               "to": "generate_answer",
-              "reason": "4 chunk(s) scored at least 0.30"
+              "reason": "evidence to answer from: 4 chunk(s) scored at least 0.30"
             },
             "error_type": null,
             "error_message": null
           },
           {
-            "seq": 5,
+            "seq": 7,
             "attempt": 1,
             "kind": "node",
             "name": "generate_answer",
             "status": "ok",
-            "started_at": "2026-11-12T02:54:22.322+00:00",
-            "finished_at": "2026-11-12T02:55:23.917+00:00",
-            "duration_ms": 61594.435,
+            "started_at": "2026-11-12T04:25:39.527+00:00",
+            "finished_at": "2026-11-12T04:25:40.546+00:00",
+            "duration_ms": 1018.823,
             "input": {
               "context": [
                 {
@@ -1348,16 +1717,16 @@
       "id": "out-of-scope-above-threshold",
       "question": "What is the parental leave policy for TrackFlow employees?",
       "trace": {
-        "run_id": "b8e358fb-a84a-4049-bca4-01f6dcdfae11",
+        "run_id": "293aa97a-e7d4-49c0-8cd1-6ddf2e74bb49",
         "user_id": null,
-        "graph_version": "b80c9d0318e7aba2",
+        "graph_version": "faabff53fa40c2ca",
         "question": "What is the parental leave policy for TrackFlow employees?",
         "status": "completed",
         "outcome": "answered",
-        "answer": "The knowledge base does not have enough information to answer TrackFlow’s employee parental leave policy. Please confirm it with the responsible TrackFlow team.",
+        "answer": "The knowledge base does not have enough information to answer this. Please confirm TrackFlow’s parental leave policy with the responsible team.",
         "attempts": 1,
-        "started_at": "2026-11-12T02:55:23.927+00:00",
-        "finished_at": "2026-11-12T02:55:26.285+00:00",
+        "started_at": "2026-11-12T04:25:40.552+00:00",
+        "finished_at": "2026-11-12T04:26:44.055+00:00",
         "error_node": null,
         "error_type": null,
         "error_message": null,
@@ -1368,9 +1737,9 @@
             "kind": "node",
             "name": "receive_question",
             "status": "ok",
-            "started_at": "2026-11-12T02:55:23.931+00:00",
-            "finished_at": "2026-11-12T02:55:23.931+00:00",
-            "duration_ms": 0.447,
+            "started_at": "2026-11-12T04:25:40.554+00:00",
+            "finished_at": "2026-11-12T04:25:40.555+00:00",
+            "duration_ms": 0.342,
             "input": {
               "question": "What is the parental leave policy for TrackFlow employees?"
             },
@@ -1386,13 +1755,13 @@
             "kind": "edge",
             "name": "route_question",
             "status": "ok",
-            "started_at": "2026-11-12T02:55:23.931+00:00",
-            "finished_at": "2026-11-12T02:55:23.931+00:00",
+            "started_at": "2026-11-12T04:25:40.555+00:00",
+            "finished_at": "2026-11-12T04:25:40.555+00:00",
             "duration_ms": null,
             "input": null,
             "output": {
-              "decision": "retrieve",
-              "to": "retrieve",
+              "decision": "plan",
+              "to": "plan_sources",
               "reason": "the question is not empty"
             },
             "error_type": null,
@@ -1402,11 +1771,57 @@
             "seq": 3,
             "attempt": 1,
             "kind": "node",
+            "name": "plan_sources",
+            "status": "ok",
+            "started_at": "2026-11-12T04:25:40.556+00:00",
+            "finished_at": "2026-11-12T04:26:42.085+00:00",
+            "duration_ms": 61529.229,
+            "input": {
+              "question": "What is the parental leave policy for TrackFlow employees?"
+            },
+            "output": {
+              "plan": {
+                "decided_by": "model",
+                "steps": [
+                  {
+                    "source": "knowledge_base",
+                    "tool": "search_knowledge_base",
+                    "arguments": {}
+                  }
+                ],
+                "ignored": []
+              }
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 4,
+            "attempt": 1,
+            "kind": "edge",
+            "name": "route_after_plan",
+            "status": "ok",
+            "started_at": "2026-11-12T04:26:42.085+00:00",
+            "finished_at": "2026-11-12T04:26:42.085+00:00",
+            "duration_ms": null,
+            "input": null,
+            "output": {
+              "decision": "knowledge_base",
+              "to": "retrieve",
+              "reason": "planner chose knowledge_base (search_knowledge_base)"
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 5,
+            "attempt": 1,
+            "kind": "node",
             "name": "retrieve",
             "status": "ok",
-            "started_at": "2026-11-12T02:55:23.935+00:00",
-            "finished_at": "2026-11-12T02:55:24.710+00:00",
-            "duration_ms": 775.545,
+            "started_at": "2026-11-12T04:26:42.089+00:00",
+            "finished_at": "2026-11-12T04:26:42.591+00:00",
+            "duration_ms": 502.165,
             "input": {
               "question": "What is the parental leave policy for TrackFlow employees?"
             },
@@ -1463,32 +1878,32 @@
             "error_message": null
           },
           {
-            "seq": 4,
+            "seq": 6,
             "attempt": 1,
             "kind": "edge",
-            "name": "route_context",
+            "name": "route_after_retrieve",
             "status": "ok",
-            "started_at": "2026-11-12T02:55:24.710+00:00",
-            "finished_at": "2026-11-12T02:55:24.710+00:00",
+            "started_at": "2026-11-12T04:26:42.591+00:00",
+            "finished_at": "2026-11-12T04:26:42.591+00:00",
             "duration_ms": null,
             "input": null,
             "output": {
               "decision": "generate",
               "to": "generate_answer",
-              "reason": "5 chunk(s) scored at least 0.30"
+              "reason": "evidence to answer from: 5 chunk(s) scored at least 0.30"
             },
             "error_type": null,
             "error_message": null
           },
           {
-            "seq": 5,
+            "seq": 7,
             "attempt": 1,
             "kind": "node",
             "name": "generate_answer",
             "status": "ok",
-            "started_at": "2026-11-12T02:55:24.718+00:00",
-            "finished_at": "2026-11-12T02:55:26.283+00:00",
-            "duration_ms": 1564.688,
+            "started_at": "2026-11-12T04:26:42.595+00:00",
+            "finished_at": "2026-11-12T04:26:44.051+00:00",
+            "duration_ms": 1456.225,
             "input": {
               "context": [
                 {
@@ -1540,7 +1955,1658 @@
               "question": "What is the parental leave policy for TrackFlow employees?"
             },
             "output": {
-              "answer": "The knowledge base does not have enough information to answer TrackFlow’s employee parental leave policy. Please confirm it with the responsible TrackFlow team."
+              "answer": "The knowledge base does not have enough information to answer this. Please confirm TrackFlow’s parental leave policy with the responsible team."
+            },
+            "error_type": null,
+            "error_message": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "routing-tool-ticket-status",
+      "question": "What's the status of ticket 12?",
+      "trace": {
+        "run_id": "08943d0d-1d16-40db-a8b2-db533d7cb699",
+        "user_id": null,
+        "graph_version": "faabff53fa40c2ca",
+        "question": "What's the status of ticket 12?",
+        "status": "completed",
+        "outcome": "answered",
+        "answer": "Ticket TRF-000012 is open.\n\nSources: incident-manager — ticket TRF-000012",
+        "attempts": 1,
+        "started_at": "2026-11-12T04:26:44.058+00:00",
+        "finished_at": "2026-11-12T04:26:52.613+00:00",
+        "error_node": null,
+        "error_type": null,
+        "error_message": null,
+        "events": [
+          {
+            "seq": 1,
+            "attempt": 1,
+            "kind": "node",
+            "name": "receive_question",
+            "status": "ok",
+            "started_at": "2026-11-12T04:26:44.061+00:00",
+            "finished_at": "2026-11-12T04:26:44.062+00:00",
+            "duration_ms": 0.33,
+            "input": {
+              "question": "What's the status of ticket 12?"
+            },
+            "output": {
+              "question": "What's the status of ticket 12?"
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 2,
+            "attempt": 1,
+            "kind": "edge",
+            "name": "route_question",
+            "status": "ok",
+            "started_at": "2026-11-12T04:26:44.062+00:00",
+            "finished_at": "2026-11-12T04:26:44.062+00:00",
+            "duration_ms": null,
+            "input": null,
+            "output": {
+              "decision": "plan",
+              "to": "plan_sources",
+              "reason": "the question is not empty"
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 3,
+            "attempt": 1,
+            "kind": "node",
+            "name": "plan_sources",
+            "status": "ok",
+            "started_at": "2026-11-12T04:26:44.065+00:00",
+            "finished_at": "2026-11-12T04:26:45.228+00:00",
+            "duration_ms": 1162.765,
+            "input": {
+              "question": "What's the status of ticket 12?"
+            },
+            "output": {
+              "plan": {
+                "decided_by": "model",
+                "steps": [
+                  {
+                    "source": "incident_manager",
+                    "tool": "lookup_ticket",
+                    "arguments": {
+                      "reference": "12"
+                    }
+                  }
+                ],
+                "ignored": []
+              }
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 4,
+            "attempt": 1,
+            "kind": "edge",
+            "name": "route_after_plan",
+            "status": "ok",
+            "started_at": "2026-11-12T04:26:45.228+00:00",
+            "finished_at": "2026-11-12T04:26:45.228+00:00",
+            "duration_ms": null,
+            "input": null,
+            "output": {
+              "decision": "incident_manager",
+              "to": "lookup_ticket",
+              "reason": "planner chose incident_manager (lookup_ticket: reference='12')"
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 5,
+            "attempt": 1,
+            "kind": "node",
+            "name": "lookup_ticket",
+            "status": "ok",
+            "started_at": "2026-11-12T04:26:45.231+00:00",
+            "finished_at": "2026-11-12T04:26:45.242+00:00",
+            "duration_ms": 10.564,
+            "input": {
+              "plan": {
+                "decided_by": "model",
+                "steps": [
+                  {
+                    "source": "incident_manager",
+                    "tool": "lookup_ticket",
+                    "arguments": {
+                      "reference": "12"
+                    }
+                  }
+                ],
+                "ignored": []
+              }
+            },
+            "output": {
+              "ticket_lookup": {
+                "request": {
+                  "reference": "12",
+                  "status": null,
+                  "category": null,
+                  "origin": null,
+                  "branch": null
+                },
+                "outcome": "ok",
+                "endpoint": "GET /api/incidents?reference=TRF-000012",
+                "reference": "TRF-000012",
+                "tickets": [
+                  {
+                    "id": "727ffd4b-5f85-42ae-8e55-6edcd28a48a1",
+                    "reference": "TRF-000012",
+                    "title": "Wrong postcode assigned during label generation",
+                    "description": "Wrong postcode assigned during label generation",
+                    "status": "open",
+                    "category": "delivery_failure",
+                    "origin": "customer",
+                    "branch": "central",
+                    "created_at": "2024-01-08T00:00:00Z",
+                    "updated_at": "2024-01-08T00:00:00Z"
+                  }
+                ],
+                "total": 1,
+                "failure": null,
+                "http_status": 200,
+                "duration_ms": 8.1
+              }
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 6,
+            "attempt": 1,
+            "kind": "edge",
+            "name": "route_after_ticket",
+            "status": "ok",
+            "started_at": "2026-11-12T04:26:45.242+00:00",
+            "finished_at": "2026-11-12T04:26:45.242+00:00",
+            "duration_ms": null,
+            "input": null,
+            "output": {
+              "decision": "generate",
+              "to": "generate_answer",
+              "reason": "evidence to answer from: incident_manager ok (1 ticket(s))"
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 7,
+            "attempt": 1,
+            "kind": "node",
+            "name": "generate_answer",
+            "status": "ok",
+            "started_at": "2026-11-12T04:26:45.245+00:00",
+            "finished_at": "2026-11-12T04:26:52.607+00:00",
+            "duration_ms": 7362.356,
+            "input": {
+              "question": "What's the status of ticket 12?",
+              "ticket_lookup": {
+                "request": {
+                  "reference": "12",
+                  "status": null,
+                  "category": null,
+                  "origin": null,
+                  "branch": null
+                },
+                "outcome": "ok",
+                "endpoint": "GET /api/incidents?reference=TRF-000012",
+                "reference": "TRF-000012",
+                "tickets": [
+                  {
+                    "id": "727ffd4b-5f85-42ae-8e55-6edcd28a48a1",
+                    "reference": "TRF-000012",
+                    "title": "Wrong postcode assigned during label generation",
+                    "description": "Wrong postcode assigned during label generation",
+                    "status": "open",
+                    "category": "delivery_failure",
+                    "origin": "customer",
+                    "branch": "central",
+                    "created_at": "2024-01-08T00:00:00Z",
+                    "updated_at": "2024-01-08T00:00:00Z"
+                  }
+                ],
+                "total": 1,
+                "failure": null,
+                "http_status": 200,
+                "duration_ms": 8.1
+              }
+            },
+            "output": {
+              "answer": "Ticket TRF-000012 is open.\n\nSources: incident-manager — ticket TRF-000012"
+            },
+            "error_type": null,
+            "error_message": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "routing-tool-ticket-search",
+      "question": "How many support tickets are in progress right now?",
+      "trace": {
+        "run_id": "c4a0eaba-8dd0-42f7-9a02-bcba187103a1",
+        "user_id": null,
+        "graph_version": "faabff53fa40c2ca",
+        "question": "How many support tickets are in progress right now?",
+        "status": "completed",
+        "outcome": "answered",
+        "answer": "There are 2 support tickets in progress right now.\n\nSources: incident-manager — search status in progress",
+        "attempts": 1,
+        "started_at": "2026-11-12T04:26:52.618+00:00",
+        "finished_at": "2026-11-12T04:26:56.913+00:00",
+        "error_node": null,
+        "error_type": null,
+        "error_message": null,
+        "events": [
+          {
+            "seq": 1,
+            "attempt": 1,
+            "kind": "node",
+            "name": "receive_question",
+            "status": "ok",
+            "started_at": "2026-11-12T04:26:52.620+00:00",
+            "finished_at": "2026-11-12T04:26:52.620+00:00",
+            "duration_ms": 0.295,
+            "input": {
+              "question": "How many support tickets are in progress right now?"
+            },
+            "output": {
+              "question": "How many support tickets are in progress right now?"
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 2,
+            "attempt": 1,
+            "kind": "edge",
+            "name": "route_question",
+            "status": "ok",
+            "started_at": "2026-11-12T04:26:52.620+00:00",
+            "finished_at": "2026-11-12T04:26:52.620+00:00",
+            "duration_ms": null,
+            "input": null,
+            "output": {
+              "decision": "plan",
+              "to": "plan_sources",
+              "reason": "the question is not empty"
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 3,
+            "attempt": 1,
+            "kind": "node",
+            "name": "plan_sources",
+            "status": "ok",
+            "started_at": "2026-11-12T04:26:52.623+00:00",
+            "finished_at": "2026-11-12T04:26:54.334+00:00",
+            "duration_ms": 1710.856,
+            "input": {
+              "question": "How many support tickets are in progress right now?"
+            },
+            "output": {
+              "plan": {
+                "decided_by": "model",
+                "steps": [
+                  {
+                    "source": "incident_manager",
+                    "tool": "lookup_ticket",
+                    "arguments": {
+                      "status": "in_progress"
+                    }
+                  }
+                ],
+                "ignored": []
+              }
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 4,
+            "attempt": 1,
+            "kind": "edge",
+            "name": "route_after_plan",
+            "status": "ok",
+            "started_at": "2026-11-12T04:26:54.334+00:00",
+            "finished_at": "2026-11-12T04:26:54.334+00:00",
+            "duration_ms": null,
+            "input": null,
+            "output": {
+              "decision": "incident_manager",
+              "to": "lookup_ticket",
+              "reason": "planner chose incident_manager (lookup_ticket: status='in_progress')"
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 5,
+            "attempt": 1,
+            "kind": "node",
+            "name": "lookup_ticket",
+            "status": "ok",
+            "started_at": "2026-11-12T04:26:54.337+00:00",
+            "finished_at": "2026-11-12T04:26:54.353+00:00",
+            "duration_ms": 15.512,
+            "input": {
+              "plan": {
+                "decided_by": "model",
+                "steps": [
+                  {
+                    "source": "incident_manager",
+                    "tool": "lookup_ticket",
+                    "arguments": {
+                      "status": "in_progress"
+                    }
+                  }
+                ],
+                "ignored": []
+              }
+            },
+            "output": {
+              "ticket_lookup": {
+                "request": {
+                  "reference": null,
+                  "status": "in_progress",
+                  "category": null,
+                  "origin": null,
+                  "branch": null
+                },
+                "outcome": "ok",
+                "endpoint": "GET /api/incidents?status=in_progress",
+                "reference": null,
+                "tickets": [
+                  {
+                    "id": "553a7fcc-081d-4489-8666-d533f0a667b7",
+                    "reference": null,
+                    "title": "Pallet missing Coca-Cola and Fender items",
+                    "description": "Pallet 35 was missing more than 30% of total items ordered",
+                    "status": "in_progress",
+                    "category": "inventory_discrepancy",
+                    "origin": "internal",
+                    "branch": "la_warehouse",
+                    "created_at": "2026-09-23T06:52:34.060355Z",
+                    "updated_at": "2026-09-23T06:52:34.060355Z"
+                  },
+                  {
+                    "id": "a3d78e5e-27d4-41f2-a19e-b596c150097b",
+                    "reference": "TRF-000093",
+                    "title": "Carrier attempted delivery but customer was not notified",
+                    "description": "Carrier attempted delivery but customer was not notified",
+                    "status": "in_progress",
+                    "category": "carrier_issue",
+                    "origin": "customer",
+                    "branch": "central",
+                    "created_at": "2024-01-28T00:00:00Z",
+                    "updated_at": "2026-09-23T06:36:51.312149Z"
+                  }
+                ],
+                "total": 2,
+                "failure": null,
+                "http_status": 200,
+                "duration_ms": 12.2
+              }
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 6,
+            "attempt": 1,
+            "kind": "edge",
+            "name": "route_after_ticket",
+            "status": "ok",
+            "started_at": "2026-11-12T04:26:54.353+00:00",
+            "finished_at": "2026-11-12T04:26:54.353+00:00",
+            "duration_ms": null,
+            "input": null,
+            "output": {
+              "decision": "generate",
+              "to": "generate_answer",
+              "reason": "evidence to answer from: incident_manager ok (2 ticket(s))"
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 7,
+            "attempt": 1,
+            "kind": "node",
+            "name": "generate_answer",
+            "status": "ok",
+            "started_at": "2026-11-12T04:26:54.356+00:00",
+            "finished_at": "2026-11-12T04:26:56.909+00:00",
+            "duration_ms": 2552.952,
+            "input": {
+              "question": "How many support tickets are in progress right now?",
+              "ticket_lookup": {
+                "request": {
+                  "reference": null,
+                  "status": "in_progress",
+                  "category": null,
+                  "origin": null,
+                  "branch": null
+                },
+                "outcome": "ok",
+                "endpoint": "GET /api/incidents?status=in_progress",
+                "reference": null,
+                "tickets": [
+                  {
+                    "id": "553a7fcc-081d-4489-8666-d533f0a667b7",
+                    "reference": null,
+                    "title": "Pallet missing Coca-Cola and Fender items",
+                    "description": "Pallet 35 was missing more than 30% of total items ordered",
+                    "status": "in_progress",
+                    "category": "inventory_discrepancy",
+                    "origin": "internal",
+                    "branch": "la_warehouse",
+                    "created_at": "2026-09-23T06:52:34.060355Z",
+                    "updated_at": "2026-09-23T06:52:34.060355Z"
+                  },
+                  {
+                    "id": "a3d78e5e-27d4-41f2-a19e-b596c150097b",
+                    "reference": "TRF-000093",
+                    "title": "Carrier attempted delivery but customer was not notified",
+                    "description": "Carrier attempted delivery but customer was not notified",
+                    "status": "in_progress",
+                    "category": "carrier_issue",
+                    "origin": "customer",
+                    "branch": "central",
+                    "created_at": "2024-01-28T00:00:00Z",
+                    "updated_at": "2026-09-23T06:36:51.312149Z"
+                  }
+                ],
+                "total": 2,
+                "failure": null,
+                "http_status": 200,
+                "duration_ms": 12.2
+              }
+            },
+            "output": {
+              "answer": "There are 2 support tickets in progress right now.\n\nSources: incident-manager — search status in progress"
+            },
+            "error_type": null,
+            "error_message": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "routing-rag-not-tool",
+      "question": "How much do we charge for inventory that hasn't moved in more than 180 days?",
+      "trace": {
+        "run_id": "8908e8d6-af0d-47d7-9d9b-25b1f0853228",
+        "user_id": null,
+        "graph_version": "faabff53fa40c2ca",
+        "question": "How much do we charge for inventory that hasn't moved in more than 180 days?",
+        "status": "completed",
+        "outcome": "answered",
+        "answer": "Inventory with more than 180 days of no movement—no sales or outbound—incurs a long-term inventory fee of **150% over the standard storage rate**, starting on day 181. The standard rate is 18 USD per cubic meter per month in Los Angeles or 16 EUR per cubic meter per month in Zaragoza.\n\nSources: storage-pricing — Storage Pricing",
+        "attempts": 1,
+        "started_at": "2026-11-12T04:26:56.917+00:00",
+        "finished_at": "2026-11-12T04:27:03.781+00:00",
+        "error_node": null,
+        "error_type": null,
+        "error_message": null,
+        "events": [
+          {
+            "seq": 1,
+            "attempt": 1,
+            "kind": "node",
+            "name": "receive_question",
+            "status": "ok",
+            "started_at": "2026-11-12T04:26:56.920+00:00",
+            "finished_at": "2026-11-12T04:26:56.921+00:00",
+            "duration_ms": 0.287,
+            "input": {
+              "question": "How much do we charge for inventory that hasn't moved in more than 180 days?"
+            },
+            "output": {
+              "question": "How much do we charge for inventory that hasn't moved in more than 180 days?"
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 2,
+            "attempt": 1,
+            "kind": "edge",
+            "name": "route_question",
+            "status": "ok",
+            "started_at": "2026-11-12T04:26:56.921+00:00",
+            "finished_at": "2026-11-12T04:26:56.921+00:00",
+            "duration_ms": null,
+            "input": null,
+            "output": {
+              "decision": "plan",
+              "to": "plan_sources",
+              "reason": "the question is not empty"
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 3,
+            "attempt": 1,
+            "kind": "node",
+            "name": "plan_sources",
+            "status": "ok",
+            "started_at": "2026-11-12T04:26:56.923+00:00",
+            "finished_at": "2026-11-12T04:26:58.517+00:00",
+            "duration_ms": 1594.313,
+            "input": {
+              "question": "How much do we charge for inventory that hasn't moved in more than 180 days?"
+            },
+            "output": {
+              "plan": {
+                "decided_by": "model",
+                "steps": [
+                  {
+                    "source": "knowledge_base",
+                    "tool": "search_knowledge_base",
+                    "arguments": {}
+                  }
+                ],
+                "ignored": []
+              }
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 4,
+            "attempt": 1,
+            "kind": "edge",
+            "name": "route_after_plan",
+            "status": "ok",
+            "started_at": "2026-11-12T04:26:58.517+00:00",
+            "finished_at": "2026-11-12T04:26:58.517+00:00",
+            "duration_ms": null,
+            "input": null,
+            "output": {
+              "decision": "knowledge_base",
+              "to": "retrieve",
+              "reason": "planner chose knowledge_base (search_knowledge_base)"
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 5,
+            "attempt": 1,
+            "kind": "node",
+            "name": "retrieve",
+            "status": "ok",
+            "started_at": "2026-11-12T04:26:58.520+00:00",
+            "finished_at": "2026-11-12T04:26:58.972+00:00",
+            "duration_ms": 451.228,
+            "input": {
+              "question": "How much do we charge for inventory that hasn't moved in more than 180 days?"
+            },
+            "output": {
+              "context": [
+                {
+                  "company": "trackflow",
+                  "source_document": "storage-pricing",
+                  "section": "Storage Pricing",
+                  "language": "en",
+                  "chunk_index": 0,
+                  "text": "Storage Pricing\nTrackFlow charges client brands for storage based on volume occupied, not number of units:\n- Standard rate: 18 USD per cubic meter per month (Los Angeles) or 16 EUR per cubic meter per month (Zaragoza).\n- The first 30 days of any new product in inventory incur no storage charge (grace period).\n- Inventory with more than 180 days of no movement (no sales or outbound) pays a \"long-term inventory\" fee of 150% over the standard rate, starting on day 181.",
+                  "score": 0.570765
+                },
+                {
+                  "company": "trackflow",
+                  "source_document": "storage-pricing",
+                  "section": "Storage Pricing",
+                  "language": "en",
+                  "chunk_index": 1,
+                  "text": "Storage Pricing\nThe client can request an inventory aging report at any time through their account manager; this report is not currently automated for the end client, only internally.",
+                  "score": 0.40128723
+                }
+              ]
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 6,
+            "attempt": 1,
+            "kind": "edge",
+            "name": "route_after_retrieve",
+            "status": "ok",
+            "started_at": "2026-11-12T04:26:58.972+00:00",
+            "finished_at": "2026-11-12T04:26:58.972+00:00",
+            "duration_ms": null,
+            "input": null,
+            "output": {
+              "decision": "generate",
+              "to": "generate_answer",
+              "reason": "evidence to answer from: 2 chunk(s) scored at least 0.30"
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 7,
+            "attempt": 1,
+            "kind": "node",
+            "name": "generate_answer",
+            "status": "ok",
+            "started_at": "2026-11-12T04:26:58.975+00:00",
+            "finished_at": "2026-11-12T04:27:03.778+00:00",
+            "duration_ms": 4803.028,
+            "input": {
+              "context": [
+                {
+                  "company": "trackflow",
+                  "source_document": "storage-pricing",
+                  "section": "Storage Pricing",
+                  "language": "en",
+                  "chunk_index": 0,
+                  "text": "Storage Pricing\nTrackFlow charges client brands for storage based on volume occupied, not number of units:\n- Standard rate: 18 USD per cubic meter per month (Los Angeles) or 16 EUR per cubic meter per month (Zaragoza).\n- The first 30 days of any new product in inventory incur no storage charge (grace period).\n- Inventory with more than 180 days of no movement (no sales or outbound) pays a \"long-term inventory\" fee of 150% over the standard rate, starting on day 181.",
+                  "score": 0.570765
+                },
+                {
+                  "company": "trackflow",
+                  "source_document": "storage-pricing",
+                  "section": "Storage Pricing",
+                  "language": "en",
+                  "chunk_index": 1,
+                  "text": "Storage Pricing\nThe client can request an inventory aging report at any time through their account manager; this report is not currently automated for the end client, only internally.",
+                  "score": 0.40128723
+                }
+              ],
+              "question": "How much do we charge for inventory that hasn't moved in more than 180 days?"
+            },
+            "output": {
+              "answer": "Inventory with more than 180 days of no movement—no sales or outbound—incurs a long-term inventory fee of **150% over the standard storage rate**, starting on day 181. The standard rate is 18 USD per cubic meter per month in Los Angeles or 16 EUR per cubic meter per month in Zaragoza.\n\nSources: storage-pricing — Storage Pricing"
+            },
+            "error_type": null,
+            "error_message": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "routing-both-ticket-and-policy",
+      "question": "Ticket TRF-000043 is about a product damaged in transit. What's its status, and who pays the return shipping in that case?",
+      "trace": {
+        "run_id": "3366f886-792b-4835-b466-30da09ce8107",
+        "user_id": null,
+        "graph_version": "faabff53fa40c2ca",
+        "question": "Ticket TRF-000043 is about a product damaged in transit. What's its status, and who pays the return shipping in that case?",
+        "status": "completed",
+        "outcome": "answered",
+        "answer": "The ticket is **open**. Because the product was damaged in transit, **TrackFlow covers the return shipping cost**.\n\nSources: incident-manager — ticket TRF-000043; returns-policy — Returns Policy › Return costs",
+        "attempts": 1,
+        "started_at": "2026-11-12T04:27:03.785+00:00",
+        "finished_at": "2026-11-12T04:27:09.097+00:00",
+        "error_node": null,
+        "error_type": null,
+        "error_message": null,
+        "events": [
+          {
+            "seq": 1,
+            "attempt": 1,
+            "kind": "node",
+            "name": "receive_question",
+            "status": "ok",
+            "started_at": "2026-11-12T04:27:03.788+00:00",
+            "finished_at": "2026-11-12T04:27:03.788+00:00",
+            "duration_ms": 0.275,
+            "input": {
+              "question": "Ticket TRF-000043 is about a product damaged in transit. What's its status, and who pays the return shipping in that case?"
+            },
+            "output": {
+              "question": "Ticket TRF-000043 is about a product damaged in transit. What's its status, and who pays the return shipping in that case?"
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 2,
+            "attempt": 1,
+            "kind": "edge",
+            "name": "route_question",
+            "status": "ok",
+            "started_at": "2026-11-12T04:27:03.788+00:00",
+            "finished_at": "2026-11-12T04:27:03.788+00:00",
+            "duration_ms": null,
+            "input": null,
+            "output": {
+              "decision": "plan",
+              "to": "plan_sources",
+              "reason": "the question is not empty"
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 3,
+            "attempt": 1,
+            "kind": "node",
+            "name": "plan_sources",
+            "status": "ok",
+            "started_at": "2026-11-12T04:27:03.790+00:00",
+            "finished_at": "2026-11-12T04:27:05.824+00:00",
+            "duration_ms": 2033.612,
+            "input": {
+              "question": "Ticket TRF-000043 is about a product damaged in transit. What's its status, and who pays the return shipping in that case?"
+            },
+            "output": {
+              "plan": {
+                "decided_by": "model",
+                "steps": [
+                  {
+                    "source": "incident_manager",
+                    "tool": "lookup_ticket",
+                    "arguments": {
+                      "reference": "TRF-000043"
+                    }
+                  },
+                  {
+                    "source": "knowledge_base",
+                    "tool": "search_knowledge_base",
+                    "arguments": {}
+                  }
+                ],
+                "ignored": []
+              }
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 4,
+            "attempt": 1,
+            "kind": "edge",
+            "name": "route_after_plan",
+            "status": "ok",
+            "started_at": "2026-11-12T04:27:05.824+00:00",
+            "finished_at": "2026-11-12T04:27:05.824+00:00",
+            "duration_ms": null,
+            "input": null,
+            "output": {
+              "decision": "incident_manager",
+              "to": "lookup_ticket",
+              "reason": "planner chose incident_manager (lookup_ticket: reference='TRF-000043') then knowledge_base (search_knowledge_base)"
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 5,
+            "attempt": 1,
+            "kind": "node",
+            "name": "lookup_ticket",
+            "status": "ok",
+            "started_at": "2026-11-12T04:27:05.830+00:00",
+            "finished_at": "2026-11-12T04:27:05.842+00:00",
+            "duration_ms": 11.704,
+            "input": {
+              "plan": {
+                "decided_by": "model",
+                "steps": [
+                  {
+                    "source": "incident_manager",
+                    "tool": "lookup_ticket",
+                    "arguments": {
+                      "reference": "TRF-000043"
+                    }
+                  },
+                  {
+                    "source": "knowledge_base",
+                    "tool": "search_knowledge_base",
+                    "arguments": {}
+                  }
+                ],
+                "ignored": []
+              }
+            },
+            "output": {
+              "ticket_lookup": {
+                "request": {
+                  "reference": "TRF-000043",
+                  "status": null,
+                  "category": null,
+                  "origin": null,
+                  "branch": null
+                },
+                "outcome": "ok",
+                "endpoint": "GET /api/incidents?reference=TRF-000043",
+                "reference": "TRF-000043",
+                "tickets": [
+                  {
+                    "id": "cf24318d-1667-443f-b2f8-50da614452b4",
+                    "reference": "TRF-000043",
+                    "title": "Customer requesting return label for damaged product",
+                    "description": "Customer requesting return label for damaged product",
+                    "status": "open",
+                    "category": "returns_issue",
+                    "origin": "customer",
+                    "branch": "central",
+                    "created_at": "2024-01-21T00:00:00Z",
+                    "updated_at": "2024-01-21T00:00:00Z"
+                  }
+                ],
+                "total": 1,
+                "failure": null,
+                "http_status": 200,
+                "duration_ms": 8.5
+              }
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 6,
+            "attempt": 1,
+            "kind": "edge",
+            "name": "route_after_ticket",
+            "status": "ok",
+            "started_at": "2026-11-12T04:27:05.842+00:00",
+            "finished_at": "2026-11-12T04:27:05.842+00:00",
+            "duration_ms": null,
+            "input": null,
+            "output": {
+              "decision": "knowledge_base",
+              "to": "retrieve",
+              "reason": "the plan still needs knowledge_base"
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 7,
+            "attempt": 1,
+            "kind": "node",
+            "name": "retrieve",
+            "status": "ok",
+            "started_at": "2026-11-12T04:27:05.845+00:00",
+            "finished_at": "2026-11-12T04:27:06.354+00:00",
+            "duration_ms": 509.172,
+            "input": {
+              "question": "Ticket TRF-000043 is about a product damaged in transit. What's its status, and who pays the return shipping in that case?"
+            },
+            "output": {
+              "context": [
+                {
+                  "company": "trackflow",
+                  "source_document": "returns-policy",
+                  "section": "Returns Policy › Return costs",
+                  "language": "en",
+                  "chunk_index": 2,
+                  "text": "Returns Policy\nReturn costs: the return shipping cost is covered by the client brand, unless the reason is a TrackFlow error (product damaged in transit or wrong delivery), in which case TrackFlow covers it.",
+                  "score": 0.56097996
+                },
+                {
+                  "company": "trackflow",
+                  "source_document": "returns-policy",
+                  "section": "Returns Policy",
+                  "language": "en",
+                  "chunk_index": 0,
+                  "text": "Returns Policy\nTrackFlow's standard reverse logistics process works as follows:\n1. The end customer requests a return through the brand's portal.\n2. TrackFlow automatically generates the return label if the reason falls within the rules configured by the client (e.g. wrong size, defective product).\n3. The product arrives at the warehouse and an operative inspects and classifies it as: fit for resale, fit for reconditioning, or not fit (disposal).",
+                  "score": 0.38392535
+                },
+                {
+                  "company": "trackflow",
+                  "source_document": "returns-policy",
+                  "section": "Returns Policy",
+                  "language": "en",
+                  "chunk_index": 4,
+                  "text": "Returns Policy\nTrackFlow does not recondition or resell product on its own account; it only executes logistics according to the rules each client brand defines.",
+                  "score": 0.37213123
+                },
+                {
+                  "company": "trackflow",
+                  "source_document": "returns-policy",
+                  "section": "Returns Policy",
+                  "language": "en",
+                  "chunk_index": 3,
+                  "text": "Returns Policy\nInternational returns (purchased in one country, returned in another) are not covered by the standard automated process and require manual handling by Sofía Ramos's team (Returns Manager).",
+                  "score": 0.3174817
+                }
+              ]
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 8,
+            "attempt": 1,
+            "kind": "edge",
+            "name": "route_after_retrieve",
+            "status": "ok",
+            "started_at": "2026-11-12T04:27:06.354+00:00",
+            "finished_at": "2026-11-12T04:27:06.354+00:00",
+            "duration_ms": null,
+            "input": null,
+            "output": {
+              "decision": "generate",
+              "to": "generate_answer",
+              "reason": "evidence to answer from: incident_manager ok (1 ticket(s)); 4 chunk(s) scored at least 0.30"
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 9,
+            "attempt": 1,
+            "kind": "node",
+            "name": "generate_answer",
+            "status": "ok",
+            "started_at": "2026-11-12T04:27:06.357+00:00",
+            "finished_at": "2026-11-12T04:27:09.092+00:00",
+            "duration_ms": 2735.082,
+            "input": {
+              "context": [
+                {
+                  "company": "trackflow",
+                  "source_document": "returns-policy",
+                  "section": "Returns Policy › Return costs",
+                  "language": "en",
+                  "chunk_index": 2,
+                  "text": "Returns Policy\nReturn costs: the return shipping cost is covered by the client brand, unless the reason is a TrackFlow error (product damaged in transit or wrong delivery), in which case TrackFlow covers it.",
+                  "score": 0.56097996
+                },
+                {
+                  "company": "trackflow",
+                  "source_document": "returns-policy",
+                  "section": "Returns Policy",
+                  "language": "en",
+                  "chunk_index": 0,
+                  "text": "Returns Policy\nTrackFlow's standard reverse logistics process works as follows:\n1. The end customer requests a return through the brand's portal.\n2. TrackFlow automatically generates the return label if the reason falls within the rules configured by the client (e.g. wrong size, defective product).\n3. The product arrives at the warehouse and an operative inspects and classifies it as: fit for resale, fit for reconditioning, or not fit (disposal).",
+                  "score": 0.38392535
+                },
+                {
+                  "company": "trackflow",
+                  "source_document": "returns-policy",
+                  "section": "Returns Policy",
+                  "language": "en",
+                  "chunk_index": 4,
+                  "text": "Returns Policy\nTrackFlow does not recondition or resell product on its own account; it only executes logistics according to the rules each client brand defines.",
+                  "score": 0.37213123
+                },
+                {
+                  "company": "trackflow",
+                  "source_document": "returns-policy",
+                  "section": "Returns Policy",
+                  "language": "en",
+                  "chunk_index": 3,
+                  "text": "Returns Policy\nInternational returns (purchased in one country, returned in another) are not covered by the standard automated process and require manual handling by Sofía Ramos's team (Returns Manager).",
+                  "score": 0.3174817
+                }
+              ],
+              "question": "Ticket TRF-000043 is about a product damaged in transit. What's its status, and who pays the return shipping in that case?",
+              "ticket_lookup": {
+                "request": {
+                  "reference": "TRF-000043",
+                  "status": null,
+                  "category": null,
+                  "origin": null,
+                  "branch": null
+                },
+                "outcome": "ok",
+                "endpoint": "GET /api/incidents?reference=TRF-000043",
+                "reference": "TRF-000043",
+                "tickets": [
+                  {
+                    "id": "cf24318d-1667-443f-b2f8-50da614452b4",
+                    "reference": "TRF-000043",
+                    "title": "Customer requesting return label for damaged product",
+                    "description": "Customer requesting return label for damaged product",
+                    "status": "open",
+                    "category": "returns_issue",
+                    "origin": "customer",
+                    "branch": "central",
+                    "created_at": "2024-01-21T00:00:00Z",
+                    "updated_at": "2024-01-21T00:00:00Z"
+                  }
+                ],
+                "total": 1,
+                "failure": null,
+                "http_status": 200,
+                "duration_ms": 8.5
+              }
+            },
+            "output": {
+              "answer": "The ticket is **open**. Because the product was damaged in transit, **TrackFlow covers the return shipping cost**.\n\nSources: incident-manager — ticket TRF-000043; returns-policy — Returns Policy › Return costs"
+            },
+            "error_type": null,
+            "error_message": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "routing-tool-stock",
+      "question": "Do we have stock of the black running shoes in Monterrey?",
+      "trace": {
+        "run_id": "38c9146c-ec9f-4e1e-8c5f-43794164ab8b",
+        "user_id": null,
+        "graph_version": "faabff53fa40c2ca",
+        "question": "Do we have stock of the black running shoes in Monterrey?",
+        "status": "completed",
+        "outcome": "answered",
+        "answer": "Yes. Monterrey has 45 units of the black running shoes, size 42 (SKU SHOE-BLK-42).\n\nSources: inventory-manager — stock SHOE-BLK-42 (Monterrey)",
+        "attempts": 1,
+        "started_at": "2026-11-12T04:27:09.101+00:00",
+        "finished_at": "2026-11-12T04:27:11.461+00:00",
+        "error_node": null,
+        "error_type": null,
+        "error_message": null,
+        "events": [
+          {
+            "seq": 1,
+            "attempt": 1,
+            "kind": "node",
+            "name": "receive_question",
+            "status": "ok",
+            "started_at": "2026-11-12T04:27:09.103+00:00",
+            "finished_at": "2026-11-12T04:27:09.104+00:00",
+            "duration_ms": 0.45,
+            "input": {
+              "question": "Do we have stock of the black running shoes in Monterrey?"
+            },
+            "output": {
+              "question": "Do we have stock of the black running shoes in Monterrey?"
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 2,
+            "attempt": 1,
+            "kind": "edge",
+            "name": "route_question",
+            "status": "ok",
+            "started_at": "2026-11-12T04:27:09.104+00:00",
+            "finished_at": "2026-11-12T04:27:09.104+00:00",
+            "duration_ms": null,
+            "input": null,
+            "output": {
+              "decision": "plan",
+              "to": "plan_sources",
+              "reason": "the question is not empty"
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 3,
+            "attempt": 1,
+            "kind": "node",
+            "name": "plan_sources",
+            "status": "ok",
+            "started_at": "2026-11-12T04:27:09.106+00:00",
+            "finished_at": "2026-11-12T04:27:10.379+00:00",
+            "duration_ms": 1272.359,
+            "input": {
+              "question": "Do we have stock of the black running shoes in Monterrey?"
+            },
+            "output": {
+              "plan": {
+                "decided_by": "model",
+                "steps": [
+                  {
+                    "source": "inventory_manager",
+                    "tool": "lookup_stock",
+                    "arguments": {
+                      "product": "black running shoes",
+                      "warehouse": "Monterrey"
+                    }
+                  }
+                ],
+                "ignored": []
+              }
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 4,
+            "attempt": 1,
+            "kind": "edge",
+            "name": "route_after_plan",
+            "status": "ok",
+            "started_at": "2026-11-12T04:27:10.379+00:00",
+            "finished_at": "2026-11-12T04:27:10.379+00:00",
+            "duration_ms": null,
+            "input": null,
+            "output": {
+              "decision": "inventory_manager",
+              "to": "lookup_stock",
+              "reason": "planner chose inventory_manager (lookup_stock: product='black running shoes', warehouse='Monterrey')"
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 5,
+            "attempt": 1,
+            "kind": "node",
+            "name": "lookup_stock",
+            "status": "ok",
+            "started_at": "2026-11-12T04:27:10.382+00:00",
+            "finished_at": "2026-11-12T04:27:10.405+00:00",
+            "duration_ms": 23.096,
+            "input": {
+              "plan": {
+                "decided_by": "model",
+                "steps": [
+                  {
+                    "source": "inventory_manager",
+                    "tool": "lookup_stock",
+                    "arguments": {
+                      "product": "black running shoes",
+                      "warehouse": "Monterrey"
+                    }
+                  }
+                ],
+                "ignored": []
+              }
+            },
+            "output": {
+              "stock_lookup": {
+                "request": {
+                  "product": "black running shoes",
+                  "warehouse": "Monterrey"
+                },
+                "outcome": "ok",
+                "endpoint": "GET /inventory/products?warehouse=Monterrey",
+                "products": [
+                  {
+                    "id": "395dfc8e-bb1e-5f97-b0d5-ea06f9af7b0e",
+                    "name": "Black Running Shoes - Size 42",
+                    "sku": "SHOE-BLK-42",
+                    "warehouse": "Monterrey",
+                    "current_stock": 45
+                  }
+                ],
+                "total": 1,
+                "failure": null,
+                "http_status": 200,
+                "duration_ms": 19.9
+              }
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 6,
+            "attempt": 1,
+            "kind": "edge",
+            "name": "route_after_stock",
+            "status": "ok",
+            "started_at": "2026-11-12T04:27:10.405+00:00",
+            "finished_at": "2026-11-12T04:27:10.405+00:00",
+            "duration_ms": null,
+            "input": null,
+            "output": {
+              "decision": "generate",
+              "to": "generate_answer",
+              "reason": "evidence to answer from: inventory_manager ok (1 product(s))"
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 7,
+            "attempt": 1,
+            "kind": "node",
+            "name": "generate_answer",
+            "status": "ok",
+            "started_at": "2026-11-12T04:27:10.408+00:00",
+            "finished_at": "2026-11-12T04:27:11.456+00:00",
+            "duration_ms": 1047.654,
+            "input": {
+              "question": "Do we have stock of the black running shoes in Monterrey?",
+              "stock_lookup": {
+                "request": {
+                  "product": "black running shoes",
+                  "warehouse": "Monterrey"
+                },
+                "outcome": "ok",
+                "endpoint": "GET /inventory/products?warehouse=Monterrey",
+                "products": [
+                  {
+                    "id": "395dfc8e-bb1e-5f97-b0d5-ea06f9af7b0e",
+                    "name": "Black Running Shoes - Size 42",
+                    "sku": "SHOE-BLK-42",
+                    "warehouse": "Monterrey",
+                    "current_stock": 45
+                  }
+                ],
+                "total": 1,
+                "failure": null,
+                "http_status": 200,
+                "duration_ms": 19.9
+              }
+            },
+            "output": {
+              "answer": "Yes. Monterrey has 45 units of the black running shoes, size 42 (SKU SHOE-BLK-42).\n\nSources: inventory-manager — stock SHOE-BLK-42 (Monterrey)"
+            },
+            "error_type": null,
+            "error_message": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "fallback-ticket-not-found",
+      "question": "What's the status of ticket 482?",
+      "trace": {
+        "run_id": "462e84d2-1667-43bc-8f1e-741d63118339",
+        "user_id": null,
+        "graph_version": "faabff53fa40c2ca",
+        "question": "What's the status of ticket 482?",
+        "status": "completed",
+        "outcome": "no_information",
+        "answer": "I couldn't confirm the status of ticket TRF-000482: the incident manager has no ticket with that reference. Please check the reference and try again.",
+        "attempts": 1,
+        "started_at": "2026-11-12T04:27:11.464+00:00",
+        "finished_at": "2026-11-12T04:28:13.030+00:00",
+        "error_node": null,
+        "error_type": null,
+        "error_message": null,
+        "events": [
+          {
+            "seq": 1,
+            "attempt": 1,
+            "kind": "node",
+            "name": "receive_question",
+            "status": "ok",
+            "started_at": "2026-11-12T04:27:11.467+00:00",
+            "finished_at": "2026-11-12T04:27:11.467+00:00",
+            "duration_ms": 0.303,
+            "input": {
+              "question": "What's the status of ticket 482?"
+            },
+            "output": {
+              "question": "What's the status of ticket 482?"
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 2,
+            "attempt": 1,
+            "kind": "edge",
+            "name": "route_question",
+            "status": "ok",
+            "started_at": "2026-11-12T04:27:11.467+00:00",
+            "finished_at": "2026-11-12T04:27:11.467+00:00",
+            "duration_ms": null,
+            "input": null,
+            "output": {
+              "decision": "plan",
+              "to": "plan_sources",
+              "reason": "the question is not empty"
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 3,
+            "attempt": 1,
+            "kind": "node",
+            "name": "plan_sources",
+            "status": "ok",
+            "started_at": "2026-11-12T04:27:11.469+00:00",
+            "finished_at": "2026-11-12T04:28:13.008+00:00",
+            "duration_ms": 61539.316,
+            "input": {
+              "question": "What's the status of ticket 482?"
+            },
+            "output": {
+              "plan": {
+                "decided_by": "model",
+                "steps": [
+                  {
+                    "source": "incident_manager",
+                    "tool": "lookup_ticket",
+                    "arguments": {
+                      "reference": "482"
+                    }
+                  }
+                ],
+                "ignored": []
+              }
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 4,
+            "attempt": 1,
+            "kind": "edge",
+            "name": "route_after_plan",
+            "status": "ok",
+            "started_at": "2026-11-12T04:28:13.008+00:00",
+            "finished_at": "2026-11-12T04:28:13.008+00:00",
+            "duration_ms": null,
+            "input": null,
+            "output": {
+              "decision": "incident_manager",
+              "to": "lookup_ticket",
+              "reason": "planner chose incident_manager (lookup_ticket: reference='482')"
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 5,
+            "attempt": 1,
+            "kind": "node",
+            "name": "lookup_ticket",
+            "status": "ok",
+            "started_at": "2026-11-12T04:28:13.014+00:00",
+            "finished_at": "2026-11-12T04:28:13.025+00:00",
+            "duration_ms": 10.842,
+            "input": {
+              "plan": {
+                "decided_by": "model",
+                "steps": [
+                  {
+                    "source": "incident_manager",
+                    "tool": "lookup_ticket",
+                    "arguments": {
+                      "reference": "482"
+                    }
+                  }
+                ],
+                "ignored": []
+              }
+            },
+            "output": {
+              "ticket_lookup": {
+                "request": {
+                  "reference": "482",
+                  "status": null,
+                  "category": null,
+                  "origin": null,
+                  "branch": null
+                },
+                "outcome": "not_found",
+                "endpoint": "GET /api/incidents?reference=TRF-000482",
+                "reference": "TRF-000482",
+                "tickets": [],
+                "total": 0,
+                "failure": null,
+                "http_status": 200,
+                "duration_ms": 8.4
+              }
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 6,
+            "attempt": 1,
+            "kind": "edge",
+            "name": "route_after_ticket",
+            "status": "ok",
+            "started_at": "2026-11-12T04:28:13.025+00:00",
+            "finished_at": "2026-11-12T04:28:13.025+00:00",
+            "duration_ms": null,
+            "input": null,
+            "output": {
+              "decision": "lookup_failed",
+              "to": "answer_lookup_failed",
+              "reason": "no evidence and a lookup failed: incident_manager not_found"
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 7,
+            "attempt": 1,
+            "kind": "node",
+            "name": "answer_lookup_failed",
+            "status": "ok",
+            "started_at": "2026-11-12T04:28:13.028+00:00",
+            "finished_at": "2026-11-12T04:28:13.028+00:00",
+            "duration_ms": 0.342,
+            "input": {
+              "ticket_lookup": {
+                "request": {
+                  "reference": "482",
+                  "status": null,
+                  "category": null,
+                  "origin": null,
+                  "branch": null
+                },
+                "outcome": "not_found",
+                "endpoint": "GET /api/incidents?reference=TRF-000482",
+                "reference": "TRF-000482",
+                "tickets": [],
+                "total": 0,
+                "failure": null,
+                "http_status": 200,
+                "duration_ms": 8.4
+              }
+            },
+            "output": {
+              "answer": "I couldn't confirm the status of ticket TRF-000482: the incident manager has no ticket with that reference. Please check the reference and try again."
+            },
+            "error_type": null,
+            "error_message": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "fallback-incident-service-down",
+      "question": "What's the status of ticket 12?",
+      "trace": {
+        "run_id": "7ebfa3d5-4e6e-409b-9b8f-e785b20688ef",
+        "user_id": null,
+        "graph_version": "faabff53fa40c2ca",
+        "question": "What's the status of ticket 12?",
+        "status": "completed",
+        "outcome": "no_information",
+        "answer": "I couldn't confirm the status of ticket TRF-000012 right now: the incident manager is not responding. Please try again in a few minutes.",
+        "attempts": 1,
+        "started_at": "2026-11-12T04:28:13.035+00:00",
+        "finished_at": "2026-11-12T04:28:14.142+00:00",
+        "error_node": null,
+        "error_type": null,
+        "error_message": null,
+        "events": [
+          {
+            "seq": 1,
+            "attempt": 1,
+            "kind": "node",
+            "name": "receive_question",
+            "status": "ok",
+            "started_at": "2026-11-12T04:28:13.037+00:00",
+            "finished_at": "2026-11-12T04:28:13.039+00:00",
+            "duration_ms": 1.451,
+            "input": {
+              "question": "What's the status of ticket 12?"
+            },
+            "output": {
+              "question": "What's the status of ticket 12?"
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 2,
+            "attempt": 1,
+            "kind": "edge",
+            "name": "route_question",
+            "status": "ok",
+            "started_at": "2026-11-12T04:28:13.039+00:00",
+            "finished_at": "2026-11-12T04:28:13.039+00:00",
+            "duration_ms": null,
+            "input": null,
+            "output": {
+              "decision": "plan",
+              "to": "plan_sources",
+              "reason": "the question is not empty"
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 3,
+            "attempt": 1,
+            "kind": "node",
+            "name": "plan_sources",
+            "status": "ok",
+            "started_at": "2026-11-12T04:28:13.041+00:00",
+            "finished_at": "2026-11-12T04:28:14.128+00:00",
+            "duration_ms": 1086.551,
+            "input": {
+              "question": "What's the status of ticket 12?"
+            },
+            "output": {
+              "plan": {
+                "decided_by": "model",
+                "steps": [
+                  {
+                    "source": "incident_manager",
+                    "tool": "lookup_ticket",
+                    "arguments": {
+                      "reference": "12"
+                    }
+                  }
+                ],
+                "ignored": []
+              }
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 4,
+            "attempt": 1,
+            "kind": "edge",
+            "name": "route_after_plan",
+            "status": "ok",
+            "started_at": "2026-11-12T04:28:14.128+00:00",
+            "finished_at": "2026-11-12T04:28:14.128+00:00",
+            "duration_ms": null,
+            "input": null,
+            "output": {
+              "decision": "incident_manager",
+              "to": "lookup_ticket",
+              "reason": "planner chose incident_manager (lookup_ticket: reference='12')"
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 5,
+            "attempt": 1,
+            "kind": "node",
+            "name": "lookup_ticket",
+            "status": "ok",
+            "started_at": "2026-11-12T04:28:14.130+00:00",
+            "finished_at": "2026-11-12T04:28:14.137+00:00",
+            "duration_ms": 7.02,
+            "input": {
+              "plan": {
+                "decided_by": "model",
+                "steps": [
+                  {
+                    "source": "incident_manager",
+                    "tool": "lookup_ticket",
+                    "arguments": {
+                      "reference": "12"
+                    }
+                  }
+                ],
+                "ignored": []
+              }
+            },
+            "output": {
+              "ticket_lookup": {
+                "request": {
+                  "reference": "12",
+                  "status": null,
+                  "category": null,
+                  "origin": null,
+                  "branch": null
+                },
+                "outcome": "unavailable",
+                "endpoint": "GET /api/incidents?reference=TRF-000012",
+                "reference": "TRF-000012",
+                "tickets": [],
+                "total": 0,
+                "failure": "unreachable",
+                "http_status": null,
+                "duration_ms": 4.6
+              }
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 6,
+            "attempt": 1,
+            "kind": "edge",
+            "name": "route_after_ticket",
+            "status": "ok",
+            "started_at": "2026-11-12T04:28:14.137+00:00",
+            "finished_at": "2026-11-12T04:28:14.137+00:00",
+            "duration_ms": null,
+            "input": null,
+            "output": {
+              "decision": "lookup_failed",
+              "to": "answer_lookup_failed",
+              "reason": "no evidence and a lookup failed: incident_manager unavailable (unreachable)"
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 7,
+            "attempt": 1,
+            "kind": "node",
+            "name": "answer_lookup_failed",
+            "status": "ok",
+            "started_at": "2026-11-12T04:28:14.140+00:00",
+            "finished_at": "2026-11-12T04:28:14.140+00:00",
+            "duration_ms": 0.231,
+            "input": {
+              "ticket_lookup": {
+                "request": {
+                  "reference": "12",
+                  "status": null,
+                  "category": null,
+                  "origin": null,
+                  "branch": null
+                },
+                "outcome": "unavailable",
+                "endpoint": "GET /api/incidents?reference=TRF-000012",
+                "reference": "TRF-000012",
+                "tickets": [],
+                "total": 0,
+                "failure": "unreachable",
+                "http_status": null,
+                "duration_ms": 4.6
+              }
+            },
+            "output": {
+              "answer": "I couldn't confirm the status of ticket TRF-000012 right now: the incident manager is not responding. Please try again in a few minutes."
             },
             "error_type": null,
             "error_message": null

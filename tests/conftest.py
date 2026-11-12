@@ -11,7 +11,10 @@ from fastapi.testclient import TestClient
 
 from services.agent import config as agent_config
 from services.agent import graph as agent_graph
+from services.agent import planner as agent_planner
 from services.agent import tracing as agent_tracing
+from services.agent.tools import http as agent_http
+from services.agent.tools import inventory as agent_inventory
 from services.core import config, supabase_client
 from services.core import db as core_db
 from services.incidents.read_cache import clear_read_cache
@@ -117,10 +120,27 @@ def isolated_supabase(monkeypatch):
     monkeypatch.setattr(supabase_client, "get_supabase", forbid_supabase)
 
 
+# Held here because `isolated_agent_tools` replaces the module attribute.
+_PLANNER_CLIENT_CACHE = agent_planner._planner_client
+
+
 def _reset_agent_store() -> None:
     agent_graph.close_agent_graph()
     agent_config.get_agent_settings.cache_clear()
     agent_tracing.get_trace_store.cache_clear()
+    _PLANNER_CLIENT_CACHE.cache_clear()
+    agent_inventory.reset_credentials()
+
+
+# The agent's tool settings, whatever the developer's `.env` holds: unreachable
+# service URLs, the default timeout, and no inventory account.
+AGENT_TOOL_SETTINGS = {
+    "INCIDENTS_API_URL": "http://incidents.invalid",
+    "INVENTORY_API_URL": "http://inventory.invalid",
+    "AGENT_TOOL_TIMEOUT_SECONDS": "4",
+    "AGENT_INVENTORY_EMAIL": "",
+    "AGENT_INVENTORY_PASSWORD": "",
+}
 
 
 @pytest.fixture(autouse=True)
@@ -131,9 +151,30 @@ def isolated_agent_store(tmp_path, monkeypatch):
     so the caches are dropped on the way in and out, as for `get_settings`.
     """
     monkeypatch.setenv("AGENT_STORE_PATH", str(tmp_path / "agent_runs.sqlite"))
+    for name, value in AGENT_TOOL_SETTINGS.items():
+        monkeypatch.setenv(name, value)
     _reset_agent_store()
     yield
     _reset_agent_store()
+
+
+@pytest.fixture(autouse=True)
+def isolated_agent_tools(monkeypatch):
+    """No test reaches a real service or model through the agent's tools or planner.
+
+    A test that needs HTTP injects its own client (`client=`) or a
+    `httpx.MockTransport`; a test that needs the planner replaces
+    `planner.choose_sources` or `planner._planner_client`.
+    """
+
+    def forbid_http():
+        raise AssertionError("Unit tests must not create a real HTTP client for agent tools")
+
+    def forbid_planner():
+        raise AssertionError("Unit tests must not create a real planner model client")
+
+    monkeypatch.setattr(agent_http, "make_client", forbid_http)
+    monkeypatch.setattr(agent_planner, "_planner_client", forbid_planner)
 
 
 @pytest.fixture

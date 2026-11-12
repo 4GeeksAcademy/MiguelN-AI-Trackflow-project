@@ -7,7 +7,9 @@
     resume <run_id>       continue a failed run from the node that failed
 
 Runs and traces go to the same store as the API's (`AGENT_STORE_PATH`). `ask`
-and `resume` need Qdrant and the models (`RagSettings`); the others do not.
+and `resume` need the models (`RagSettings`), plus Qdrant and the incident and
+inventory managers for the questions that use them (`INCIDENTS_API_URL`,
+`INVENTORY_API_URL`); the others need none of them.
 Exit codes: 0 done, 1 the run failed, 2 bad arguments or an unknown run.
 """
 
@@ -45,6 +47,14 @@ def _describe_output(event: TraceEvent) -> str:
     if event.status == "error":
         return f"ERROR {event.error_type}: {event.error_message or '(message withheld)'}"
     output = event.output or {}
+    if "plan" in output:
+        plan = output["plan"] or {}
+        steps = " then ".join(step.get("source", "?") for step in plan.get("steps") or [])
+        ignored = f"; ignored: {'; '.join(plan['ignored'])}" if plan.get("ignored") else ""
+        return f"plan ({plan.get('decided_by')}): {steps}{ignored}"
+    for field in ("ticket_lookup", "stock_lookup"):
+        if field in output:
+            return _describe_lookup(output[field] or {})
     if "context" in output:
         chunks = output["context"] or []
         hits = ", ".join(
@@ -55,12 +65,25 @@ def _describe_output(event: TraceEvent) -> str:
     return _preview(json.dumps(output, ensure_ascii=False))
 
 
+def _describe_lookup(result: dict[str, Any]) -> str:
+    """'GET /api/incidents?reference=TRF-000012 -> ok (1 found, 12.0 ms)'."""
+    outcome = result.get("outcome")
+    if outcome == "ok":
+        detail = f"{result.get('total', 0)} found"
+    else:
+        detail = str(result.get("failure") or outcome)
+    return (
+        f"{result.get('endpoint')} -> {outcome} ({detail}, {result.get('duration_ms', 0):.1f} ms)"
+    )
+
+
 def _print_trace(trace: RunTrace) -> None:
     print(
         f"Run {trace.run_id} · {trace.status} · {trace.outcome or '-'} · "
         f"graph {trace.graph_version} · {trace.attempts} attempt(s)"
     )
     print(f"Question: {_preview(trace.question) or '(empty)'}")
+    print(f"Sources: {' -> '.join(trace.sources()) or 'none'}")
     for event in trace.events:
         timing = f"{event.duration_ms:9.1f} ms" if event.duration_ms is not None else " " * 12
         print(

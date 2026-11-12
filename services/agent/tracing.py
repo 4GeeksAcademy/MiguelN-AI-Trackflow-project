@@ -27,6 +27,7 @@ from pathlib import Path
 from typing import Any, Final, Literal
 
 from services.agent.config import get_agent_settings
+from services.agent.state import SOURCE_OF_NODE
 
 RunStatus = Literal["running", "completed", "failed"]
 EventKind = Literal["node", "edge"]
@@ -123,6 +124,20 @@ class RunTrace:
 
     def edge_events(self) -> list[TraceEvent]:
         return [event for event in self.events if event.kind == "edge"]
+
+    def sources(self) -> list[str]:
+        """The sources the run consulted, in the order it consulted them.
+
+        `incident_manager`, `inventory_manager` and/or `knowledge_base`, read
+        from the node rows: a source counts once its node ran, whether it
+        succeeded or not (the node row says which).
+        """
+        consulted: list[str] = []
+        for name in self.node_names():
+            source = SOURCE_OF_NODE.get(name)
+            if source is not None and source not in consulted:
+                consulted.append(source)
+        return consulted
 
 
 def _run_from_row(row: sqlite3.Row, events: tuple[TraceEvent, ...] = ()) -> RunTrace:

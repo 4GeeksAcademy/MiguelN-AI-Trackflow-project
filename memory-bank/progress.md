@@ -2,6 +2,68 @@
 
 Last updated: 2026-11-11
 
+## Update 2026-11-11 (later) - Milestone 7 Part 2: live tools for the agent (incident manager + inventory)
+
+Goals accomplished. The tech lead's brief is the updated `lead-instr.png`, with its checklist in `stages-todo.png`. A support agent asking "what's the status of ticket 482?" got a made-up answer, because the status lives in the incident manager, not the knowledge base. Branch `feature/langgraph-external-tools`; full write-up in `docs/agent/agent-graph.md`.
+
+- Before starting:
+  - The incident manager (`/api/incidents`) and inventory (`/inventory/products`) are routers of this repo's API.
+  - Both were confirmed running on :8000. Supabase's pooler was timing out (TCP open, handshake never completes; REST gateway alive), so a throwaway `postgres:17-alpine` and scratch TinyDB/agent stores were used.
+  - Developer's rule: no new dependency for HTTP. `httpx` (already installed transitively) is used.
+- Decided with the developer:
+  - The incident API exposes the helpdesk reference, so "ticket 482" can be resolved.
+  - The inventory tool authenticates with a service account from `.env`.
+- Phase 0, incident API: `IncidentResponse.reference`, read-only from `source_incident_id`, plus a `?reference=TRF-000123` filter (400 on a non-canonical form, its own cache key). The shared rule `normalize_reference` lives in `trackflow_shared.incidents`. The backoffice ignores the extra field (291 Jest tests pass).
+- Phase 1, ticket tool (all seven checkmarks):
+  - typed contract (`TicketLookupInput` / `TicketLookupResult`, `TicketRecord` mirrors `IncidentResponse` with a drift test);
+  - reads the real incident manager over HTTP by reference, id or filters;
+  - no auth needed, which is documented;
+  - read-only (GET-only helper plus AST/transport tests);
+  - its own node (`lookup_ticket`) plus a conditional edge;
+  - numeric timeout of 4 s (`AGENT_TOOL_TIMEOUT_SECONDS`, at most 5);
+  - fallback node `answer_lookup_failed` with fixed honest texts.
+- Phase 2, stretch inventory tool: `lookup_stock` (SKU or name matched against live rows, optional warehouse), signing in as `AGENT_INVENTORY_EMAIL` / `AGENT_INVENTORY_PASSWORD` with a cached token. Same timeout and fallback.
+- Phase 3, routing:
+  - `plan_sources` asks `gpt-6-luna` to choose among `lookup_ticket`, `lookup_stock` and `search_knowledge_base` (tool calling, verified on the gateway first). The model only chooses; the graph runs each source as its own node, in the fixed order ticket, stock, knowledge base.
+  - Invented references, invalid arguments, unknown tools and duplicate calls are dropped with reasons. A planner failure falls back to the knowledge base, never raising.
+  - One tool per job.
+- Phase 4, tracing and evals:
+  - The trace shows the sources used, in order (`RunTrace.sources()`, `sources` in `GET /agent/runs/{id}`, `Sources:` in the CLI). Lookup rows show the endpoint, outcome and timing.
+  - 7 new eval cases:
+    - tool-not-RAG (ticket status, ticket search);
+    - RAG-not-tool (an inventory-sounding pricing question);
+    - both;
+    - stock;
+    - ticket not found;
+    - incident service down (recorded against a closed port).
+  - Re-recorded live: graph `faabff53fa40c2ca`, all 16 non-empty questions routed by the model's own choice, no fallback. **130 of 130 evals pass.**
+- Live verification (2026-11-11):
+  - CLI runs: ticket 12 (tool only), ticket 482 (not found, fixed answer), TRF-000043 plus the damaged-return policy (both, in order).
+  - `POST /agent/query` answered the Dell laptop stock (8, Zaragoza) and ticket 93 (in progress) in one run, with `sources: [incident_manager, inventory_manager]`.
+  - A hung incident service: `lookup_ticket` gave up at 4022 ms, and the run answered honestly in 7 s.
+  - The gateway stalled for about 10 minutes mid-session: the planner fell back to the knowledge base and `retrieve` returned a resumable 503, as designed.
+- Verification:
+  - backend 1317 passed, 51 skipped (1187 non-eval + 130 evals), run with `DYLD_LIBRARY_PATH` for XGBoost;
+  - `ruff format` / `ruff check` clean on the changed files (formatter hunks in untouched incident code reverted);
+  - mypy clean on `services/agent`, `services/incidents`, the shared rule, the recorder and the new tests (`uvx mypy --python-executable .venv/bin/python`).
+- Docs:
+  - `docs/agent/agent-graph.md` (rewritten for Part 2), `docs/INCIDENTS.md` (reference field and filter; incident routes have no auth);
+  - `TESTING.md`, `techContext.md`;
+  - `.env.example` (5 agent tool settings), `docker-compose.yml` + `docker-compose.env.example` (tool URLs and credentials for the api container).
+
+Still missing / next goals:
+1. Commit when the developer asks (AGENTS.md workflow). Include `data/eval/agent/` (cases + re-recorded traces). Ask whether the updated `lead-instr.png` and `stages-todo.png` belong in the commit. The PR must say that the incident routes have no auth.
+2. Create the real inventory service account in the developer's TinyDB store (`uv run seed-user --email agent-inventory@trackflow.com --role user`) and put `AGENT_INVENTORY_EMAIL` / `AGENT_INVENTORY_PASSWORD` in `.env`. It only exists in the session's scratch store.
+3. Supabase was unreachable again: resume the project in the dashboard if it is paused, then re-record the evals so the stock figures come from Supabase instead of the throwaway seed.
+4. Optional:
+   - point the backoffice `/knowledge` page at `/agent/query` and show its sources;
+   - show `reference` in the backoffice incident list;
+   - several tickets per question;
+   - Spanish fallback answers;
+   - a name filter on `GET /inventory/products` so stock matching moves server-side;
+   - declare `httpx` as a runtime dependency (only with the developer's approval).
+5. Still open from earlier: the trace retention purge, the geography mismatch (KB: Los Angeles; `context.md`: Monterrey), and the sales-forecast corrective action.
+
 ## Update 2026-11-11 - Milestone 7 Part 1: the RAG flow as an explicit LangGraph graph
 
 Goals accomplished. The tech lead's ticket is `lead-instr.png`, with its checklist in `stages-todo.png`: make the RAG reasoning explicit and traceable before Part 2 adds capabilities. Branch `feature/langgraph-agent-base`; full write-up in `docs/agent/agent-graph.md`.

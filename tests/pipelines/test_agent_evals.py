@@ -7,15 +7,21 @@ each one once through the real graph (Qdrant and the 4Geeks models) and stored
 the traces in `data/eval/agent/traces.json`; these tests read only that file,
 so they need no service and give the same result every run.
 
-Three kinds of criteria, all over the trace:
-- routing: which nodes ran, in what order, which never ran, and that every
-  transition is a recorded decision leading to the node that ran next;
-- node contract: `retrieve` ran exactly once, before `generate_answer`, and the
-  generation step received exactly the context `retrieve` produced;
+Four kinds of criteria, all over the trace:
+- routing: which sources were consulted and in what order, that the planner
+  chose them itself (RAG, a tool, or both - never its fallback), which nodes
+  ran and which never ran, and that every transition is a recorded decision
+  leading to the node that ran next;
+- node contract: every planned source ran exactly once, before
+  `generate_answer`, and generation received exactly what they produced;
+- live data: each lookup ended as expected, the answer states the value the
+  live record holds, and a failed lookup gets its fixed honest answer with no
+  generation at all;
 - grounding (the acceptance gate, in addition to the RAG tests): the expected
   fact is in the answer **and** in a retrieved chunk of the knowledge base, the
   business rules' wording is there, and every figure in an answer appears in
-  the retrieved chunks (BRIEFING section 4, faithfulness).
+  the question, a retrieved chunk or a live record (BRIEFING section 4,
+  faithfulness).
 """
 
 import json
@@ -26,14 +32,26 @@ from typing import Any
 
 import pytest
 
+from services.agent import nodes
 from services.agent.graph import graph_fingerprint
 from services.agent.state import (
+    ANSWER_LOOKUP_FAILED,
     ANSWER_NO_INFORMATION,
     GENERATE_ANSWER,
+    INCIDENT_MANAGER,
+    INVENTORY_MANAGER,
+    KNOWLEDGE_BASE,
+    LOOKUP_FIELDS,
     NO_INFORMATION_ANSWER,
+    NODE_OF_SOURCE,
+    PLAN_SOURCES,
     RECEIVE_QUESTION,
+    RESULT_FIELD_OF_SOURCE,
     RETRIEVE,
+    SOURCE_OF_NODE,
 )
+from services.agent.tools.contracts import StockLookupResult, TicketLookupResult
+from services.agent.tools.passages import stock_passages, ticket_passages
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
 CASES_PATH = ROOT_DIR / "data" / "eval" / "agent" / "eval-cases.json"
@@ -82,7 +100,34 @@ class RecordedRun:
         return event
 
     def context(self) -> list[dict[str, Any]]:
-        return self.node(RETRIEVE)["output"]["context"]
+        """The retrieved chunks; [] when the knowledge base was not searched."""
+        retrieved = self.nodes(RETRIEVE)
+        return retrieved[0]["output"]["context"] if retrieved else []
+
+    def plan(self) -> dict[str, Any]:
+        return self.node(PLAN_SOURCES)["output"]["plan"]
+
+    def sources(self) -> list[str]:
+        consulted: list[str] = []
+        for name in self.node_names():
+            source = SOURCE_OF_NODE.get(name)
+            if source is not None and source not in consulted:
+                consulted.append(source)
+        return consulted
+
+    def lookup(self, source: str) -> dict[str, Any] | None:
+        """The recorded result of a tool lookup, or None if it did not run."""
+        ran = self.nodes(NODE_OF_SOURCE[source])
+        return ran[0]["output"][RESULT_FIELD_OF_SOURCE[source]] if ran else None
+
+    def live_passages(self) -> list[dict[str, Any]]:
+        """The successful lookups as the passages generation received."""
+        passages: list[dict[str, Any]] = []
+        if (ticket := self.lookup(INCIDENT_MANAGER)) is not None:
+            passages += ticket_passages(TicketLookupResult.model_validate(ticket))
+        if (stock := self.lookup(INVENTORY_MANAGER)) is not None:
+            passages += stock_passages(StockLookupResult.model_validate(stock))
+        return passages
 
 
 @pytest.fixture(scope="module")
@@ -123,6 +168,30 @@ def test_every_recorded_run_completed_with_the_recorded_graph(recording, runs):
 
 
 # --- Routing ---------------------------------------------------------------------------
+
+TOOL_SOURCES = {INCIDENT_MANAGER, INVENTORY_MANAGER}
+
+
+@pytest.mark.parametrize("case", _cases_with("sources"))
+def test_the_trace_names_the_sources_consulted_in_order(case, runs):
+    assert runs[case["id"]].sources() == case["checks"]["sources"]
+
+
+@pytest.mark.parametrize("case", _cases_with("resolved_by"))
+def test_the_planner_itself_chose_the_kind_of_source(case, runs):
+    run, kind = runs[case["id"]], case["checks"]["resolved_by"]
+    plan = run.plan()
+    consulted = set(run.sources())
+
+    assert plan["decided_by"] == "model", (
+        f"the route came from the planner's fallback, not its choice: {plan['ignored']}"
+    )
+    if kind == "rag":
+        assert consulted == {KNOWLEDGE_BASE}, "a knowledge question must not call a tool"
+    elif kind == "tool":
+        assert consulted and consulted <= TOOL_SOURCES, "a live-data question must not use the RAG"
+    else:
+        assert KNOWLEDGE_BASE in consulted and consulted & TOOL_SOURCES
 
 
 @pytest.mark.parametrize("case", ALL_CASES)
@@ -173,17 +242,79 @@ def test_without_context_the_agent_answers_honestly_without_generating(case, run
 
 
 @pytest.mark.parametrize("case", _cases_where("answered"))
-def test_generation_uses_exactly_the_context_retrieve_produced(case, runs):
+def test_generation_uses_exactly_what_the_planned_sources_produced(case, runs):
     run = runs[case["id"]]
-    (retrieved,) = run.nodes(RETRIEVE)
     (generated,) = run.nodes(GENERATE_ANSWER)
     received = run.node(RECEIVE_QUESTION)
+    planned = [step["source"] for step in run.plan()["steps"]]
 
-    assert retrieved["seq"] < generated["seq"], "retrieve must run before generate_answer"
-    assert run.context(), "an answered run must have retrieved context"
-    assert generated["input"]["context"] == run.context()
+    assert run.sources() == planned, "every planned source runs, in the planned order"
+    for source in planned:
+        (consulted,) = run.nodes(NODE_OF_SOURCE[source])
+        assert consulted["seq"] < generated["seq"], f"{source} must be consulted before generating"
+    assert run.context() or run.live_passages(), "an answered run must have evidence"
+    assert generated["input"].get("context") == (
+        run.context() if RETRIEVE in run.node_names() else None
+    )
+    for source, field in LOOKUP_FIELDS:
+        assert generated["input"].get(field) == run.lookup(source)
     assert generated["input"]["question"] == received["output"]["question"]
     assert generated["output"]["answer"] == run.answer
+
+
+# --- Live data ----------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("case", _cases_with("lookups"))
+def test_each_lookup_ended_as_expected(case, runs):
+    run = runs[case["id"]]
+    for source, outcome in case["checks"]["lookups"].items():
+        result = run.lookup(source)
+        assert result is not None, f"{source} was not consulted"
+        assert result["outcome"] == outcome
+        assert result["endpoint"].startswith("GET "), "a lookup only ever reads"
+    for source, failure in case["checks"].get("lookup_failures", {}).items():
+        assert run.lookup(source)["failure"] == failure
+
+
+@pytest.mark.parametrize("case", _cases_with("answer_is_lookup_fallback"))
+def test_a_failed_lookup_gets_its_fixed_answer_and_nothing_is_generated(case, runs):
+    run = runs[case["id"]]
+    state = {field: run.lookup(source) for source, field in LOOKUP_FIELDS if run.lookup(source)}
+
+    assert run.nodes(GENERATE_ANSWER) == [], "no model may write a status it does not have"
+    assert run.answer == "\n\n".join(nodes.failure_notices(state))
+    assert run.node(ANSWER_LOOKUP_FAILED)["output"] == {"answer": run.answer}
+
+
+_NUMBER_WORDS = ["no|none|zero", "one", "two", "three", "four", "five", "six", "seven", "eight"]
+
+
+def _live_values(run: RecordedRun, field: str) -> list[str]:
+    """Regular expressions for each value of `field` the live records hold."""
+    ticket = run.lookup(INCIDENT_MANAGER) or {}
+    stock = run.lookup(INVENTORY_MANAGER) or {}
+    if field == "status":
+        return [t["status"].replace("_", "[ _-]") for t in ticket["tickets"]]
+    if field == "current_stock":
+        return [rf"\b{p['current_stock']}\b" for p in stock["products"]]
+    if field == "total":
+        total = (ticket or stock)["total"]
+        words = f"|{_NUMBER_WORDS[total]}" if total < len(_NUMBER_WORDS) else ""
+        return [rf"\b({total}{words})\b"]
+    raise AssertionError(f"unknown live field {field!r}")
+
+
+@pytest.mark.parametrize("case", _cases_with("states_live"))
+def test_the_answer_states_the_live_value_the_tool_returned(case, runs):
+    run = runs[case["id"]]
+    for field in case["checks"]["states_live"]:
+        patterns = _live_values(run, field)
+        assert patterns, f"the lookup returned no {field}"
+        for pattern in patterns:
+            assert re.search(pattern, run.answer, re.IGNORECASE), (
+                f"the answer does not state the live {field} ({pattern!r})"
+            )
 
 
 # --- Grounding ----------------------------------------------------------------------------
@@ -235,11 +366,18 @@ def test_figures_ignores_references_and_list_numbering():
     }
 
 
+def _canonical(figure: str) -> str:
+    """'04' and '4' are the same figure (a time written two ways)."""
+    return figure.lstrip("0") or "0" if figure.isdigit() else figure
+
+
 @pytest.mark.parametrize("case", _cases_where("answered"))
-def test_every_figure_in_the_answer_comes_from_the_retrieved_chunks(case, runs):
+def test_every_figure_in_the_answer_comes_from_the_evidence(case, runs):
     run = runs[case["id"]]
     body = re.split(r"(?im)^\s*\**sources?\**\s*:", run.answer)[0]
-    allowed = figures(case["question"]).union(*(figures(c["text"]) for c in run.context()))
+    evidence = [case["question"]] + [p["text"] for p in run.context() + run.live_passages()]
+    evidence += [p["section"] for p in run.live_passages()]
+    allowed = {_canonical(f) for text in evidence for f in figures(text)}
 
-    invented = figures(body) - allowed
-    assert not invented, f"figures not found in the retrieved chunks: {sorted(invented)}"
+    invented = {f for f in figures(body) if _canonical(f) not in allowed}
+    assert not invented, f"figures not found in the evidence: {sorted(invented)}"

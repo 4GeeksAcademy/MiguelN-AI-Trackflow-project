@@ -67,6 +67,13 @@ services:
       # The knowledge agent's checkpoints and run traces (SQLite), kept on the
       # same volume so runs stay inspectable and resumable across restarts.
       AGENT_STORE_PATH: /app/var/agent_runs.sqlite
+      # The agent's tools read the incident and inventory managers, which are
+      # routers of this same container.
+      INCIDENTS_API_URL: ${COMPOSE_INCIDENTS_API_URL:-http://127.0.0.1:8000}
+      INVENTORY_API_URL: ${COMPOSE_INVENTORY_API_URL:-http://127.0.0.1:8000}
+      AGENT_TOOL_TIMEOUT_SECONDS: ${AGENT_TOOL_TIMEOUT_SECONDS:-}
+      AGENT_INVENTORY_EMAIL: ${AGENT_INVENTORY_EMAIL:-}
+      AGENT_INVENTORY_PASSWORD: ${AGENT_INVENTORY_PASSWORD:-}
     volumes:
       - .:/app
       - api_data:/app/var

@@ -73,6 +73,9 @@ class AgentRunTrace(BaseModel):
     finished_at: str | None
     error_node: str | None
     error_type: str | None
+    # The sources consulted, in order: incident_manager, inventory_manager,
+    # knowledge_base. Derived from `events`, so it can never disagree with them.
+    sources: list[str]
     events: list[AgentTraceEvent]
 
     @classmethod
@@ -89,5 +92,6 @@ class AgentRunTrace(BaseModel):
             finished_at=trace.finished_at,
             error_node=trace.error_node,
             error_type=trace.error_type,
+            sources=trace.sources(),
             events=[AgentTraceEvent.from_event(event) for event in trace.events],
         )
