@@ -1,6 +1,73 @@
 # Development Progress
 
-Last updated: 2026-11-08
+Last updated: 2026-11-11
+
+## Update 2026-11-11 - Milestone 7 Part 1: the RAG flow as an explicit LangGraph graph
+
+Goals accomplished. The tech lead's ticket is `lead-instr.png`, with its checklist in `stages-todo.png`: make the RAG reasoning explicit and traceable before Part 2 adds capabilities. Branch `feature/langgraph-agent-base`; full write-up in `docs/agent/agent-graph.md`.
+
+- Dependencies:
+  - `uv add langgraph` (1.2.20, which pulls in `langchain-core` 1.8.0 and `langsmith`);
+  - `uv add langgraph-checkpoint-sqlite` (3.1.3, plus `sqlite-vec`);
+  - `requirements.txt` re-exported, with its header and Flask line kept.
+- Decided with the developer:
+  - checkpoints and traces in a local git-ignored SQLite file;
+  - a new `POST /agent/query` coexisting with `/knowledge/query`, with the backoffice unchanged;
+  - `{answer, run_id}` returned, plus a token-protected `GET /agent/runs/{run_id}` for the trace.
+- Agent graph (`services/agent/`), the first checklist:
+  - State: `question`, `error`, `context`, `answer`. It is minimal and has no conversation history.
+  - Four single-responsibility nodes:
+    - `receive_question`;
+    - `retrieve` (reuses `rag.retrieve`);
+    - `generate_answer` (reuses `rag.generate_answer` with retrieve's context; never `rag.query()`);
+    - `answer_no_information` (fixed honest text, no model call).
+  - Two real conditional edges, each writing its decision and reason to the trace:
+    - an empty question → `END`;
+    - no context ≥ 0.30 → `answer_no_information`.
+  - Compiled before any execution: in the API lifespan, startup fails with `AgentGraphBuildError`. Checked against LangGraph 1.2.20 first:
+    - `compile()` accepts an orphan node;
+    - a node returning an unknown key has it silently dropped;
+    - `get_graph()` draws a dead end as reaching `END`.
+
+    So our own checks were added: node contracts against `AgentState`, reachability from `START` and to `END` on the declarations, and a run-time guard on node writes.
+  - Checkpointing: `SqliteSaver` after every step (`thread_id = run_id`); `resume_run` continues a failed run from the failed node.
+- Tracing and evaluation, the second checklist:
+  - Every run writes `agent_runs` + `agent_run_events` (nodes in order with inputs, outputs, errors and timings; decisions with reasons). Readable by SQL, `npm run agent -- trace`, and `GET /agent/runs/{id}`.
+  - Evals:
+    - 10 cases in `data/eval/agent/eval-cases.json`;
+    - recorded once from the real models (`npm run agent:record`) into the committed `data/eval/agent/traces.json`;
+    - `npm run agent:eval` checks routing, the node contract (generation got exactly retrieve's output, retrieve ran once and first), grounding (BRIEFING facts in both the answer and a retrieved chunk), faithfulness of figures and freshness of the recording.
+    - **57 of 57 pass** on gpt-6-luna / pplx-embed-v1-0.6b, graph `b80c9d0318e7aba2`. The answers were read by hand as well: every rule (Black Friday, Sofía Ramos, Miguel Torres, Carlos Vega) is followed.
+- Endpoint, the third checklist:
+  - `POST /agent/query` only calls `runner.run_agent` (an AST test pins it);
+  - 422 when the graph refuses an empty question;
+  - 503 or 500 naming the failed step plus the `run_id`, never exception text or a traceback.
+- Live verification:
+  - Qdrant started from Compose after launching Docker Desktop (14 points intact);
+  - a CLI ask and trace;
+  - a resume demo: generation endpoint broken → failed at `generate_answer` → resumed with no second `retrieve`;
+  - the real API under uvicorn: 200 with its trace, 422, 401, and 503 with Qdrant stopped.
+  - Supabase was unreachable, so the API ran against a throwaway `postgres:17-alpine` container (`--rm`). The test user and runs went to scratch stores.
+- The `.env` on disk now holds the correct model IDs and the `/v1` base URL, so the 2026-11-08 "save `.env`" item is resolved.
+- Verification:
+  - backend 1104 passed, 51 skipped (980 + 124 new);
+  - the existing RAG suites pass unchanged;
+  - `ruff format` / `ruff check` clean;
+  - mypy clean on `services/agent`, the recorder and the new tests;
+  - `uv lock --check` OK.
+- Docs: `docs/agent/agent-graph.md` (new), a pointer in `docs/rag/rag-design.md`, `TESTING.md`, `techContext.md`, `.env.example` (`AGENT_STORE_PATH`), and `docker-compose.yml` (the api's `AGENT_STORE_PATH` on the `api_data` volume).
+
+Still missing / next goals:
+1. Commit when the developer asks (AGENTS.md workflow). Include `data/eval/agent/` (cases + recorded traces), not `data/agent/`. `lead-instr.png` and `stages-todo.png` show as untracked: confirm with the developer whether they belong in the commit.
+2. Part 2 (new capabilities/tools): add each as a node plus a conditional edge, extend `AgentState` only with the field the new node reads, and re-record the eval traces (the freshness check will demand it).
+3. Optional:
+   - point the backoffice `/knowledge` page at `/agent/query` and show the run's trace;
+   - a Spanish no-information answer;
+   - a trace retention purge;
+   - a Postgres checkpointer for multi-instance deployments;
+   - LangSmith as an extra sink.
+4. Supabase was unreachable during this session (the API's startup DB check failed), so check it before the next DB-backed task.
+5. Still open from earlier: the geography mismatch (KB documents: Los Angeles; `contexts/context.md`: Monterrey), the sales-forecast corrective action, and the full `docker compose up` needing the Compose variables in `.env`.
 
 ## Update 2026-11-08 (night) - Milestone 7: first real run (Docker Qdrant + 4Geeks models)
 

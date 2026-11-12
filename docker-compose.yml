@@ -64,6 +64,9 @@ services:
       # The TinyDB file lives outside /app/data, which now holds the pipeline
       # code the reporting endpoints import; a volume there would hide it.
       DB_PATH: /app/var/suppliers.json
+      # The knowledge agent's checkpoints and run traces (SQLite), kept on the
+      # same volume so runs stay inspectable and resumable across restarts.
+      AGENT_STORE_PATH: /app/var/agent_runs.sqlite
     volumes:
       - .:/app
       - api_data:/app/var

@@ -1,0 +1,1552 @@
+{
+  "description": "Recorded knowledge agent runs, one per case in eval-cases.json. Written by `npm run agent:record`; read by tests/pipelines/test_agent_evals.py.",
+  "recorded_at": "2026-11-12T02:55:26+00:00",
+  "graph_version": "b80c9d0318e7aba2",
+  "embedding_model": "downtown-miami/openrouter/perplexity/pplx-embed-v1-0.6b",
+  "generation_model": "downtown-miami/openrouter/openai/gpt-6-luna",
+  "min_score": 0.3,
+  "cases": [
+    {
+      "id": "route-empty-question",
+      "question": "   ",
+      "trace": {
+        "run_id": "b499a053-1b12-4245-9842-908c126e0308",
+        "user_id": null,
+        "graph_version": "b80c9d0318e7aba2",
+        "question": "   ",
+        "status": "completed",
+        "outcome": "rejected",
+        "answer": null,
+        "attempts": 1,
+        "started_at": "2026-11-12T02:53:55.311+00:00",
+        "finished_at": "2026-11-12T02:53:55.316+00:00",
+        "error_node": null,
+        "error_type": null,
+        "error_message": null,
+        "events": [
+          {
+            "seq": 1,
+            "attempt": 1,
+            "kind": "node",
+            "name": "receive_question",
+            "status": "ok",
+            "started_at": "2026-11-12T02:53:55.314+00:00",
+            "finished_at": "2026-11-12T02:53:55.314+00:00",
+            "duration_ms": 0.253,
+            "input": {
+              "question": "   "
+            },
+            "output": {
+              "question": "",
+              "error": "The question is empty. Please type a question."
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 2,
+            "attempt": 1,
+            "kind": "edge",
+            "name": "route_question",
+            "status": "ok",
+            "started_at": "2026-11-12T02:53:55.314+00:00",
+            "finished_at": "2026-11-12T02:53:55.314+00:00",
+            "duration_ms": null,
+            "input": null,
+            "output": {
+              "decision": "rejected",
+              "to": "__end__",
+              "reason": "receive_question refused the question: The question is empty. Please type a question."
+            },
+            "error_type": null,
+            "error_message": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "route-no-information-unrelated",
+      "question": "Who won the last football World Cup?",
+      "trace": {
+        "run_id": "049fdaae-879d-4a65-9ab0-d3e6e4313b11",
+        "user_id": null,
+        "graph_version": "b80c9d0318e7aba2",
+        "question": "Who won the last football World Cup?",
+        "status": "completed",
+        "outcome": "no_information",
+        "answer": "I don't have information about that in TrackFlow's knowledge base, so I can't answer it reliably. Please confirm it with the responsible TrackFlow team.",
+        "attempts": 1,
+        "started_at": "2026-11-12T02:53:55.317+00:00",
+        "finished_at": "2026-11-12T02:53:55.996+00:00",
+        "error_node": null,
+        "error_type": null,
+        "error_message": null,
+        "events": [
+          {
+            "seq": 1,
+            "attempt": 1,
+            "kind": "node",
+            "name": "receive_question",
+            "status": "ok",
+            "started_at": "2026-11-12T02:53:55.319+00:00",
+            "finished_at": "2026-11-12T02:53:55.319+00:00",
+            "duration_ms": 0.203,
+            "input": {
+              "question": "Who won the last football World Cup?"
+            },
+            "output": {
+              "question": "Who won the last football World Cup?"
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 2,
+            "attempt": 1,
+            "kind": "edge",
+            "name": "route_question",
+            "status": "ok",
+            "started_at": "2026-11-12T02:53:55.319+00:00",
+            "finished_at": "2026-11-12T02:53:55.319+00:00",
+            "duration_ms": null,
+            "input": null,
+            "output": {
+              "decision": "retrieve",
+              "to": "retrieve",
+              "reason": "the question is not empty"
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 3,
+            "attempt": 1,
+            "kind": "node",
+            "name": "retrieve",
+            "status": "ok",
+            "started_at": "2026-11-12T02:53:55.321+00:00",
+            "finished_at": "2026-11-12T02:53:55.991+00:00",
+            "duration_ms": 670.687,
+            "input": {
+              "question": "Who won the last football World Cup?"
+            },
+            "output": {
+              "context": []
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 4,
+            "attempt": 1,
+            "kind": "edge",
+            "name": "route_context",
+            "status": "ok",
+            "started_at": "2026-11-12T02:53:55.991+00:00",
+            "finished_at": "2026-11-12T02:53:55.991+00:00",
+            "duration_ms": null,
+            "input": null,
+            "output": {
+              "decision": "no_information",
+              "to": "answer_no_information",
+              "reason": "no chunk scored at least 0.30"
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 5,
+            "attempt": 1,
+            "kind": "node",
+            "name": "answer_no_information",
+            "status": "ok",
+            "started_at": "2026-11-12T02:53:55.995+00:00",
+            "finished_at": "2026-11-12T02:53:55.995+00:00",
+            "duration_ms": 0.259,
+            "input": {},
+            "output": {
+              "answer": "I don't have information about that in TrackFlow's knowledge base, so I can't answer it reliably. Please confirm it with the responsible TrackFlow team."
+            },
+            "error_type": null,
+            "error_message": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "route-no-information-near-threshold",
+      "question": "How do I reset my password in the backoffice?",
+      "trace": {
+        "run_id": "a1af8545-36fe-414f-b87f-333ad3547813",
+        "user_id": null,
+        "graph_version": "b80c9d0318e7aba2",
+        "question": "How do I reset my password in the backoffice?",
+        "status": "completed",
+        "outcome": "no_information",
+        "answer": "I don't have information about that in TrackFlow's knowledge base, so I can't answer it reliably. Please confirm it with the responsible TrackFlow team.",
+        "attempts": 1,
+        "started_at": "2026-11-12T02:53:55.998+00:00",
+        "finished_at": "2026-11-12T02:53:56.241+00:00",
+        "error_node": null,
+        "error_type": null,
+        "error_message": null,
+        "events": [
+          {
+            "seq": 1,
+            "attempt": 1,
+            "kind": "node",
+            "name": "receive_question",
+            "status": "ok",
+            "started_at": "2026-11-12T02:53:55.999+00:00",
+            "finished_at": "2026-11-12T02:53:56.000+00:00",
+            "duration_ms": 0.228,
+            "input": {
+              "question": "How do I reset my password in the backoffice?"
+            },
+            "output": {
+              "question": "How do I reset my password in the backoffice?"
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 2,
+            "attempt": 1,
+            "kind": "edge",
+            "name": "route_question",
+            "status": "ok",
+            "started_at": "2026-11-12T02:53:56.000+00:00",
+            "finished_at": "2026-11-12T02:53:56.000+00:00",
+            "duration_ms": null,
+            "input": null,
+            "output": {
+              "decision": "retrieve",
+              "to": "retrieve",
+              "reason": "the question is not empty"
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 3,
+            "attempt": 1,
+            "kind": "node",
+            "name": "retrieve",
+            "status": "ok",
+            "started_at": "2026-11-12T02:53:56.002+00:00",
+            "finished_at": "2026-11-12T02:53:56.237+00:00",
+            "duration_ms": 234.969,
+            "input": {
+              "question": "How do I reset my password in the backoffice?"
+            },
+            "output": {
+              "context": []
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 4,
+            "attempt": 1,
+            "kind": "edge",
+            "name": "route_context",
+            "status": "ok",
+            "started_at": "2026-11-12T02:53:56.237+00:00",
+            "finished_at": "2026-11-12T02:53:56.237+00:00",
+            "duration_ms": null,
+            "input": null,
+            "output": {
+              "decision": "no_information",
+              "to": "answer_no_information",
+              "reason": "no chunk scored at least 0.30"
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 5,
+            "attempt": 1,
+            "kind": "node",
+            "name": "answer_no_information",
+            "status": "ok",
+            "started_at": "2026-11-12T02:53:56.240+00:00",
+            "finished_at": "2026-11-12T02:53:56.240+00:00",
+            "duration_ms": 0.235,
+            "input": {},
+            "output": {
+              "answer": "I don't have information about that in TrackFlow's knowledge base, so I can't answer it reliably. Please confirm it with the responsible TrackFlow team."
+            },
+            "error_type": null,
+            "error_message": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "grounding-standard-delivery-times",
+      "question": "What delivery times do we commit to for standard shipments?",
+      "trace": {
+        "run_id": "1946afaf-845c-494a-9267-ce016cd36026",
+        "user_id": null,
+        "graph_version": "b80c9d0318e7aba2",
+        "question": "What delivery times do we commit to for standard shipments?",
+        "status": "completed",
+        "outcome": "answered",
+        "answer": "Standard shipments are **3 to 5 business days within the same country**. Delivery times are not guaranteed during Black Friday, Christmas, or January Sales in Spain; they may extend by up to an additional 40%, and this must be communicated proactively in advance.\n\nSources: sla-delivery — Delivery SLA (delivery commitments); sla-delivery — Delivery SLA (high-demand dates)",
+        "attempts": 1,
+        "started_at": "2026-11-12T02:53:56.243+00:00",
+        "finished_at": "2026-11-12T02:54:00.169+00:00",
+        "error_node": null,
+        "error_type": null,
+        "error_message": null,
+        "events": [
+          {
+            "seq": 1,
+            "attempt": 1,
+            "kind": "node",
+            "name": "receive_question",
+            "status": "ok",
+            "started_at": "2026-11-12T02:53:56.244+00:00",
+            "finished_at": "2026-11-12T02:53:56.244+00:00",
+            "duration_ms": 0.2,
+            "input": {
+              "question": "What delivery times do we commit to for standard shipments?"
+            },
+            "output": {
+              "question": "What delivery times do we commit to for standard shipments?"
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 2,
+            "attempt": 1,
+            "kind": "edge",
+            "name": "route_question",
+            "status": "ok",
+            "started_at": "2026-11-12T02:53:56.244+00:00",
+            "finished_at": "2026-11-12T02:53:56.244+00:00",
+            "duration_ms": null,
+            "input": null,
+            "output": {
+              "decision": "retrieve",
+              "to": "retrieve",
+              "reason": "the question is not empty"
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 3,
+            "attempt": 1,
+            "kind": "node",
+            "name": "retrieve",
+            "status": "ok",
+            "started_at": "2026-11-12T02:53:56.246+00:00",
+            "finished_at": "2026-11-12T02:53:56.493+00:00",
+            "duration_ms": 247.127,
+            "input": {
+              "question": "What delivery times do we commit to for standard shipments?"
+            },
+            "output": {
+              "context": [
+                {
+                  "company": "trackflow",
+                  "source_document": "sla-delivery",
+                  "section": "Delivery SLA",
+                  "language": "en",
+                  "chunk_index": 1,
+                  "text": "Delivery SLA\nThe contractually committed SLA is 90% on-time deliveries per month, measured by country. If a country falls below 90% for two consecutive months, the client is entitled to a 5% compensation on that country's monthly fee, per the standard contract.",
+                  "score": 0.4816031
+                },
+                {
+                  "company": "trackflow",
+                  "source_document": "sla-delivery",
+                  "section": "Delivery SLA",
+                  "language": "en",
+                  "chunk_index": 0,
+                  "text": "Delivery SLA\nTrackFlow manages last-mile delivery in the United States (Los Angeles) and Spain (Zaragoza). Delivery commitments vary depending on the service type contracted by the client brand:\n- Standard shipping: 3 to 5 business days within the same country.\n- Express shipping: 24 to 48 hours within the same country (available only in the Los Angeles metropolitan area and the Zaragoza-Madrid corridor).\n- International shipping (between the United States and Spain): 7 to 12 business days, subject to customs; TrackFlow does not control customs hold times.",
+                  "score": 0.44435334
+                },
+                {
+                  "company": "trackflow",
+                  "source_document": "returns-policy",
+                  "section": "Returns Policy › Standard return window",
+                  "language": "en",
+                  "chunk_index": 1,
+                  "text": "Returns Policy\nStandard return window: 30 days from delivery, unless the client brand has configured a different window in their contract.",
+                  "score": 0.40306753
+                },
+                {
+                  "company": "trackflow",
+                  "source_document": "sla-delivery",
+                  "section": "Delivery SLA",
+                  "language": "en",
+                  "chunk_index": 2,
+                  "text": "Delivery SLA\nTrackFlow does not guarantee delivery SLA during declared high-demand dates (Black Friday, Christmas, January Sales in Spain) — during those dates, delivery times may extend by up to an additional 40%, and this must be communicated proactively to clients in advance.",
+                  "score": 0.33989325
+                }
+              ]
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 4,
+            "attempt": 1,
+            "kind": "edge",
+            "name": "route_context",
+            "status": "ok",
+            "started_at": "2026-11-12T02:53:56.493+00:00",
+            "finished_at": "2026-11-12T02:53:56.493+00:00",
+            "duration_ms": null,
+            "input": null,
+            "output": {
+              "decision": "generate",
+              "to": "generate_answer",
+              "reason": "4 chunk(s) scored at least 0.30"
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 5,
+            "attempt": 1,
+            "kind": "node",
+            "name": "generate_answer",
+            "status": "ok",
+            "started_at": "2026-11-12T02:53:56.498+00:00",
+            "finished_at": "2026-11-12T02:54:00.164+00:00",
+            "duration_ms": 3666.25,
+            "input": {
+              "context": [
+                {
+                  "company": "trackflow",
+                  "source_document": "sla-delivery",
+                  "section": "Delivery SLA",
+                  "language": "en",
+                  "chunk_index": 1,
+                  "text": "Delivery SLA\nThe contractually committed SLA is 90% on-time deliveries per month, measured by country. If a country falls below 90% for two consecutive months, the client is entitled to a 5% compensation on that country's monthly fee, per the standard contract.",
+                  "score": 0.4816031
+                },
+                {
+                  "company": "trackflow",
+                  "source_document": "sla-delivery",
+                  "section": "Delivery SLA",
+                  "language": "en",
+                  "chunk_index": 0,
+                  "text": "Delivery SLA\nTrackFlow manages last-mile delivery in the United States (Los Angeles) and Spain (Zaragoza). Delivery commitments vary depending on the service type contracted by the client brand:\n- Standard shipping: 3 to 5 business days within the same country.\n- Express shipping: 24 to 48 hours within the same country (available only in the Los Angeles metropolitan area and the Zaragoza-Madrid corridor).\n- International shipping (between the United States and Spain): 7 to 12 business days, subject to customs; TrackFlow does not control customs hold times.",
+                  "score": 0.44435334
+                },
+                {
+                  "company": "trackflow",
+                  "source_document": "returns-policy",
+                  "section": "Returns Policy › Standard return window",
+                  "language": "en",
+                  "chunk_index": 1,
+                  "text": "Returns Policy\nStandard return window: 30 days from delivery, unless the client brand has configured a different window in their contract.",
+                  "score": 0.40306753
+                },
+                {
+                  "company": "trackflow",
+                  "source_document": "sla-delivery",
+                  "section": "Delivery SLA",
+                  "language": "en",
+                  "chunk_index": 2,
+                  "text": "Delivery SLA\nTrackFlow does not guarantee delivery SLA during declared high-demand dates (Black Friday, Christmas, January Sales in Spain) — during those dates, delivery times may extend by up to an additional 40%, and this must be communicated proactively to clients in advance.",
+                  "score": 0.33989325
+                }
+              ],
+              "question": "What delivery times do we commit to for standard shipments?"
+            },
+            "output": {
+              "answer": "Standard shipments are **3 to 5 business days within the same country**. Delivery times are not guaranteed during Black Friday, Christmas, or January Sales in Spain; they may extend by up to an additional 40%, and this must be communicated proactively in advance.\n\nSources: sla-delivery — Delivery SLA (delivery commitments); sla-delivery — Delivery SLA (high-demand dates)"
+            },
+            "error_type": null,
+            "error_message": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "grounding-black-friday-sla",
+      "question": "Can we guarantee our client's delivery times during Black Friday?",
+      "trace": {
+        "run_id": "b2feba53-14be-4cc0-a843-3214a7d99bb9",
+        "user_id": null,
+        "graph_version": "b80c9d0318e7aba2",
+        "question": "Can we guarantee our client's delivery times during Black Friday?",
+        "status": "completed",
+        "outcome": "answered",
+        "answer": "No. TrackFlow does not guarantee delivery times during Black Friday; they may extend by up to an additional 40%, and this must be communicated proactively to clients in advance.\n\nSources: sla-delivery — Delivery SLA",
+        "attempts": 1,
+        "started_at": "2026-11-12T02:54:00.172+00:00",
+        "finished_at": "2026-11-12T02:54:07.337+00:00",
+        "error_node": null,
+        "error_type": null,
+        "error_message": null,
+        "events": [
+          {
+            "seq": 1,
+            "attempt": 1,
+            "kind": "node",
+            "name": "receive_question",
+            "status": "ok",
+            "started_at": "2026-11-12T02:54:00.174+00:00",
+            "finished_at": "2026-11-12T02:54:00.175+00:00",
+            "duration_ms": 0.379,
+            "input": {
+              "question": "Can we guarantee our client's delivery times during Black Friday?"
+            },
+            "output": {
+              "question": "Can we guarantee our client's delivery times during Black Friday?"
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 2,
+            "attempt": 1,
+            "kind": "edge",
+            "name": "route_question",
+            "status": "ok",
+            "started_at": "2026-11-12T02:54:00.175+00:00",
+            "finished_at": "2026-11-12T02:54:00.175+00:00",
+            "duration_ms": null,
+            "input": null,
+            "output": {
+              "decision": "retrieve",
+              "to": "retrieve",
+              "reason": "the question is not empty"
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 3,
+            "attempt": 1,
+            "kind": "node",
+            "name": "retrieve",
+            "status": "ok",
+            "started_at": "2026-11-12T02:54:00.178+00:00",
+            "finished_at": "2026-11-12T02:54:00.482+00:00",
+            "duration_ms": 304.603,
+            "input": {
+              "question": "Can we guarantee our client's delivery times during Black Friday?"
+            },
+            "output": {
+              "context": [
+                {
+                  "company": "trackflow",
+                  "source_document": "sla-delivery",
+                  "section": "Delivery SLA",
+                  "language": "en",
+                  "chunk_index": 2,
+                  "text": "Delivery SLA\nTrackFlow does not guarantee delivery SLA during declared high-demand dates (Black Friday, Christmas, January Sales in Spain) — during those dates, delivery times may extend by up to an additional 40%, and this must be communicated proactively to clients in advance.",
+                  "score": 0.6062833
+                },
+                {
+                  "company": "trackflow",
+                  "source_document": "sla-delivery",
+                  "section": "Delivery SLA",
+                  "language": "en",
+                  "chunk_index": 1,
+                  "text": "Delivery SLA\nThe contractually committed SLA is 90% on-time deliveries per month, measured by country. If a country falls below 90% for two consecutive months, the client is entitled to a 5% compensation on that country's monthly fee, per the standard contract.",
+                  "score": 0.35956824
+                },
+                {
+                  "company": "trackflow",
+                  "source_document": "sla-delivery",
+                  "section": "Delivery SLA",
+                  "language": "en",
+                  "chunk_index": 0,
+                  "text": "Delivery SLA\nTrackFlow manages last-mile delivery in the United States (Los Angeles) and Spain (Zaragoza). Delivery commitments vary depending on the service type contracted by the client brand:\n- Standard shipping: 3 to 5 business days within the same country.\n- Express shipping: 24 to 48 hours within the same country (available only in the Los Angeles metropolitan area and the Zaragoza-Madrid corridor).\n- International shipping (between the United States and Spain): 7 to 12 business days, subject to customs; TrackFlow does not control customs hold times.",
+                  "score": 0.3466132
+                }
+              ]
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 4,
+            "attempt": 1,
+            "kind": "edge",
+            "name": "route_context",
+            "status": "ok",
+            "started_at": "2026-11-12T02:54:00.482+00:00",
+            "finished_at": "2026-11-12T02:54:00.482+00:00",
+            "duration_ms": null,
+            "input": null,
+            "output": {
+              "decision": "generate",
+              "to": "generate_answer",
+              "reason": "3 chunk(s) scored at least 0.30"
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 5,
+            "attempt": 1,
+            "kind": "node",
+            "name": "generate_answer",
+            "status": "ok",
+            "started_at": "2026-11-12T02:54:00.488+00:00",
+            "finished_at": "2026-11-12T02:54:07.331+00:00",
+            "duration_ms": 6843.655,
+            "input": {
+              "context": [
+                {
+                  "company": "trackflow",
+                  "source_document": "sla-delivery",
+                  "section": "Delivery SLA",
+                  "language": "en",
+                  "chunk_index": 2,
+                  "text": "Delivery SLA\nTrackFlow does not guarantee delivery SLA during declared high-demand dates (Black Friday, Christmas, January Sales in Spain) — during those dates, delivery times may extend by up to an additional 40%, and this must be communicated proactively to clients in advance.",
+                  "score": 0.6062833
+                },
+                {
+                  "company": "trackflow",
+                  "source_document": "sla-delivery",
+                  "section": "Delivery SLA",
+                  "language": "en",
+                  "chunk_index": 1,
+                  "text": "Delivery SLA\nThe contractually committed SLA is 90% on-time deliveries per month, measured by country. If a country falls below 90% for two consecutive months, the client is entitled to a 5% compensation on that country's monthly fee, per the standard contract.",
+                  "score": 0.35956824
+                },
+                {
+                  "company": "trackflow",
+                  "source_document": "sla-delivery",
+                  "section": "Delivery SLA",
+                  "language": "en",
+                  "chunk_index": 0,
+                  "text": "Delivery SLA\nTrackFlow manages last-mile delivery in the United States (Los Angeles) and Spain (Zaragoza). Delivery commitments vary depending on the service type contracted by the client brand:\n- Standard shipping: 3 to 5 business days within the same country.\n- Express shipping: 24 to 48 hours within the same country (available only in the Los Angeles metropolitan area and the Zaragoza-Madrid corridor).\n- International shipping (between the United States and Spain): 7 to 12 business days, subject to customs; TrackFlow does not control customs hold times.",
+                  "score": 0.3466132
+                }
+              ],
+              "question": "Can we guarantee our client's delivery times during Black Friday?"
+            },
+            "output": {
+              "answer": "No. TrackFlow does not guarantee delivery times during Black Friday; they may extend by up to an additional 40%, and this must be communicated proactively to clients in advance.\n\nSources: sla-delivery — Delivery SLA"
+            },
+            "error_type": null,
+            "error_message": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "grounding-international-returns",
+      "question": "A customer bought an item in the United States and wants to return it in Spain. Is that handled automatically?",
+      "trace": {
+        "run_id": "c9a0388c-065a-437c-9219-aaf697f93483",
+        "user_id": null,
+        "graph_version": "b80c9d0318e7aba2",
+        "question": "A customer bought an item in the United States and wants to return it in Spain. Is that handled automatically?",
+        "status": "completed",
+        "outcome": "answered",
+        "answer": "No. Because the item was purchased in the United States and is being returned in Spain, the return is not covered by the standard automated process. It must be handled manually by Sofía Ramos’s Returns team.\n\nSources: returns-policy — Returns Policy",
+        "attempts": 1,
+        "started_at": "2026-11-12T02:54:07.340+00:00",
+        "finished_at": "2026-11-12T02:54:09.686+00:00",
+        "error_node": null,
+        "error_type": null,
+        "error_message": null,
+        "events": [
+          {
+            "seq": 1,
+            "attempt": 1,
+            "kind": "node",
+            "name": "receive_question",
+            "status": "ok",
+            "started_at": "2026-11-12T02:54:07.344+00:00",
+            "finished_at": "2026-11-12T02:54:07.344+00:00",
+            "duration_ms": 0.427,
+            "input": {
+              "question": "A customer bought an item in the United States and wants to return it in Spain. Is that handled automatically?"
+            },
+            "output": {
+              "question": "A customer bought an item in the United States and wants to return it in Spain. Is that handled automatically?"
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 2,
+            "attempt": 1,
+            "kind": "edge",
+            "name": "route_question",
+            "status": "ok",
+            "started_at": "2026-11-12T02:54:07.344+00:00",
+            "finished_at": "2026-11-12T02:54:07.344+00:00",
+            "duration_ms": null,
+            "input": null,
+            "output": {
+              "decision": "retrieve",
+              "to": "retrieve",
+              "reason": "the question is not empty"
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 3,
+            "attempt": 1,
+            "kind": "node",
+            "name": "retrieve",
+            "status": "ok",
+            "started_at": "2026-11-12T02:54:07.348+00:00",
+            "finished_at": "2026-11-12T02:54:08.021+00:00",
+            "duration_ms": 672.225,
+            "input": {
+              "question": "A customer bought an item in the United States and wants to return it in Spain. Is that handled automatically?"
+            },
+            "output": {
+              "context": [
+                {
+                  "company": "trackflow",
+                  "source_document": "returns-policy",
+                  "section": "Returns Policy",
+                  "language": "en",
+                  "chunk_index": 3,
+                  "text": "Returns Policy\nInternational returns (purchased in one country, returned in another) are not covered by the standard automated process and require manual handling by Sofía Ramos's team (Returns Manager).",
+                  "score": 0.60638213
+                },
+                {
+                  "company": "trackflow",
+                  "source_document": "returns-policy",
+                  "section": "Returns Policy",
+                  "language": "en",
+                  "chunk_index": 0,
+                  "text": "Returns Policy\nTrackFlow's standard reverse logistics process works as follows:\n1. The end customer requests a return through the brand's portal.\n2. TrackFlow automatically generates the return label if the reason falls within the rules configured by the client (e.g. wrong size, defective product).\n3. The product arrives at the warehouse and an operative inspects and classifies it as: fit for resale, fit for reconditioning, or not fit (disposal).",
+                  "score": 0.4046435
+                },
+                {
+                  "company": "trackflow",
+                  "source_document": "sla-delivery",
+                  "section": "Delivery SLA",
+                  "language": "en",
+                  "chunk_index": 0,
+                  "text": "Delivery SLA\nTrackFlow manages last-mile delivery in the United States (Los Angeles) and Spain (Zaragoza). Delivery commitments vary depending on the service type contracted by the client brand:\n- Standard shipping: 3 to 5 business days within the same country.\n- Express shipping: 24 to 48 hours within the same country (available only in the Los Angeles metropolitan area and the Zaragoza-Madrid corridor).\n- International shipping (between the United States and Spain): 7 to 12 business days, subject to customs; TrackFlow does not control customs hold times.",
+                  "score": 0.33934012
+                },
+                {
+                  "company": "trackflow",
+                  "source_document": "returns-policy",
+                  "section": "Returns Policy",
+                  "language": "en",
+                  "chunk_index": 4,
+                  "text": "Returns Policy\nTrackFlow does not recondition or resell product on its own account; it only executes logistics according to the rules each client brand defines.",
+                  "score": 0.33930996
+                },
+                {
+                  "company": "trackflow",
+                  "source_document": "returns-policy",
+                  "section": "Returns Policy › Return costs",
+                  "language": "en",
+                  "chunk_index": 2,
+                  "text": "Returns Policy\nReturn costs: the return shipping cost is covered by the client brand, unless the reason is a TrackFlow error (product damaged in transit or wrong delivery), in which case TrackFlow covers it.",
+                  "score": 0.33259368
+                }
+              ]
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 4,
+            "attempt": 1,
+            "kind": "edge",
+            "name": "route_context",
+            "status": "ok",
+            "started_at": "2026-11-12T02:54:08.021+00:00",
+            "finished_at": "2026-11-12T02:54:08.021+00:00",
+            "duration_ms": null,
+            "input": null,
+            "output": {
+              "decision": "generate",
+              "to": "generate_answer",
+              "reason": "5 chunk(s) scored at least 0.30"
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 5,
+            "attempt": 1,
+            "kind": "node",
+            "name": "generate_answer",
+            "status": "ok",
+            "started_at": "2026-11-12T02:54:08.025+00:00",
+            "finished_at": "2026-11-12T02:54:09.680+00:00",
+            "duration_ms": 1654.639,
+            "input": {
+              "context": [
+                {
+                  "company": "trackflow",
+                  "source_document": "returns-policy",
+                  "section": "Returns Policy",
+                  "language": "en",
+                  "chunk_index": 3,
+                  "text": "Returns Policy\nInternational returns (purchased in one country, returned in another) are not covered by the standard automated process and require manual handling by Sofía Ramos's team (Returns Manager).",
+                  "score": 0.60638213
+                },
+                {
+                  "company": "trackflow",
+                  "source_document": "returns-policy",
+                  "section": "Returns Policy",
+                  "language": "en",
+                  "chunk_index": 0,
+                  "text": "Returns Policy\nTrackFlow's standard reverse logistics process works as follows:\n1. The end customer requests a return through the brand's portal.\n2. TrackFlow automatically generates the return label if the reason falls within the rules configured by the client (e.g. wrong size, defective product).\n3. The product arrives at the warehouse and an operative inspects and classifies it as: fit for resale, fit for reconditioning, or not fit (disposal).",
+                  "score": 0.4046435
+                },
+                {
+                  "company": "trackflow",
+                  "source_document": "sla-delivery",
+                  "section": "Delivery SLA",
+                  "language": "en",
+                  "chunk_index": 0,
+                  "text": "Delivery SLA\nTrackFlow manages last-mile delivery in the United States (Los Angeles) and Spain (Zaragoza). Delivery commitments vary depending on the service type contracted by the client brand:\n- Standard shipping: 3 to 5 business days within the same country.\n- Express shipping: 24 to 48 hours within the same country (available only in the Los Angeles metropolitan area and the Zaragoza-Madrid corridor).\n- International shipping (between the United States and Spain): 7 to 12 business days, subject to customs; TrackFlow does not control customs hold times.",
+                  "score": 0.33934012
+                },
+                {
+                  "company": "trackflow",
+                  "source_document": "returns-policy",
+                  "section": "Returns Policy",
+                  "language": "en",
+                  "chunk_index": 4,
+                  "text": "Returns Policy\nTrackFlow does not recondition or resell product on its own account; it only executes logistics according to the rules each client brand defines.",
+                  "score": 0.33930996
+                },
+                {
+                  "company": "trackflow",
+                  "source_document": "returns-policy",
+                  "section": "Returns Policy › Return costs",
+                  "language": "en",
+                  "chunk_index": 2,
+                  "text": "Returns Policy\nReturn costs: the return shipping cost is covered by the client brand, unless the reason is a TrackFlow error (product damaged in transit or wrong delivery), in which case TrackFlow covers it.",
+                  "score": 0.33259368
+                }
+              ],
+              "question": "A customer bought an item in the United States and wants to return it in Spain. Is that handled automatically?"
+            },
+            "output": {
+              "answer": "No. Because the item was purchased in the United States and is being returned in Spain, the return is not covered by the standard automated process. It must be handled manually by Sofía Ramos’s Returns team.\n\nSources: returns-policy — Returns Policy"
+            },
+            "error_type": null,
+            "error_message": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "grounding-storage-discount",
+      "question": "Can we offer a storage discount to a client that stores 60 cubic meters a month?",
+      "trace": {
+        "run_id": "b0d8cba1-8512-4293-8fe6-d07d42b5952b",
+        "user_id": null,
+        "graph_version": "b80c9d0318e7aba2",
+        "question": "Can we offer a storage discount to a client that stores 60 cubic meters a month?",
+        "status": "completed",
+        "outcome": "answered",
+        "answer": "A client storing 60 cubic meters a month meets the threshold to negotiate a preferential storage rate, but we can’t offer or promise a discount without Miguel Torres’s approval.\n\nSources: storage-pricing — Storage Pricing",
+        "attempts": 1,
+        "started_at": "2026-11-12T02:54:09.690+00:00",
+        "finished_at": "2026-11-12T02:54:18.513+00:00",
+        "error_node": null,
+        "error_type": null,
+        "error_message": null,
+        "events": [
+          {
+            "seq": 1,
+            "attempt": 1,
+            "kind": "node",
+            "name": "receive_question",
+            "status": "ok",
+            "started_at": "2026-11-12T02:54:09.694+00:00",
+            "finished_at": "2026-11-12T02:54:09.694+00:00",
+            "duration_ms": 0.452,
+            "input": {
+              "question": "Can we offer a storage discount to a client that stores 60 cubic meters a month?"
+            },
+            "output": {
+              "question": "Can we offer a storage discount to a client that stores 60 cubic meters a month?"
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 2,
+            "attempt": 1,
+            "kind": "edge",
+            "name": "route_question",
+            "status": "ok",
+            "started_at": "2026-11-12T02:54:09.694+00:00",
+            "finished_at": "2026-11-12T02:54:09.694+00:00",
+            "duration_ms": null,
+            "input": null,
+            "output": {
+              "decision": "retrieve",
+              "to": "retrieve",
+              "reason": "the question is not empty"
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 3,
+            "attempt": 1,
+            "kind": "node",
+            "name": "retrieve",
+            "status": "ok",
+            "started_at": "2026-11-12T02:54:09.698+00:00",
+            "finished_at": "2026-11-12T02:54:15.189+00:00",
+            "duration_ms": 5491.433,
+            "input": {
+              "question": "Can we offer a storage discount to a client that stores 60 cubic meters a month?"
+            },
+            "output": {
+              "context": [
+                {
+                  "company": "trackflow",
+                  "source_document": "storage-pricing",
+                  "section": "Storage Pricing",
+                  "language": "en",
+                  "chunk_index": 2,
+                  "text": "Storage Pricing\nClients with more than 50 cubic meters of average monthly volume can negotiate a preferential rate, but that negotiation must always go through Miguel Torres — an account manager cannot offer storage discounts on their own.",
+                  "score": 0.7491385
+                },
+                {
+                  "company": "trackflow",
+                  "source_document": "storage-pricing",
+                  "section": "Storage Pricing",
+                  "language": "en",
+                  "chunk_index": 0,
+                  "text": "Storage Pricing\nTrackFlow charges client brands for storage based on volume occupied, not number of units:\n- Standard rate: 18 USD per cubic meter per month (Los Angeles) or 16 EUR per cubic meter per month (Zaragoza).\n- The first 30 days of any new product in inventory incur no storage charge (grace period).\n- Inventory with more than 180 days of no movement (no sales or outbound) pays a \"long-term inventory\" fee of 150% over the standard rate, starting on day 181.",
+                  "score": 0.5023969
+                },
+                {
+                  "company": "trackflow",
+                  "source_document": "storage-pricing",
+                  "section": "Storage Pricing",
+                  "language": "en",
+                  "chunk_index": 1,
+                  "text": "Storage Pricing\nThe client can request an inventory aging report at any time through their account manager; this report is not currently automated for the end client, only internally.",
+                  "score": 0.41851994
+                }
+              ]
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 4,
+            "attempt": 1,
+            "kind": "edge",
+            "name": "route_context",
+            "status": "ok",
+            "started_at": "2026-11-12T02:54:15.189+00:00",
+            "finished_at": "2026-11-12T02:54:15.189+00:00",
+            "duration_ms": null,
+            "input": null,
+            "output": {
+              "decision": "generate",
+              "to": "generate_answer",
+              "reason": "3 chunk(s) scored at least 0.30"
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 5,
+            "attempt": 1,
+            "kind": "node",
+            "name": "generate_answer",
+            "status": "ok",
+            "started_at": "2026-11-12T02:54:15.194+00:00",
+            "finished_at": "2026-11-12T02:54:18.508+00:00",
+            "duration_ms": 3314.543,
+            "input": {
+              "context": [
+                {
+                  "company": "trackflow",
+                  "source_document": "storage-pricing",
+                  "section": "Storage Pricing",
+                  "language": "en",
+                  "chunk_index": 2,
+                  "text": "Storage Pricing\nClients with more than 50 cubic meters of average monthly volume can negotiate a preferential rate, but that negotiation must always go through Miguel Torres — an account manager cannot offer storage discounts on their own.",
+                  "score": 0.7491385
+                },
+                {
+                  "company": "trackflow",
+                  "source_document": "storage-pricing",
+                  "section": "Storage Pricing",
+                  "language": "en",
+                  "chunk_index": 0,
+                  "text": "Storage Pricing\nTrackFlow charges client brands for storage based on volume occupied, not number of units:\n- Standard rate: 18 USD per cubic meter per month (Los Angeles) or 16 EUR per cubic meter per month (Zaragoza).\n- The first 30 days of any new product in inventory incur no storage charge (grace period).\n- Inventory with more than 180 days of no movement (no sales or outbound) pays a \"long-term inventory\" fee of 150% over the standard rate, starting on day 181.",
+                  "score": 0.5023969
+                },
+                {
+                  "company": "trackflow",
+                  "source_document": "storage-pricing",
+                  "section": "Storage Pricing",
+                  "language": "en",
+                  "chunk_index": 1,
+                  "text": "Storage Pricing\nThe client can request an inventory aging report at any time through their account manager; this report is not currently automated for the end client, only internally.",
+                  "score": 0.41851994
+                }
+              ],
+              "question": "Can we offer a storage discount to a client that stores 60 cubic meters a month?"
+            },
+            "output": {
+              "answer": "A client storing 60 cubic meters a month meets the threshold to negotiate a preferential storage rate, but we can’t offer or promise a discount without Miguel Torres’s approval.\n\nSources: storage-pricing — Storage Pricing"
+            },
+            "error_type": null,
+            "error_message": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "grounding-carrier-exception",
+      "question": "My client needs us to use a carrier we don't normally work with for one route. Can we do that?",
+      "trace": {
+        "run_id": "64efcdca-559b-4de2-8c11-b8ff9f2171bb",
+        "user_id": null,
+        "graph_version": "b80c9d0318e7aba2",
+        "question": "My client needs us to use a carrier we don't normally work with for one route. Can we do that?",
+        "status": "completed",
+        "outcome": "answered",
+        "answer": "The system assigns the carrier for each shipment. Using a carrier outside the usual options for a route would require approval from Carlos Vega, Head of Carrier Operations; it isn’t something we can guarantee.\n\nSources: carrier-coverage — Carrier Coverage",
+        "attempts": 1,
+        "started_at": "2026-11-12T02:54:18.516+00:00",
+        "finished_at": "2026-11-12T02:54:21.748+00:00",
+        "error_node": null,
+        "error_type": null,
+        "error_message": null,
+        "events": [
+          {
+            "seq": 1,
+            "attempt": 1,
+            "kind": "node",
+            "name": "receive_question",
+            "status": "ok",
+            "started_at": "2026-11-12T02:54:18.519+00:00",
+            "finished_at": "2026-11-12T02:54:18.519+00:00",
+            "duration_ms": 0.385,
+            "input": {
+              "question": "My client needs us to use a carrier we don't normally work with for one route. Can we do that?"
+            },
+            "output": {
+              "question": "My client needs us to use a carrier we don't normally work with for one route. Can we do that?"
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 2,
+            "attempt": 1,
+            "kind": "edge",
+            "name": "route_question",
+            "status": "ok",
+            "started_at": "2026-11-12T02:54:18.519+00:00",
+            "finished_at": "2026-11-12T02:54:18.519+00:00",
+            "duration_ms": null,
+            "input": null,
+            "output": {
+              "decision": "retrieve",
+              "to": "retrieve",
+              "reason": "the question is not empty"
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 3,
+            "attempt": 1,
+            "kind": "node",
+            "name": "retrieve",
+            "status": "ok",
+            "started_at": "2026-11-12T02:54:18.523+00:00",
+            "finished_at": "2026-11-12T02:54:18.847+00:00",
+            "duration_ms": 323.966,
+            "input": {
+              "question": "My client needs us to use a carrier we don't normally work with for one route. Can we do that?"
+            },
+            "output": {
+              "context": [
+                {
+                  "company": "trackflow",
+                  "source_document": "carrier-coverage",
+                  "section": "Carrier Coverage",
+                  "language": "en",
+                  "chunk_index": 2,
+                  "text": "Carrier Coverage\nCarrier selection for each shipment is determined by the system based on destination, weight, product type, and urgency — the account manager does not manually choose the carrier except for an exception approved by Carlos Vega (Head of Carrier Operations).",
+                  "score": 0.32851365
+                },
+                {
+                  "company": "trackflow",
+                  "source_document": "carrier-coverage",
+                  "section": "Carrier Coverage › United States (Los Angeles)",
+                  "language": "en",
+                  "chunk_index": 0,
+                  "text": "Carrier Coverage\nTrackFlow works with different carriers depending on the country:\nUnited States (Los Angeles): UPS, FedEx, and DHL.\n- UPS: full national coverage, best rate for heavy packages (over 5 kg).\n- FedEx: best delivery time for express shipments within California.\n- DHL: the only reliable-coverage option for international shipments from Los Angeles.",
+                  "score": 0.3035661
+                }
+              ]
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 4,
+            "attempt": 1,
+            "kind": "edge",
+            "name": "route_context",
+            "status": "ok",
+            "started_at": "2026-11-12T02:54:18.847+00:00",
+            "finished_at": "2026-11-12T02:54:18.847+00:00",
+            "duration_ms": null,
+            "input": null,
+            "output": {
+              "decision": "generate",
+              "to": "generate_answer",
+              "reason": "2 chunk(s) scored at least 0.30"
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 5,
+            "attempt": 1,
+            "kind": "node",
+            "name": "generate_answer",
+            "status": "ok",
+            "started_at": "2026-11-12T02:54:18.851+00:00",
+            "finished_at": "2026-11-12T02:54:21.742+00:00",
+            "duration_ms": 2890.525,
+            "input": {
+              "context": [
+                {
+                  "company": "trackflow",
+                  "source_document": "carrier-coverage",
+                  "section": "Carrier Coverage",
+                  "language": "en",
+                  "chunk_index": 2,
+                  "text": "Carrier Coverage\nCarrier selection for each shipment is determined by the system based on destination, weight, product type, and urgency — the account manager does not manually choose the carrier except for an exception approved by Carlos Vega (Head of Carrier Operations).",
+                  "score": 0.32851365
+                },
+                {
+                  "company": "trackflow",
+                  "source_document": "carrier-coverage",
+                  "section": "Carrier Coverage › United States (Los Angeles)",
+                  "language": "en",
+                  "chunk_index": 0,
+                  "text": "Carrier Coverage\nTrackFlow works with different carriers depending on the country:\nUnited States (Los Angeles): UPS, FedEx, and DHL.\n- UPS: full national coverage, best rate for heavy packages (over 5 kg).\n- FedEx: best delivery time for express shipments within California.\n- DHL: the only reliable-coverage option for international shipments from Los Angeles.",
+                  "score": 0.3035661
+                }
+              ],
+              "question": "My client needs us to use a carrier we don't normally work with for one route. Can we do that?"
+            },
+            "output": {
+              "answer": "The system assigns the carrier for each shipment. Using a carrier outside the usual options for a route would require approval from Carlos Vega, Head of Carrier Operations; it isn’t something we can guarantee.\n\nSources: carrier-coverage — Carrier Coverage"
+            },
+            "error_type": null,
+            "error_message": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "grounding-return-window",
+      "question": "What's the standard return window?",
+      "trace": {
+        "run_id": "e2bf1aa3-8246-4f08-ac36-008cb7ae6021",
+        "user_id": null,
+        "graph_version": "b80c9d0318e7aba2",
+        "question": "What's the standard return window?",
+        "status": "completed",
+        "outcome": "answered",
+        "answer": "The standard return window is 30 days from delivery, unless your contract specifies a different window.\n\nSources: returns-policy — Returns Policy › Standard return window",
+        "attempts": 1,
+        "started_at": "2026-11-12T02:54:21.752+00:00",
+        "finished_at": "2026-11-12T02:55:23.923+00:00",
+        "error_node": null,
+        "error_type": null,
+        "error_message": null,
+        "events": [
+          {
+            "seq": 1,
+            "attempt": 1,
+            "kind": "node",
+            "name": "receive_question",
+            "status": "ok",
+            "started_at": "2026-11-12T02:54:21.756+00:00",
+            "finished_at": "2026-11-12T02:54:21.756+00:00",
+            "duration_ms": 0.471,
+            "input": {
+              "question": "What's the standard return window?"
+            },
+            "output": {
+              "question": "What's the standard return window?"
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 2,
+            "attempt": 1,
+            "kind": "edge",
+            "name": "route_question",
+            "status": "ok",
+            "started_at": "2026-11-12T02:54:21.756+00:00",
+            "finished_at": "2026-11-12T02:54:21.756+00:00",
+            "duration_ms": null,
+            "input": null,
+            "output": {
+              "decision": "retrieve",
+              "to": "retrieve",
+              "reason": "the question is not empty"
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 3,
+            "attempt": 1,
+            "kind": "node",
+            "name": "retrieve",
+            "status": "ok",
+            "started_at": "2026-11-12T02:54:21.760+00:00",
+            "finished_at": "2026-11-12T02:54:22.314+00:00",
+            "duration_ms": 553.946,
+            "input": {
+              "question": "What's the standard return window?"
+            },
+            "output": {
+              "context": [
+                {
+                  "company": "trackflow",
+                  "source_document": "returns-policy",
+                  "section": "Returns Policy › Standard return window",
+                  "language": "en",
+                  "chunk_index": 1,
+                  "text": "Returns Policy\nStandard return window: 30 days from delivery, unless the client brand has configured a different window in their contract.",
+                  "score": 0.75373924
+                },
+                {
+                  "company": "trackflow",
+                  "source_document": "returns-policy",
+                  "section": "Returns Policy",
+                  "language": "en",
+                  "chunk_index": 0,
+                  "text": "Returns Policy\nTrackFlow's standard reverse logistics process works as follows:\n1. The end customer requests a return through the brand's portal.\n2. TrackFlow automatically generates the return label if the reason falls within the rules configured by the client (e.g. wrong size, defective product).\n3. The product arrives at the warehouse and an operative inspects and classifies it as: fit for resale, fit for reconditioning, or not fit (disposal).",
+                  "score": 0.3661802
+                },
+                {
+                  "company": "trackflow",
+                  "source_document": "returns-policy",
+                  "section": "Returns Policy › Return costs",
+                  "language": "en",
+                  "chunk_index": 2,
+                  "text": "Returns Policy\nReturn costs: the return shipping cost is covered by the client brand, unless the reason is a TrackFlow error (product damaged in transit or wrong delivery), in which case TrackFlow covers it.",
+                  "score": 0.31250346
+                },
+                {
+                  "company": "trackflow",
+                  "source_document": "returns-policy",
+                  "section": "Returns Policy",
+                  "language": "en",
+                  "chunk_index": 3,
+                  "text": "Returns Policy\nInternational returns (purchased in one country, returned in another) are not covered by the standard automated process and require manual handling by Sofía Ramos's team (Returns Manager).",
+                  "score": 0.3078052
+                }
+              ]
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 4,
+            "attempt": 1,
+            "kind": "edge",
+            "name": "route_context",
+            "status": "ok",
+            "started_at": "2026-11-12T02:54:22.314+00:00",
+            "finished_at": "2026-11-12T02:54:22.314+00:00",
+            "duration_ms": null,
+            "input": null,
+            "output": {
+              "decision": "generate",
+              "to": "generate_answer",
+              "reason": "4 chunk(s) scored at least 0.30"
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 5,
+            "attempt": 1,
+            "kind": "node",
+            "name": "generate_answer",
+            "status": "ok",
+            "started_at": "2026-11-12T02:54:22.322+00:00",
+            "finished_at": "2026-11-12T02:55:23.917+00:00",
+            "duration_ms": 61594.435,
+            "input": {
+              "context": [
+                {
+                  "company": "trackflow",
+                  "source_document": "returns-policy",
+                  "section": "Returns Policy › Standard return window",
+                  "language": "en",
+                  "chunk_index": 1,
+                  "text": "Returns Policy\nStandard return window: 30 days from delivery, unless the client brand has configured a different window in their contract.",
+                  "score": 0.75373924
+                },
+                {
+                  "company": "trackflow",
+                  "source_document": "returns-policy",
+                  "section": "Returns Policy",
+                  "language": "en",
+                  "chunk_index": 0,
+                  "text": "Returns Policy\nTrackFlow's standard reverse logistics process works as follows:\n1. The end customer requests a return through the brand's portal.\n2. TrackFlow automatically generates the return label if the reason falls within the rules configured by the client (e.g. wrong size, defective product).\n3. The product arrives at the warehouse and an operative inspects and classifies it as: fit for resale, fit for reconditioning, or not fit (disposal).",
+                  "score": 0.3661802
+                },
+                {
+                  "company": "trackflow",
+                  "source_document": "returns-policy",
+                  "section": "Returns Policy › Return costs",
+                  "language": "en",
+                  "chunk_index": 2,
+                  "text": "Returns Policy\nReturn costs: the return shipping cost is covered by the client brand, unless the reason is a TrackFlow error (product damaged in transit or wrong delivery), in which case TrackFlow covers it.",
+                  "score": 0.31250346
+                },
+                {
+                  "company": "trackflow",
+                  "source_document": "returns-policy",
+                  "section": "Returns Policy",
+                  "language": "en",
+                  "chunk_index": 3,
+                  "text": "Returns Policy\nInternational returns (purchased in one country, returned in another) are not covered by the standard automated process and require manual handling by Sofía Ramos's team (Returns Manager).",
+                  "score": 0.3078052
+                }
+              ],
+              "question": "What's the standard return window?"
+            },
+            "output": {
+              "answer": "The standard return window is 30 days from delivery, unless your contract specifies a different window.\n\nSources: returns-policy — Returns Policy › Standard return window"
+            },
+            "error_type": null,
+            "error_message": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "out-of-scope-above-threshold",
+      "question": "What is the parental leave policy for TrackFlow employees?",
+      "trace": {
+        "run_id": "b8e358fb-a84a-4049-bca4-01f6dcdfae11",
+        "user_id": null,
+        "graph_version": "b80c9d0318e7aba2",
+        "question": "What is the parental leave policy for TrackFlow employees?",
+        "status": "completed",
+        "outcome": "answered",
+        "answer": "The knowledge base does not have enough information to answer TrackFlow’s employee parental leave policy. Please confirm it with the responsible TrackFlow team.",
+        "attempts": 1,
+        "started_at": "2026-11-12T02:55:23.927+00:00",
+        "finished_at": "2026-11-12T02:55:26.285+00:00",
+        "error_node": null,
+        "error_type": null,
+        "error_message": null,
+        "events": [
+          {
+            "seq": 1,
+            "attempt": 1,
+            "kind": "node",
+            "name": "receive_question",
+            "status": "ok",
+            "started_at": "2026-11-12T02:55:23.931+00:00",
+            "finished_at": "2026-11-12T02:55:23.931+00:00",
+            "duration_ms": 0.447,
+            "input": {
+              "question": "What is the parental leave policy for TrackFlow employees?"
+            },
+            "output": {
+              "question": "What is the parental leave policy for TrackFlow employees?"
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 2,
+            "attempt": 1,
+            "kind": "edge",
+            "name": "route_question",
+            "status": "ok",
+            "started_at": "2026-11-12T02:55:23.931+00:00",
+            "finished_at": "2026-11-12T02:55:23.931+00:00",
+            "duration_ms": null,
+            "input": null,
+            "output": {
+              "decision": "retrieve",
+              "to": "retrieve",
+              "reason": "the question is not empty"
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 3,
+            "attempt": 1,
+            "kind": "node",
+            "name": "retrieve",
+            "status": "ok",
+            "started_at": "2026-11-12T02:55:23.935+00:00",
+            "finished_at": "2026-11-12T02:55:24.710+00:00",
+            "duration_ms": 775.545,
+            "input": {
+              "question": "What is the parental leave policy for TrackFlow employees?"
+            },
+            "output": {
+              "context": [
+                {
+                  "company": "trackflow",
+                  "source_document": "sla-delivery",
+                  "section": "Delivery SLA",
+                  "language": "en",
+                  "chunk_index": 0,
+                  "text": "Delivery SLA\nTrackFlow manages last-mile delivery in the United States (Los Angeles) and Spain (Zaragoza). Delivery commitments vary depending on the service type contracted by the client brand:\n- Standard shipping: 3 to 5 business days within the same country.\n- Express shipping: 24 to 48 hours within the same country (available only in the Los Angeles metropolitan area and the Zaragoza-Madrid corridor).\n- International shipping (between the United States and Spain): 7 to 12 business days, subject to customs; TrackFlow does not control customs hold times.",
+                  "score": 0.44893894
+                },
+                {
+                  "company": "trackflow",
+                  "source_document": "sla-delivery",
+                  "section": "Delivery SLA",
+                  "language": "en",
+                  "chunk_index": 2,
+                  "text": "Delivery SLA\nTrackFlow does not guarantee delivery SLA during declared high-demand dates (Black Friday, Christmas, January Sales in Spain) — during those dates, delivery times may extend by up to an additional 40%, and this must be communicated proactively to clients in advance.",
+                  "score": 0.42620552
+                },
+                {
+                  "company": "trackflow",
+                  "source_document": "returns-policy",
+                  "section": "Returns Policy",
+                  "language": "en",
+                  "chunk_index": 4,
+                  "text": "Returns Policy\nTrackFlow does not recondition or resell product on its own account; it only executes logistics according to the rules each client brand defines.",
+                  "score": 0.41047153
+                },
+                {
+                  "company": "trackflow",
+                  "source_document": "carrier-coverage",
+                  "section": "Carrier Coverage › United States (Los Angeles)",
+                  "language": "en",
+                  "chunk_index": 0,
+                  "text": "Carrier Coverage\nTrackFlow works with different carriers depending on the country:\nUnited States (Los Angeles): UPS, FedEx, and DHL.\n- UPS: full national coverage, best rate for heavy packages (over 5 kg).\n- FedEx: best delivery time for express shipments within California.\n- DHL: the only reliable-coverage option for international shipments from Los Angeles.",
+                  "score": 0.38350096
+                },
+                {
+                  "company": "trackflow",
+                  "source_document": "returns-policy",
+                  "section": "Returns Policy",
+                  "language": "en",
+                  "chunk_index": 0,
+                  "text": "Returns Policy\nTrackFlow's standard reverse logistics process works as follows:\n1. The end customer requests a return through the brand's portal.\n2. TrackFlow automatically generates the return label if the reason falls within the rules configured by the client (e.g. wrong size, defective product).\n3. The product arrives at the warehouse and an operative inspects and classifies it as: fit for resale, fit for reconditioning, or not fit (disposal).",
+                  "score": 0.37621796
+                }
+              ]
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 4,
+            "attempt": 1,
+            "kind": "edge",
+            "name": "route_context",
+            "status": "ok",
+            "started_at": "2026-11-12T02:55:24.710+00:00",
+            "finished_at": "2026-11-12T02:55:24.710+00:00",
+            "duration_ms": null,
+            "input": null,
+            "output": {
+              "decision": "generate",
+              "to": "generate_answer",
+              "reason": "5 chunk(s) scored at least 0.30"
+            },
+            "error_type": null,
+            "error_message": null
+          },
+          {
+            "seq": 5,
+            "attempt": 1,
+            "kind": "node",
+            "name": "generate_answer",
+            "status": "ok",
+            "started_at": "2026-11-12T02:55:24.718+00:00",
+            "finished_at": "2026-11-12T02:55:26.283+00:00",
+            "duration_ms": 1564.688,
+            "input": {
+              "context": [
+                {
+                  "company": "trackflow",
+                  "source_document": "sla-delivery",
+                  "section": "Delivery SLA",
+                  "language": "en",
+                  "chunk_index": 0,
+                  "text": "Delivery SLA\nTrackFlow manages last-mile delivery in the United States (Los Angeles) and Spain (Zaragoza). Delivery commitments vary depending on the service type contracted by the client brand:\n- Standard shipping: 3 to 5 business days within the same country.\n- Express shipping: 24 to 48 hours within the same country (available only in the Los Angeles metropolitan area and the Zaragoza-Madrid corridor).\n- International shipping (between the United States and Spain): 7 to 12 business days, subject to customs; TrackFlow does not control customs hold times.",
+                  "score": 0.44893894
+                },
+                {
+                  "company": "trackflow",
+                  "source_document": "sla-delivery",
+                  "section": "Delivery SLA",
+                  "language": "en",
+                  "chunk_index": 2,
+                  "text": "Delivery SLA\nTrackFlow does not guarantee delivery SLA during declared high-demand dates (Black Friday, Christmas, January Sales in Spain) — during those dates, delivery times may extend by up to an additional 40%, and this must be communicated proactively to clients in advance.",
+                  "score": 0.42620552
+                },
+                {
+                  "company": "trackflow",
+                  "source_document": "returns-policy",
+                  "section": "Returns Policy",
+                  "language": "en",
+                  "chunk_index": 4,
+                  "text": "Returns Policy\nTrackFlow does not recondition or resell product on its own account; it only executes logistics according to the rules each client brand defines.",
+                  "score": 0.41047153
+                },
+                {
+                  "company": "trackflow",
+                  "source_document": "carrier-coverage",
+                  "section": "Carrier Coverage › United States (Los Angeles)",
+                  "language": "en",
+                  "chunk_index": 0,
+                  "text": "Carrier Coverage\nTrackFlow works with different carriers depending on the country:\nUnited States (Los Angeles): UPS, FedEx, and DHL.\n- UPS: full national coverage, best rate for heavy packages (over 5 kg).\n- FedEx: best delivery time for express shipments within California.\n- DHL: the only reliable-coverage option for international shipments from Los Angeles.",
+                  "score": 0.38350096
+                },
+                {
+                  "company": "trackflow",
+                  "source_document": "returns-policy",
+                  "section": "Returns Policy",
+                  "language": "en",
+                  "chunk_index": 0,
+                  "text": "Returns Policy\nTrackFlow's standard reverse logistics process works as follows:\n1. The end customer requests a return through the brand's portal.\n2. TrackFlow automatically generates the return label if the reason falls within the rules configured by the client (e.g. wrong size, defective product).\n3. The product arrives at the warehouse and an operative inspects and classifies it as: fit for resale, fit for reconditioning, or not fit (disposal).",
+                  "score": 0.37621796
+                }
+              ],
+              "question": "What is the parental leave policy for TrackFlow employees?"
+            },
+            "output": {
+              "answer": "The knowledge base does not have enough information to answer TrackFlow’s employee parental leave policy. Please confirm it with the responsible TrackFlow team."
+            },
+            "error_type": null,
+            "error_message": null
+          }
+        ]
+      }
+    }
+  ]
+}

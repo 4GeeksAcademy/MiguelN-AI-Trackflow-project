@@ -2,6 +2,8 @@
 
 Milestone 7. Brief: [`contexts/RAG-briefing.md`](../../contexts/RAG-briefing.md). Ticket: `lead-instr.png`, phases in `stage-todo-1.png` and `stages-todo-2.png`.
 
+> Since 2026-11-11 the same flow also runs as an explicit LangGraph graph, with a checkpoint per step and a queryable trace per run: `POST /agent/query`, described in [`docs/agent/agent-graph.md`](../agent/agent-graph.md). It reuses `retrieve()` and `generate_answer()` from this design unchanged; `POST /knowledge/query` stays as described here.
+
 ## What it is for
 
 Miguel Torres's commercial team (account managers and business development) keeps answering the same client questions:

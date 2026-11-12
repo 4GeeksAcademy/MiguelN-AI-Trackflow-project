@@ -14,6 +14,10 @@ data/eval/weekly_warehouse_client_performance/
 # export that is being written. The cron wrapper's log goes to logs/.
 data/raw/telemetry_*.csv
 data/raw/.telemetry_*.csv.partial
+# Knowledge agent store (services/agent): LangGraph checkpoints and run traces,
+# which hold the questions people asked. Recorded eval traces live in
+# data/eval/agent/ and are committed.
+data/agent/
 logs/
 .DS_Store
 .env

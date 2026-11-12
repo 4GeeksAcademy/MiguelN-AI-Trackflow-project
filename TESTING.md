@@ -18,6 +18,7 @@ uv run pytest                  # every backend test
 uv run pytest --cov            # the same, plus coverage of the authentication API (fails under 70%)
 uv run pytest tests/auth       # only the authentication suite
 npm run test:api               # shortcut for `uv run pytest tests/ -q`
+npm run agent:eval             # only the knowledge agent evals, over the recorded traces
 ```
 
 The suite needs no `.env`. It pins its own settings, so it behaves the same on
@@ -47,6 +48,7 @@ drift apart, one app's run fails.
 | Authentication API (216 tests) | `tests/auth/` | One module per endpoint (13), plus the token checks, the protected-route gate and password hashing that every endpoint relies on. |
 | Error contract (existing) | `tests/test_error_contract.py` | Which routes answer 400 and which 422, what an error body may contain, the static site server and the console email backend. |
 | Incidents (existing) | `tests/test_incidents_api.py`, `tests/test_seed_incidents.py` | The incident manager and its CSV seed. Not part of AUTH-088. |
+| Knowledge agent (124 tests) | `tests/pipelines/test_agent_graph.py`, `test_agent_evals.py`, `test_record_agent_traces.py`, `tests/test_agent_api.py` | The LangGraph graph: compile-time structural checks, each node on its own, the routes, checkpoints and resume, the run trace, the endpoints. `test_agent_evals.py` checks routing, the node contract and answer grounding against the traces in `data/eval/agent/traces.json`, recorded once from the real models (`npm run agent:record`). See `docs/agent/agent-graph.md`. |
 | Frontend auth logic (website 170, backoffice 175 tests) | `tests/frontend/`, run by `uis/*/jest.config.ts` | The auth utility functions in both Next.js apps: form validation, token storage, the post-login redirect guard, the auth service calls and error mapping. |
 
 ### Results at the time of writing

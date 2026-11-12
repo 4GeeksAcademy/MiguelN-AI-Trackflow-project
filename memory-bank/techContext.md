@@ -80,6 +80,37 @@ This repository currently contains two website implementations related to TrackF
   - Eval: `data/eval/test-queries.json` (20 questions across the four documents, 3 about peaks, 5 tagged `paraphrase`, plus 6 out of scope); `scripts/evaluate_rag_retrieval.py` (`npm run rag:eval`) reports Recall@3 on the ranking and with the threshold, plus the threshold evidence (midpoint when separable, recall-first otherwise), and writes `data/eval/rag/retrieval_eval.json`.
   - Qdrant: `qdrant/qdrant:v1.20.0` in Compose (127.0.0.1:6333/6334, `qdrant_data` volume), matching `qdrant-client` 1.20.0; `openai` 3.46.0. Both were added with `uv add`, and `requirements.txt` was re-exported.
   - Tests use `QdrantClient(":memory:")` and fake models (`tests/pipelines/rag_support.py`, whose fixture makes real clients fail): `tests/pipelines/test_rag.py`, `test_knowledge_base.py`, `test_rag_retrieval_eval.py`, `tests/test_knowledge_api.py`, `tests/frontend/backoffice/knowledge.test.ts`.
+- Knowledge agent / LangGraph (since 2026-11-11, Milestone 7 Part 1, `lead-instr.png` + `stages-todo.png`; design in `docs/agent/agent-graph.md`):
+  - What it is: the same RAG flow as an explicit graph in `services/agent/`. `langgraph` 1.2.20 and `langgraph-checkpoint-sqlite` 3.1.3 were added with `uv add`. `data/pipelines/rag.py` is unchanged and still never imports `services/`.
+  - State (`AgentState`): `question`, `error`, `context`, `answer`. There is no conversation history. The outcome (`answered` / `no_information` / `rejected`) is derived from the state.
+  - Nodes, each declaring the fields it reads and writes:
+    - `receive_question`: strips the question; an empty one sets `error`.
+    - `retrieve`: calls `rag.retrieve`.
+    - `generate_answer`: calls `rag.generate_answer(question, context)` with retrieve's context and refuses an empty one.
+    - `answer_no_information`: fixed text, no model call.
+    - `rag.query()` is never called by the graph.
+  - Conditional edges with an explicit `path_map`:
+    - `route_question`: error → `END`, otherwise retrieve;
+    - `route_context`: no chunk ≥ 0.30 → `answer_no_information`, otherwise generate.
+    - Each router writes `{edge, decision, to, reason}` through `get_stream_writer()`.
+  - `build_agent_graph()` raises `AgentGraphBuildError` before any run. Besides LangGraph's own `compile()` checks, it adds:
+    - a contract check (declared fields exist in `AgentState`, no duplicate node or state-field names);
+    - a reachability check on the declarations, both from `START` and to `END`. LangGraph 1.2.20 accepts an orphan node, and `get_graph()` draws a dead end as reaching `END`.
+    - At run time, a node returning an undeclared field raises `AgentContractError`; LangGraph alone silently drops it.
+    - `get_agent_graph()` (lru_cached) is built in the `services/main.py` lifespan, and `close_agent_graph()` runs on shutdown.
+  - Checkpoints:
+    - `SqliteSaver` after every step, `thread_id = run_id`.
+    - `resume_run(run_id)` continues a failed run from the failed node without re-running earlier ones.
+    - It refuses `running` runs, unknown runs and runs from another graph version.
+  - Trace (`services/agent/tracing.py`, `TraceStore`): tables `agent_runs` and `agent_run_events` in the same SQLite file (`AGENT_STORE_PATH`, default git-ignored `data/agent/agent_runs.sqlite`, Compose `/app/var/agent_runs.sqlite`).
+    - The runner streams `tasks` + `custom` + `values` and writes node rows (inputs limited to the declared reads, output or error, timing) and edge rows (decision and reason).
+    - Errors keep their class; the message only for `KnowledgeBaseError` / `AgentContractError`.
+    - `graph_fingerprint()` (nodes, edges, prompt, threshold, top-k, temperature, fixed texts) is stored on each run.
+  - CLI: `npm run agent -- check | ask "<q>" | trace <id>|--last [--json] | runs | resume <id>`.
+  - Evals:
+    - Cases in `data/eval/agent/eval-cases.json`; recorded once from the real models by `npm run agent:record` (`scripts/record_agent_traces.py`, temp store, writes nothing if a run fails) into the committed `data/eval/agent/traces.json`.
+    - `npm run agent:eval` (`tests/pipelines/test_agent_evals.py`) checks routing, the node contract, grounding (fact in the answer and in a retrieved chunk), faithfulness (figures) and freshness (fingerprint), offline.
+  - Tests: `tests/pipelines/test_agent_graph.py`, `test_record_agent_traces.py`, `tests/test_agent_api.py`. The `isolated_agent_store` autouse fixture in `tests/conftest.py` pins `AGENT_STORE_PATH` to `tmp_path` and resets the caches.
 - `packages/shared/trackflow_shared/` is a Python package mapped into the wheel from `pyproject.toml` next to `services` and `scripts`. It carries rules that both the API and the `/scripts` tooling must agree on and that neither owns: the incident enumerations and lifecycle (`incidents.py`) and the helpdesk-CSV validation plus CSV -> model maps (`incidents_csv.py`). It imports no framework.
 - Error translation lives in `services/core/http_errors.py`. Domain errors (`ValidationFailed`, `IncidentNotFound`) are translated there, so the service layer stays HTTP-agnostic, and a bare `Exception` handler turns any unhandled failure into a 500 that names nothing about the exception, with the traceback going to the `trackflow.errors` logger. Every incident error body has the same `{detail: {field, message}}` shape. See `docs/INCIDENTS.md`.
 - **The 422 -> 400 remapping is scoped to `/api/incidents`, and must stay that way.** Starlette's exception handlers are global, so `make_validation_error_handler(prefixes)` takes the prefix (read off `incidents_router.prefix`) and hands everything else to FastAPI's own handler. Applying it app-wide breaks password recovery: `resetPassword` in `uis/*/services/auth-service.ts` reads **any** 400 as a spent reset token and replaces the form with "request a new link", so a too-short password would tell the user their link had expired. `changePassword` reads a 400 as "current password is wrong". `tests/test_error_contract.py` pins both halves.
@@ -141,6 +172,10 @@ This repository currently contains two website implementations related to TrackF
   - Public on purpose (the plan accepts anonymous pre-login events): `POST /telemetry/events`.
   - Token-protected reporting (per-client volumes are commercially sensitive): `GET /reporting/weekly-warehouse-client-performance?week_start=` (BRIEFING section 6 shape; defaults to the latest `weeks_to` of a completed run; 404 for a week never computed, 422 for a non-Monday or future week), `GET /reporting/pipeline-runs/latest` (adds derived `last_closed_week` and `stale`; hides `flow_run_id`, `triggered_by`, `error_message`), `POST /reporting/pipeline-runs` (202, 409 while a run row is `running`, 503 without Prefect).
   - Token-protected knowledge assistant: `POST /knowledge/query` (`{question}` -> `{answer}`, the generated text only; 422 for a blank, over-long or extra-field body; 503 when Qdrant or a model is unavailable or not configured).
+  - Token-protected knowledge agent (LangGraph, coexists with the above):
+    - `POST /agent/query`: `{question}` -> `{run_id, answer}`. 422 `{detail: {message, run_id}}` when the graph refuses an empty question; 422 for an over-long or extra-field body; 503 (retryable node failure) or 500 (other) with the failed step's name and the `run_id`, never exception text.
+    - `GET /agent/runs/{run_id}`: the run's trace, for the user who ran it only (404 otherwise).
+    - The router only calls `runner.run_agent`.
   - Unauthenticated at this stage: `POST /api/incidents`, `GET /api/incidents` (filters `status`, `origin`, `branch`, `category`), `GET /api/incidents/summary`, `GET /api/incidents/{id}`, `PATCH /api/incidents/{id}/status`. Anyone in the company reports incidents, and no incident route exposes the commercially sensitive data that makes `/suppliers` token-only. Revisit when the panel lands.
 - `uis/backoffice` consumes the `/suppliers` routes with `Authorization: Bearer <token>` on every call.
 - Inventory calls in `uis/backoffice` use the same token and 401 handling. Its own error presentation preserves readable API-authored 4xx/5xx messages without changing `friendly-error.ts` for other features. Stock labels use display-only thresholds 0 / 1-9 / 10+; no schema or reorder rules were added.

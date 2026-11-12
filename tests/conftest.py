@@ -9,6 +9,9 @@ incidents leak into the next and into `data/suppliers.json`.
 import pytest
 from fastapi.testclient import TestClient
 
+from services.agent import config as agent_config
+from services.agent import graph as agent_graph
+from services.agent import tracing as agent_tracing
 from services.core import config, supabase_client
 from services.core import db as core_db
 from services.incidents.read_cache import clear_read_cache
@@ -112,6 +115,25 @@ def isolated_supabase(monkeypatch):
         raise AssertionError("Unit tests must not call Supabase")
 
     monkeypatch.setattr(supabase_client, "get_supabase", forbid_supabase)
+
+
+def _reset_agent_store() -> None:
+    agent_graph.close_agent_graph()
+    agent_config.get_agent_settings.cache_clear()
+    agent_tracing.get_trace_store.cache_clear()
+
+
+@pytest.fixture(autouse=True)
+def isolated_agent_store(tmp_path, monkeypatch):
+    """The agent's checkpoints and traces go to a per-test file, never to `data/agent/`.
+
+    The compiled graph, its SQLite checkpointer and the trace store are cached,
+    so the caches are dropped on the way in and out, as for `get_settings`.
+    """
+    monkeypatch.setenv("AGENT_STORE_PATH", str(tmp_path / "agent_runs.sqlite"))
+    _reset_agent_store()
+    yield
+    _reset_agent_store()
 
 
 @pytest.fixture

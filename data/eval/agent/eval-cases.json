@@ -1,0 +1,123 @@
+{
+  "description": "Knowledge agent evals (Milestone 7, Part 1). Each case is one question run once through the real graph by `npm run agent:record`, which stores the run traces in traces.json; `npm run agent:eval` (tests/pipelines/test_agent_evals.py) checks every criterion below against those recorded traces, never against a live run. Checks: `outcome` (answered | no_information | rejected); `nodes` (the exact order the nodes ran in); `never` (nodes that must not run); `retrieved_from` (a source_document that must be among the retrieved chunks); `grounded_facts` (text that must appear both in the answer and in a retrieved chunk, case and spacing ignored); `answer_matches` (regular expressions the answer must match); `answer_is_no_information` (the answer is the fixed no-information text). Every answered case is also checked for faithfulness: each figure in the answer must appear in the retrieved chunks or the question (BRIEFING section 4). Questions come from data/eval/test-queries.json and the out-of-scope set in data/eval/rag/retrieval_eval.json.",
+  "cases": [
+    {
+      "id": "route-empty-question",
+      "purpose": "An empty question is refused by receive_question and the run ends: nothing is retrieved or generated.",
+      "question": "   ",
+      "checks": {
+        "outcome": "rejected",
+        "nodes": ["receive_question"],
+        "never": ["retrieve", "generate_answer", "answer_no_information"]
+      }
+    },
+    {
+      "id": "route-no-information-unrelated",
+      "purpose": "No chunk passes the threshold (retrieval score 0.093), so the honest no-information node answers and the generation model is never called.",
+      "question": "Who won the last football World Cup?",
+      "checks": {
+        "outcome": "no_information",
+        "nodes": ["receive_question", "retrieve", "answer_no_information"],
+        "never": ["generate_answer"],
+        "answer_is_no_information": true
+      }
+    },
+    {
+      "id": "route-no-information-near-threshold",
+      "purpose": "The closest out-of-scope question below the threshold (0.201) still takes the no-information route.",
+      "question": "How do I reset my password in the backoffice?",
+      "checks": {
+        "outcome": "no_information",
+        "nodes": ["receive_question", "retrieve", "answer_no_information"],
+        "never": ["generate_answer"],
+        "answer_is_no_information": true
+      }
+    },
+    {
+      "id": "grounding-standard-delivery-times",
+      "purpose": "retrieve runs before generate_answer, once, and feeds it; the answer states the documented delivery time and the high-demand caveat the business rules require.",
+      "question": "What delivery times do we commit to for standard shipments?",
+      "checks": {
+        "outcome": "answered",
+        "nodes": ["receive_question", "retrieve", "generate_answer"],
+        "never": ["answer_no_information"],
+        "retrieved_from": "sla-delivery",
+        "grounded_facts": ["3 to 5 business days"],
+        "answer_matches": ["(?i)black friday|high-demand"]
+      }
+    },
+    {
+      "id": "grounding-black-friday-sla",
+      "purpose": "Business constraint: an SLA is never promised for declared high-demand dates.",
+      "question": "Can we guarantee our client's delivery times during Black Friday?",
+      "checks": {
+        "outcome": "answered",
+        "nodes": ["receive_question", "retrieve", "generate_answer"],
+        "never": ["answer_no_information"],
+        "retrieved_from": "sla-delivery",
+        "grounded_facts": ["Black Friday"],
+        "answer_matches": ["(?i)\\b(not|never|cannot|can't|isn't|aren't)\\b[^.]{0,60}\\bguarantee"]
+      }
+    },
+    {
+      "id": "grounding-international-returns",
+      "purpose": "Business constraint: international returns are never automatic; they go to Sofía Ramos's team for manual handling.",
+      "question": "A customer bought an item in the United States and wants to return it in Spain. Is that handled automatically?",
+      "checks": {
+        "outcome": "answered",
+        "nodes": ["receive_question", "retrieve", "generate_answer"],
+        "never": ["answer_no_information"],
+        "retrieved_from": "returns-policy",
+        "grounded_facts": ["Sofía Ramos"],
+        "answer_matches": ["(?i)manual"]
+      }
+    },
+    {
+      "id": "grounding-storage-discount",
+      "purpose": "Business constraint: no storage discount without Miguel Torres's approval.",
+      "question": "Can we offer a storage discount to a client that stores 60 cubic meters a month?",
+      "checks": {
+        "outcome": "answered",
+        "nodes": ["receive_question", "retrieve", "generate_answer"],
+        "never": ["answer_no_information"],
+        "retrieved_from": "storage-pricing",
+        "grounded_facts": ["Miguel Torres"]
+      }
+    },
+    {
+      "id": "grounding-carrier-exception",
+      "purpose": "Business constraint: a carrier exception needs Carlos Vega's approval; none is invented.",
+      "question": "My client needs us to use a carrier we don't normally work with for one route. Can we do that?",
+      "checks": {
+        "outcome": "answered",
+        "nodes": ["receive_question", "retrieve", "generate_answer"],
+        "never": ["answer_no_information"],
+        "retrieved_from": "carrier-coverage",
+        "grounded_facts": ["Carlos Vega"]
+      }
+    },
+    {
+      "id": "grounding-return-window",
+      "purpose": "A known policy question returns the documented figure from the returns policy.",
+      "question": "What's the standard return window?",
+      "checks": {
+        "outcome": "answered",
+        "nodes": ["receive_question", "retrieve", "generate_answer"],
+        "never": ["answer_no_information"],
+        "retrieved_from": "returns-policy",
+        "grounded_facts": ["30 days"]
+      }
+    },
+    {
+      "id": "out-of-scope-above-threshold",
+      "purpose": "A business-sounding question outside the documents passes the recall-first threshold (0.449), so it reaches generation, and the answer must still say the knowledge base lacks the information instead of inventing a policy.",
+      "question": "What is the parental leave policy for TrackFlow employees?",
+      "checks": {
+        "outcome": "answered",
+        "nodes": ["receive_question", "retrieve", "generate_answer"],
+        "never": ["answer_no_information"],
+        "answer_matches": ["(?i)\\b(not|no|n't)\\b[^.]{0,80}\\binformation\\b"]
+      }
+    }
+  ]
+}
