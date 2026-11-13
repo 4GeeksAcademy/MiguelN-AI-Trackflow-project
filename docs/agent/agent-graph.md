@@ -7,6 +7,7 @@ Milestone 7. Ticket: `lead-instr.png`, checklist in `stages-todo.png`. The RAG s
   - the live state of support tickets in the **incident manager**;
   - the live stock in the **inventory manager**, the stretch goal.
 - **Part 3** (the MCP Server ticket) moves those tools out of the graph. The agent no longer calls the Incidents Manager or the inventory itself: both are exposed by the OAuth-protected TrackFlow MCP server ([`docs/mcp/mcp-server.md`](../mcp/mcp-server.md)), and the agent consumes it as an MCP client through `langchain-mcp-adapters`. The routing is unchanged.
+- **Milestone 8, Part 1** (ticket MEM-092) gives the same graph **memory, with the user's consent**: one extra self-evaluation step in the answer, a proposal asked inside the response, the next message classified against it, an append-only decision log, and consolidation by carrier and country. It adds five nodes around the same flow (`classify_memory_reply`, `resolve_memory_proposal`, `recall_memory`, `propose_memory`, `compose_response`) and changes none of its routing decisions. Generation is now the agent's own structured call (`respond.py`) under the same answer and business rules. Everything about memory is in [`agent-memory.md`](agent-memory.md); the diagram below is the Part 3 flow inside it.
 
 ## Why
 

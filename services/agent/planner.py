@@ -1,9 +1,15 @@
 """Source planning: which sources a question needs, decided by the model.
 
-The generation model is shown the three tools - `lookup_ticket`,
+The generation model is shown the three source tools - `lookup_ticket`,
 `lookup_stock`, `search_knowledge_base` - with JSON schemas generated from
 their typed contracts, and must call at least one (`tool_choice="required"`).
 It only *chooses*: the graph runs each chosen source as its own node.
+
+A fourth tool, `note_team_update` (MEM-092), is not a source: it marks a
+message in which the user *tells* something - a carrier correction, the cause of
+recurring incidents, a client's report preference - so that a message with no
+evidence still reaches the generation call, whose self-evaluation may propose
+remembering it. It sets `Plan.user_update` and adds no step.
 
 What the model returns is checked before anything runs, and every call that is
 dropped is recorded with its reason in `Plan.ignored`:
@@ -38,6 +44,7 @@ from services.agent.tools.contracts import StockLookupInput, TicketLookupInput
 TICKET_TOOL: Final = "lookup_ticket"
 STOCK_TOOL: Final = "lookup_stock"
 KNOWLEDGE_TOOL: Final = "search_knowledge_base"
+UPDATE_TOOL: Final = "note_team_update"
 
 PLANNER_TEMPERATURE: Final = 0.0
 
@@ -52,6 +59,11 @@ status, category, origin or branch.
 there is stock and how many units, optionally in one warehouse.
 - search_knowledge_base: TrackFlow's documented knowledge - policies, procedures, \
 services, prices, carriers, delivery times, contacts and who is responsible for what.
+- note_team_update: the user is telling you something rather than only asking - a \
+correction to a carrier's coverage or routes, the known cause of recurring incidents or \
+delays, or a B2B client's preference for their monthly report. It is not a source: call \
+it together with the source that can check the update (search_knowledge_base for \
+carrier coverage, lookup_ticket for the incidents mentioned).
 
 Call every tool the question needs, and only those: a question about a ticket's \
 status and about a policy needs both lookup_ticket and search_knowledge_base. Live \
@@ -60,6 +72,15 @@ policies or procedures are never in the incident or inventory manager. Copy tick
 references and product names exactly as the user wrote them, and never invent a \
 reference the question does not contain. If no tool fits, call search_knowledge_base.\
 """
+
+
+class TeamUpdateInput(BaseModel):
+    """The user is telling you something rather than only asking: a correction to a
+    carrier's coverage or routes, the known cause of recurring incidents, or a B2B
+    client's preference for their monthly report. Not a source: call it together with
+    the source that can check the update."""
+
+    model_config = ConfigDict(extra="ignore")
 
 
 class KnowledgeSearchInput(BaseModel):
@@ -78,6 +99,8 @@ TOOL_INPUTS: Final[dict[str, type[BaseModel]]] = {
     STOCK_TOOL: StockLookupInput,
     KNOWLEDGE_TOOL: KnowledgeSearchInput,
 }
+# Every tool the planner is shown: the sources, plus the update marker.
+PLANNER_TOOLS: Final[dict[str, type[BaseModel]]] = {**TOOL_INPUTS, UPDATE_TOOL: TeamUpdateInput}
 SOURCE_OF_TOOL: Final[dict[str, Source]] = {
     TICKET_TOOL: INCIDENT_MANAGER,
     STOCK_TOOL: INVENTORY_MANAGER,
@@ -99,6 +122,8 @@ class Plan(BaseModel):
     steps: list[PlanStep] = Field(min_length=1)
     # Every tool call that was dropped, with its reason.
     ignored: list[str] = Field(default_factory=list)
+    # The model called `note_team_update`: the user is giving information.
+    user_update: bool = False
 
 
 # --- Tool schemas ------------------------------------------------------------------
@@ -141,7 +166,7 @@ def tool_definitions() -> list[ChatCompletionToolParam]:
                 "parameters": _inline_refs(model.model_json_schema()),
             },
         }
-        for name, model in TOOL_INPUTS.items()
+        for name, model in PLANNER_TOOLS.items()
     ]
 
 
@@ -178,17 +203,26 @@ def _knowledge_step() -> PlanStep:
     return PlanStep(source=KNOWLEDGE_BASE, tool=KNOWLEDGE_TOOL)
 
 
-def fallback_plan(reasons: Iterable[str]) -> Plan:
-    return Plan(decided_by="fallback", steps=[_knowledge_step()], ignored=list(reasons))
+def fallback_plan(reasons: Iterable[str], *, user_update: bool = False) -> Plan:
+    return Plan(
+        decided_by="fallback",
+        steps=[_knowledge_step()],
+        ignored=list(reasons),
+        user_update=user_update,
+    )
 
 
 def plan_from_calls(question: str, calls: Iterable[Any]) -> Plan:
     """The plan the model's tool calls describe, after validating each one."""
     steps: dict[str, PlanStep] = {}
     ignored: list[str] = []
+    user_update = False
     for call in calls:
         function = getattr(call, "function", None)
         name = getattr(function, "name", None)
+        if name == UPDATE_TOOL:
+            user_update = True
+            continue
         if not isinstance(name, str) or name not in TOOL_INPUTS:
             ignored.append(f"unknown tool {name!r}")
             continue
@@ -214,11 +248,18 @@ def plan_from_calls(question: str, calls: Iterable[Any]) -> Plan:
         )
 
     if not steps:
-        return fallback_plan([*ignored, "no usable source was chosen"])
+        why = (
+            "only note_team_update was called: the knowledge base is searched for what it "
+            "documents on the subject"
+            if user_update
+            else "no usable source was chosen"
+        )
+        return fallback_plan([*ignored, why], user_update=user_update)
     return Plan(
         decided_by="model",
         steps=[steps[source] for source in SOURCE_ORDER if source in steps],
         ignored=ignored,
+        user_update=user_update,
     )
 
 

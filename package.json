@@ -16,6 +16,8 @@
     "agent": "uv run python -m services.agent",
     "agent:record": "uv run python -m scripts.record_agent_traces",
     "agent:eval": "uv run pytest tests/pipelines/test_agent_evals.py -v",
+    "agent:memory:eval": "uv run pytest tests/pipelines/test_agent_memory_evals.py -v",
+    "agent:memory:calibrate": "uv run python -m scripts.calibrate_memory_recall",
     "mcp": "uv run python -m mcps.trackflow_tools serve",
     "mcp:tools": "uv run python -m mcps.trackflow_tools tools",
     "mcp:token": "uv run python -m mcps.trackflow_tools token",

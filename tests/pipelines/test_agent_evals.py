@@ -13,7 +13,11 @@ Four kinds of criteria, all over the trace:
   ran and which never ran, that every transition is a recorded decision
   leading to the node that ran next, and that every decision is the one the
   graph made before the lookups moved to the MCP server
-  (`routing-baseline.json`, frozen from the Part 2 recording);
+  (`routing-baseline.json`, frozen from the Part 2 recording) - the memory
+  steps MEM-092 added around it are set aside for that comparison;
+- memory: with an empty memory and no pending proposal, no eval question is
+  proposed as a memory (they are questions, not updates), and generation used
+  the structured `respond` call;
 - node contract: every planned source ran exactly once, before
   `generate_answer`, and generation received exactly what they produced;
 - live data: each lookup ended as expected and went through the MCP server's
@@ -36,15 +40,17 @@ from typing import Any
 import pytest
 
 from services.agent import nodes
-from services.agent.graph import graph_fingerprint
+from services.agent.graph import MEMORY_EDGES, graph_fingerprint
 from services.agent.state import (
     ANSWER_LOOKUP_FAILED,
     ANSWER_NO_INFORMATION,
+    COMPOSE_RESPONSE,
     GENERATE_ANSWER,
     INCIDENT_MANAGER,
     INVENTORY_MANAGER,
     KNOWLEDGE_BASE,
     LOOKUP_FIELDS,
+    MEMORY_NODES,
     NO_INFORMATION_ANSWER,
     NODE_OF_SOURCE,
     PLAN_SOURCES,
@@ -229,7 +235,11 @@ def test_every_transition_is_a_recorded_decision(case, runs):
 @pytest.mark.parametrize("case", ALL_CASES)
 def test_the_routing_is_unchanged_since_the_direct_tools(case, runs):
     """Moving the lookups to the MCP server changed which node calls the tool, not
-    a single routing decision: same nodes (two renamed), same decisions in order."""
+    a single routing decision: same nodes (two renamed), same decisions in order.
+
+    Memory (MEM-092) only wraps that flow: with nothing remembered and nothing
+    pending, its nodes and its own routers are set aside and the rest must be
+    exactly the Part 2 run."""
     baseline = json.loads(BASELINE_PATH.read_text(encoding="utf-8"))
     case_id = baseline["renamed_cases"].get(case["id"], case["id"])
     assert case_id in baseline["cases"], f"{case['id']} has no baseline"
@@ -237,11 +247,13 @@ def test_the_routing_is_unchanged_since_the_direct_tools(case, runs):
     renamed = baseline["renamed_nodes"]
     run = runs[case["id"]]
 
-    assert run.node_names() == [renamed.get(name, name) for name in expected["nodes"]]
+    assert [name for name in run.node_names() if name not in MEMORY_NODES] == [
+        renamed.get(name, name) for name in expected["nodes"]
+    ]
     assert [
         [event["name"], event["output"]["decision"]]
         for event in run.events
-        if event["kind"] == "edge"
+        if event["kind"] == "edge" and event["name"] not in MEMORY_EDGES
     ] == expected["decisions"]
 
 
@@ -287,6 +299,22 @@ def test_generation_uses_exactly_what_the_planned_sources_produced(case, runs):
         assert generated["input"].get(field) == run.lookup(source)
     assert generated["input"]["question"] == received["output"]["question"]
     assert generated["output"]["answer"] == run.answer
+
+
+# --- Memory ---------------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("case", _cases_where("answered"))
+def test_a_question_is_never_proposed_as_a_memory(case, runs):
+    """The eval cases ask; none tells the agent a correction, an incident cause or a
+    client preference, so the self-evaluation must find nothing to remember."""
+    run = runs[case["id"]]
+    candidate = run.node(GENERATE_ANSWER)["output"]["memory_candidate"]
+
+    assert candidate["memory_check"] != "propose", candidate["reason"]
+    assert candidate["structured"], "generation answered without the respond tool"
+    assert "propose_memory" not in run.node_names()
+    assert run.node(COMPOSE_RESPONSE)["output"] == {"answer": run.answer}
 
 
 # --- Live data ----------------------------------------------------------------------------

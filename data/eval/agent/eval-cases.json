@@ -33,9 +33,11 @@
         ],
         "nodes": [
           "receive_question",
+          "recall_memory",
           "plan_sources",
           "retrieve",
-          "answer_no_information"
+          "answer_no_information",
+          "compose_response"
         ],
         "never": [
           "generate_answer",
@@ -57,9 +59,11 @@
         ],
         "nodes": [
           "receive_question",
+          "recall_memory",
           "plan_sources",
           "retrieve",
-          "answer_no_information"
+          "answer_no_information",
+          "compose_response"
         ],
         "never": [
           "generate_answer",
@@ -81,9 +85,11 @@
         ],
         "nodes": [
           "receive_question",
+          "recall_memory",
           "plan_sources",
           "retrieve",
-          "generate_answer"
+          "generate_answer",
+          "compose_response"
         ],
         "never": [
           "answer_no_information",
@@ -111,9 +117,11 @@
         ],
         "nodes": [
           "receive_question",
+          "recall_memory",
           "plan_sources",
           "retrieve",
-          "generate_answer"
+          "generate_answer",
+          "compose_response"
         ],
         "never": [
           "answer_no_information",
@@ -141,9 +149,11 @@
         ],
         "nodes": [
           "receive_question",
+          "recall_memory",
           "plan_sources",
           "retrieve",
-          "generate_answer"
+          "generate_answer",
+          "compose_response"
         ],
         "never": [
           "answer_no_information",
@@ -171,9 +181,11 @@
         ],
         "nodes": [
           "receive_question",
+          "recall_memory",
           "plan_sources",
           "retrieve",
-          "generate_answer"
+          "generate_answer",
+          "compose_response"
         ],
         "never": [
           "answer_no_information",
@@ -198,9 +210,11 @@
         ],
         "nodes": [
           "receive_question",
+          "recall_memory",
           "plan_sources",
           "retrieve",
-          "generate_answer"
+          "generate_answer",
+          "compose_response"
         ],
         "never": [
           "answer_no_information",
@@ -225,9 +239,11 @@
         ],
         "nodes": [
           "receive_question",
+          "recall_memory",
           "plan_sources",
           "retrieve",
-          "generate_answer"
+          "generate_answer",
+          "compose_response"
         ],
         "never": [
           "answer_no_information",
@@ -252,9 +268,11 @@
         ],
         "nodes": [
           "receive_question",
+          "recall_memory",
           "plan_sources",
           "retrieve",
-          "generate_answer"
+          "generate_answer",
+          "compose_response"
         ],
         "never": [
           "answer_no_information",
@@ -278,9 +296,11 @@
         ],
         "nodes": [
           "receive_question",
+          "recall_memory",
           "plan_sources",
           "lookup_ticket_mcp",
-          "generate_answer"
+          "generate_answer",
+          "compose_response"
         ],
         "never": [
           "retrieve",
@@ -307,9 +327,11 @@
         ],
         "nodes": [
           "receive_question",
+          "recall_memory",
           "plan_sources",
           "lookup_ticket_mcp",
-          "generate_answer"
+          "generate_answer",
+          "compose_response"
         ],
         "never": [
           "retrieve",
@@ -335,9 +357,11 @@
         ],
         "nodes": [
           "receive_question",
+          "recall_memory",
           "plan_sources",
           "retrieve",
-          "generate_answer"
+          "generate_answer",
+          "compose_response"
         ],
         "never": [
           "lookup_ticket_mcp",
@@ -363,10 +387,12 @@
         ],
         "nodes": [
           "receive_question",
+          "recall_memory",
           "plan_sources",
           "lookup_ticket_mcp",
           "retrieve",
-          "generate_answer"
+          "generate_answer",
+          "compose_response"
         ],
         "never": [
           "lookup_stock_mcp",
@@ -397,9 +423,11 @@
         ],
         "nodes": [
           "receive_question",
+          "recall_memory",
           "plan_sources",
           "lookup_stock_mcp",
-          "generate_answer"
+          "generate_answer",
+          "compose_response"
         ],
         "never": [
           "retrieve",
@@ -426,9 +454,11 @@
         ],
         "nodes": [
           "receive_question",
+          "recall_memory",
           "plan_sources",
           "lookup_ticket_mcp",
-          "answer_lookup_failed"
+          "answer_lookup_failed",
+          "compose_response"
         ],
         "never": [
           "generate_answer",
@@ -455,9 +485,11 @@
         ],
         "nodes": [
           "receive_question",
+          "recall_memory",
           "plan_sources",
           "lookup_ticket_mcp",
-          "answer_lookup_failed"
+          "answer_lookup_failed",
+          "compose_response"
         ],
         "never": [
           "generate_answer",

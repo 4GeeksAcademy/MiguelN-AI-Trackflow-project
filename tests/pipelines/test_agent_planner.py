@@ -55,7 +55,7 @@ def sources(plan):
 # --- What the model is asked -------------------------------------------------------
 
 
-def test_the_model_must_choose_among_the_three_tools(model):
+def test_the_model_must_choose_among_the_three_sources_and_the_update_marker(model):
     fake = model([call("search_knowledge_base")])
 
     planner.choose_sources("What's the standard return window?")
@@ -68,6 +68,7 @@ def test_the_model_must_choose_among_the_three_tools(model):
         "lookup_ticket",
         "lookup_stock",
         "search_knowledge_base",
+        "note_team_update",
     ]
     assert request["messages"] == [
         {"role": "system", "content": planner.PLANNER_PROMPT},
@@ -105,6 +106,7 @@ def test_a_ticket_question_is_planned_as_a_ticket_lookup_only(model):
             {"source": INCIDENT_MANAGER, "tool": "lookup_ticket", "arguments": {"reference": "482"}}
         ],
         "ignored": [],
+        "user_update": False,
     }
 
 
@@ -278,3 +280,39 @@ def test_the_fingerprint_ignores_deployment_settings(monkeypatch):
     graph.get_agent_settings.cache_clear()
 
     assert graph.graph_fingerprint() == original
+
+
+# --- The update marker (MEM-092) ------------------------------------------------------
+
+
+def test_a_team_update_is_marked_without_becoming_a_source():
+    plan = planner.plan_from_calls(
+        "Actually SEUR no longer covers that rural area of Zaragoza.",
+        [call("note_team_update"), call("search_knowledge_base")],
+    )
+
+    assert plan.user_update is True
+    assert plan.decided_by == "model"
+    assert [step.source for step in plan.steps] == ["knowledge_base"]
+    assert plan.ignored == []
+
+
+def test_a_team_update_alone_still_searches_the_knowledge_base_and_says_why():
+    plan = planner.plan_from_calls(
+        "The cosmetics client always wants the returns breakdown first.",
+        [call("note_team_update")],
+    )
+
+    assert plan.user_update is True
+    assert plan.decided_by == "fallback"
+    assert [step.source for step in plan.steps] == ["knowledge_base"]
+    assert plan.ignored == [
+        "only note_team_update was called: the knowledge base is searched for what it "
+        "documents on the subject"
+    ]
+
+
+def test_a_question_is_not_an_update():
+    plan = planner.plan_from_calls("What's the return window?", [call("search_knowledge_base")])
+
+    assert plan.user_update is False

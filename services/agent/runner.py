@@ -13,6 +13,12 @@ plus `values`, whose last event is the final state.
 A failure at any node marks the run `failed` with the node's name and raises
 `AgentRunError`; the checkpoints keep the state up to that node, so
 `resume_run()` continues from it without repeating the steps that succeeded.
+
+Conversations (MEM-092): every run belongs to one. `run_agent()` opens a new
+conversation, or continues one of the caller's own, and loads its pending
+memory proposal (if any) into the graph's input, so the message is evaluated
+against it before anything else. The LangGraph thread stays the run: a
+conversation shares only its memory proposals, kept in the memory store.
 """
 
 import logging
@@ -34,6 +40,7 @@ from services.agent.errors import (
     AgentRunNotResumable,
 )
 from services.agent.graph import NODE_READS, get_agent_graph, graph_fingerprint
+from services.agent.memory import store as memory_store
 from services.agent.state import Outcome, derive_outcome
 from services.agent.tracing import TraceStore, get_trace_store, utc_now
 
@@ -49,6 +56,42 @@ class AgentResult:
     answer: str | None
     # Why the question was refused, for a `rejected` run.
     error: str | None = None
+    conversation_id: str | None = None
+    # What happened to memory in this run (`memory_summary`), or None.
+    memory: dict[str, Any] | None = None
+
+
+def memory_summary(state: Mapping[str, Any]) -> dict[str, Any] | None:
+    """The memory side of a finished run, for the caller: the decision on the proposal
+    that was pending, and the proposal now waiting for the user's answer."""
+    resolution = state.get("memory_resolution")
+    proposal_state = state.get("memory_proposal") or {}
+    pending: dict[str, Any] | None = None
+    if resolution and resolution.get("revised"):
+        pending = resolution["revised"]
+    elif proposal_state.get("status") == "pending":
+        pending = proposal_state.get("proposal")
+    decision = (
+        None
+        if not resolution
+        else {
+            "proposal_id": resolution.get("proposal_id"),
+            "outcome": resolution.get("outcome"),
+            "reason": resolution.get("reason"),
+            "memory_id": resolution.get("memory_id"),
+        }
+    )
+    if decision is None and pending is None:
+        return None
+    return {
+        "decision": decision,
+        "pending_proposal": None
+        if pending is None
+        else {
+            key: pending.get(key)
+            for key in ("proposal_id", "category", "content", "replaces_content")
+        },
+    }
 
 
 def safe_error_message(error: BaseException) -> str | None:
@@ -183,25 +226,54 @@ def _execute(
     answer = state.get("answer")
     store.finish_run(run_id, status="completed", outcome=outcome, answer=answer)
     logger.info("Agent run %s completed: %s", run_id, outcome)
-    return AgentResult(run_id=run_id, outcome=outcome, answer=answer, error=state.get("error"))
+    return AgentResult(
+        run_id=run_id,
+        outcome=outcome,
+        answer=answer,
+        error=state.get("error"),
+        conversation_id=state.get("conversation_id"),
+        memory=memory_summary(state),
+    )
 
 
 def run_agent(
     question: str,
     *,
     user_id: str | None = None,
+    conversation_id: str | None = None,
     graph: CompiledStateGraph | None = None,
     store: TraceStore | None = None,
 ) -> AgentResult:
-    """Run the graph on one question. Raises AgentRunError if a node fails.
+    """Run the graph on one message of a conversation. Raises AgentRunError if a node fails.
 
-    Every call leaves a trace, completed or failed; `run_id` is its key.
+    Without `conversation_id` a new conversation starts; with one, it must be
+    the caller's own (`ConversationNotFound` otherwise, before anything runs).
+    Every call leaves a trace, completed or failed; `run_id` is its key. The
+    memory store is the application's (`AGENT_MEMORY_PATH`): the memory nodes
+    use the same one, so a conversation and its proposals are never split.
     """
     graph = graph if graph is not None else get_agent_graph()
     store = store if store is not None else get_trace_store()
+    memory = memory_store.get_memory_store()
+    conversation_id = memory.ensure_conversation(conversation_id, user_id)
+    pending = memory.pending_proposal(conversation_id)
     run_id = str(uuid.uuid4())
-    store.start_run(run_id, question=question, user_id=user_id, graph_version=graph_fingerprint())
-    return _execute(graph, store, run_id, attempt=1, graph_input={"question": question})
+    store.start_run(
+        run_id,
+        question=question,
+        user_id=user_id,
+        graph_version=graph_fingerprint(),
+        conversation_id=conversation_id,
+    )
+    graph_input: dict[str, Any] = {
+        "question": question,
+        "run_id": run_id,
+        "conversation_id": conversation_id,
+        "user_id": user_id,
+    }
+    if pending is not None:
+        graph_input["pending_proposal"] = pending.to_state()
+    return _execute(graph, store, run_id, attempt=1, graph_input=graph_input)
 
 
 def resume_run(
@@ -227,6 +299,8 @@ def resume_run(
             outcome=cast(Outcome, run.outcome),
             answer=run.answer,
             error=state.get("error"),
+            conversation_id=run.conversation_id,
+            memory=memory_summary(state),
         )
     if run.status == "running":
         raise AgentRunNotResumable(f"Run {run_id} is still marked running")

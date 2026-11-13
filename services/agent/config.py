@@ -1,5 +1,5 @@
-"""Agent settings: where checkpoints and run traces are stored, and how the agent
-reaches the TrackFlow MCP server for live data.
+"""Agent settings: where checkpoints, run traces and the agent's memory are stored,
+and how the agent reaches the TrackFlow MCP server for live data.
 
 Only what the agent itself needs, so the CLIs run without the API's settings
 (JWT secret, Supabase). The model and Qdrant settings stay in `RagSettings`.
@@ -20,6 +20,11 @@ ROOT_DIR: Final = Path(__file__).resolve().parents[2]
 
 # Git-ignored. One SQLite file holds LangGraph's checkpoints and the run traces.
 DEFAULT_STORE_PATH: Final = ROOT_DIR / "data" / "agent" / "agent_runs.sqlite"
+# Git-ignored. The agent's memory (MEM-092): conversations, memory proposals, the
+# append-only decision log and the approved memories. Its own file, apart from
+# the run traces and far from the knowledge base (Qdrant `trackflow_knowledge`),
+# which the agent only ever reads.
+DEFAULT_MEMORY_PATH: Final = ROOT_DIR / "data" / "agent" / "agent_memory.sqlite"
 
 # The MCP server's endpoint (`npm run mcp`).
 DEFAULT_MCP_URL: Final = "http://localhost:8100/mcp"
@@ -35,6 +40,7 @@ MAX_TOOL_TIMEOUT_SECONDS: Final = 10.0
 
 _DEFAULTS: Final[dict[str, Any]] = {
     "agent_store_path": DEFAULT_STORE_PATH,
+    "agent_memory_path": DEFAULT_MEMORY_PATH,
     "agent_mcp_url": DEFAULT_MCP_URL,
     "agent_tool_timeout_seconds": DEFAULT_TOOL_TIMEOUT_SECONDS,
     "agent_oauth_token_url": None,
@@ -53,6 +59,7 @@ class AgentSettings(BaseSettings):
     )
 
     agent_store_path: Path = DEFAULT_STORE_PATH
+    agent_memory_path: Path = DEFAULT_MEMORY_PATH
     # The MCP server's Streamable HTTP endpoint.
     agent_mcp_url: str = DEFAULT_MCP_URL
     agent_tool_timeout_seconds: float = Field(
@@ -75,7 +82,7 @@ class AgentSettings(BaseSettings):
             return _DEFAULTS.get(info.field_name or "", value)
         return value
 
-    @field_validator("agent_store_path", mode="after")
+    @field_validator("agent_store_path", "agent_memory_path", mode="after")
     @classmethod
     def relative_to_the_repository(cls, value: Path) -> Path:
         # A relative path means the same file whichever directory a CLI runs from.

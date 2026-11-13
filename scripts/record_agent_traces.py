@@ -20,8 +20,21 @@ A case with `"services": {"mcp_server": "unreachable"}` is recorded with the
 agent's MCP URL pointed at a closed local port, for that case only: a real
 connection failure, so the fallback path is recorded as it happens.
 
-The runs use a temporary store, not the API's `AGENT_STORE_PATH`. Nothing is
-written if any case fails, so a half-recorded file is never committed.
+The runs use a temporary store, not the API's `AGENT_STORE_PATH`, and an
+empty temporary memory store, not `AGENT_MEMORY_PATH`: the routing cases run
+with nothing remembered and nothing pending. Nothing is written if any case
+fails, so a half-recorded file is never committed.
+
+Memory evals (MEM-092):
+
+    LLM_TIMEOUT_SECONDS=120 npm run agent:record -- --memory
+
+records the multi-turn conversations of `data/eval/agent/memory-cases.json`
+into `data/eval/agent/memory-traces.json`, each case on its own fresh memory
+store: every turn's trace and outcome, the memory after it, and in the end the
+case's decision log and proposals. Those need the models and Qdrant; the MCP
+server is optional (an unavailable lookup is a recorded, honest fallback).
+`tests/pipelines/test_agent_memory_evals.py` checks them offline.
 
 Exit codes: 0 recorded, 1 a run failed, 2 the cases file is invalid, the
 models are not configured, or a service the cases need is not reachable.
@@ -48,6 +61,7 @@ from data.process.knowledge_base import KnowledgeBaseError, get_rag_settings
 from services.agent.config import get_agent_settings
 from services.agent.errors import AgentRunError
 from services.agent.graph import build_agent_graph, graph_fingerprint
+from services.agent.memory import store as memory_store
 from services.agent.runner import run_agent
 from services.agent.state import INCIDENT_MANAGER, INVENTORY_MANAGER, NODE_OF_SOURCE
 from services.agent.tools import mcp_lookups
@@ -57,6 +71,10 @@ from services.agent.tracing import TraceStore
 ROOT_DIR = Path(__file__).resolve().parents[1]
 DEFAULT_CASES = ROOT_DIR / "data" / "eval" / "agent" / "eval-cases.json"
 DEFAULT_OUTPUT = ROOT_DIR / "data" / "eval" / "agent" / "traces.json"
+DEFAULT_MEMORY_CASES = ROOT_DIR / "data" / "eval" / "agent" / "memory-cases.json"
+DEFAULT_MEMORY_OUTPUT = ROOT_DIR / "data" / "eval" / "agent" / "memory-traces.json"
+# Who speaks (and approves) in the recorded memory conversations.
+EVAL_USER = "eval:valentina.cruz"
 
 # Port 9 (discard) is closed on a developer machine: a connection is refused at once.
 UNREACHABLE_URL = "http://127.0.0.1:9/mcp"
@@ -86,6 +104,42 @@ def load_cases(path: Path) -> list[dict[str, Any]]:
                     f"Case {case_id}: services may only make {sorted(URL_SETTING)} 'unreachable'"
                 )
     return cases
+
+
+def load_memory_cases(path: Path) -> list[dict[str, Any]]:
+    """The memory cases: unique ids, and turns with a message and checks."""
+    cases = json.loads(path.read_text(encoding="utf-8"))["cases"]
+    seen: set[str] = set()
+    for case in cases:
+        case_id = case.get("id")
+        if not isinstance(case_id, str) or not case_id or case_id in seen:
+            raise ValueError(f"Every case needs a unique id (got {case_id!r})")
+        seen.add(case_id)
+        turns = case.get("turns")
+        if not isinstance(turns, list) or not turns:
+            raise ValueError(f"Case {case_id} needs turns")
+        for turn in turns:
+            if not isinstance(turn.get("message"), str) or not isinstance(turn.get("checks"), dict):
+                raise ValueError(f"Case {case_id}: every turn needs a message and checks")
+    return cases
+
+
+@contextmanager
+def isolated_memory(path: Path) -> Iterator[memory_store.MemoryStore]:
+    """Point the agent's memory at `path` (a fresh, empty store) for the duration."""
+    previous = os.environ.get("AGENT_MEMORY_PATH")
+    os.environ["AGENT_MEMORY_PATH"] = str(path)
+    get_agent_settings.cache_clear()
+    memory_store.get_memory_store.cache_clear()
+    try:
+        yield memory_store.get_memory_store()
+    finally:
+        if previous is None:
+            os.environ.pop("AGENT_MEMORY_PATH", None)
+        else:
+            os.environ["AGENT_MEMORY_PATH"] = previous
+        get_agent_settings.cache_clear()
+        memory_store.get_memory_store.cache_clear()
 
 
 def sources_needed(cases: list[dict[str, Any]]) -> set[str]:
@@ -168,11 +222,88 @@ def record(cases: list[dict[str, Any]], store_path: Path) -> dict[str, Any]:
     }
 
 
+def record_memory(cases: list[dict[str, Any]], scratch: Path) -> dict[str, Any]:
+    """Run every memory case's conversation, each on a fresh memory store.
+
+    Raises AgentRunError on the first failed run.
+    """
+    graph = build_agent_graph(InMemorySaver())
+    recorded = []
+    for case in cases:
+        case_dir = scratch / case["id"]
+        case_dir.mkdir()
+        store = TraceStore(case_dir / "agent_runs.sqlite")
+        with isolated_memory(case_dir / "agent_memory.sqlite") as memory:
+            conversations: dict[str, str] = {}
+            turns = []
+            for turn in case["turns"]:
+                label = turn.get("conversation", "a")
+                result = run_agent(
+                    turn["message"],
+                    user_id=case.get("user", EVAL_USER),
+                    conversation_id=conversations.get(label),
+                    graph=graph,
+                    store=store,
+                )
+                assert result.conversation_id is not None
+                conversations[label] = result.conversation_id
+                trace = store.get_trace(result.run_id)
+                assert trace is not None
+                pending = memory.pending_proposal(result.conversation_id)
+                turns.append(
+                    {
+                        "conversation": label,
+                        "message": turn["message"],
+                        "outcome": result.outcome,
+                        "answer": result.answer,
+                        "memory": result.memory,
+                        "pending_after": None if pending is None else pending.to_state(),
+                        "active_after": [asdict(m) for m in memory.active_memories()],
+                        "trace": asdict(trace),
+                    }
+                )
+                print(f"  {case['id']:36} [{label}] {result.outcome}", file=sys.stderr)
+            recorded.append(
+                {
+                    "id": case["id"],
+                    "user": case.get("user", EVAL_USER),
+                    "conversations": conversations,
+                    "turns": turns,
+                    "memories": [asdict(m) for m in memory.all_memories()],
+                    "proposals": [
+                        asdict(p) for cid in conversations.values() for p in memory.proposals(cid)
+                    ],
+                    "decision_log": [asdict(d) for d in memory.decision_log(limit=100_000)],
+                }
+            )
+    settings = get_rag_settings()
+    return {
+        "description": (
+            "Recorded memory conversations, one per case in memory-cases.json, each on a "
+            "fresh memory store. Written by `npm run agent:record -- --memory`; read by "
+            "tests/pipelines/test_agent_memory_evals.py."
+        ),
+        "recorded_at": datetime.now(UTC).isoformat(timespec="seconds"),
+        "graph_version": graph_fingerprint(),
+        "embedding_model": settings.embedding_model,
+        "generation_model": settings.generation_model,
+        "min_memory_score": memory_store.MIN_MEMORY_SCORE,
+        "cases": recorded,
+    }
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    parser.add_argument("--cases", type=Path, default=DEFAULT_CASES)
-    parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
+    parser.add_argument("--memory", action="store_true", help="record the memory evals")
+    parser.add_argument("--cases", type=Path)
+    parser.add_argument("--output", type=Path)
     args = parser.parse_args(argv)
+    if args.memory:
+        return _main_memory(
+            args.cases or DEFAULT_MEMORY_CASES, args.output or DEFAULT_MEMORY_OUTPUT
+        )
+    args.cases = args.cases or DEFAULT_CASES
+    args.output = args.output or DEFAULT_OUTPUT
 
     try:
         cases = load_cases(args.cases)
@@ -190,17 +321,44 @@ def main(argv: list[str] | None = None) -> int:
     print(f"Recording {len(cases)} cases (graph {graph_fingerprint()})", file=sys.stderr)
     with tempfile.TemporaryDirectory() as scratch:
         try:
-            document = record(cases, Path(scratch) / "agent_runs.sqlite")
+            with isolated_memory(Path(scratch) / "agent_memory.sqlite"):
+                document = record(cases, Path(scratch) / "agent_runs.sqlite")
         except AgentRunError as error:
             print(f"A run failed at '{error.node}'; nothing was written.", file=sys.stderr)
             return 1
 
-    args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(
-        json.dumps(document, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
-    )
-    print(f"Wrote {args.output}", file=sys.stderr)
+    _write(args.output, document)
     return 0
+
+
+def _main_memory(cases_path: Path, output: Path) -> int:
+    try:
+        cases = load_memory_cases(cases_path)
+        settings = get_rag_settings()
+        settings.embedding_endpoint()
+        settings.generation_endpoint()
+    except (OSError, ValueError, KeyError, KnowledgeBaseError) as error:
+        print(f"Cannot record: {error}", file=sys.stderr)
+        return 2
+    turns = sum(len(case["turns"]) for case in cases)
+    print(
+        f"Recording {len(cases)} memory cases, {turns} turns (graph {graph_fingerprint()})",
+        file=sys.stderr,
+    )
+    with tempfile.TemporaryDirectory() as scratch:
+        try:
+            document = record_memory(cases, Path(scratch))
+        except AgentRunError as error:
+            print(f"A run failed at '{error.node}'; nothing was written.", file=sys.stderr)
+            return 1
+    _write(output, document)
+    return 0
+
+
+def _write(output: Path, document: dict[str, Any]) -> None:
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(json.dumps(document, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    print(f"Wrote {output}", file=sys.stderr)
 
 
 if __name__ == "__main__":

@@ -22,15 +22,17 @@ from data.pipelines import rag
 from mcps.trackflow_tools.app import build_app
 from mcps.trackflow_tools.audit import MemorySink
 from services.agent import config as agent_config
-from services.agent import planner
+from services.agent import planner, respond
 from services.agent.graph import build_agent_graph
 from services.agent.runner import run_agent
 from services.agent.state import (
     ANSWER_LOOKUP_FAILED,
+    COMPOSE_RESPONSE,
     GENERATE_ANSWER,
     LOOKUP_STOCK,
     LOOKUP_TICKET,
     PLAN_SOURCES,
+    RECALL_MEMORY,
     RECEIVE_QUESTION,
     TICKET_UNAVAILABLE_ANSWER,
 )
@@ -236,13 +238,15 @@ def offline_models(monkeypatch):
             )
         return {"decided_by": "model", "steps": steps, "ignored": []}
 
-    def generate_answer(question: str, passages: list[dict[str, Any]]) -> str:
+    def generate_response(question: str, passages: list[dict[str, Any]], **_: Any) -> Any:
         seen["passages"] = passages
-        return "generated from the live records"
+        return respond.Response(
+            "generated from the live records", "nothing_to_remember", "a lookup", None, True
+        )
 
     monkeypatch.setattr(planner, "choose_sources", choose_sources)
     monkeypatch.setattr(rag, "retrieve", lambda question: [])
-    monkeypatch.setattr(rag, "generate_answer", generate_answer)
+    monkeypatch.setattr(respond, "generate_response", generate_response)
     monkeypatch.setattr(rag, "query", lambda question: pytest.fail("never rag.query()"))
     return seen
 
@@ -262,16 +266,19 @@ def test_the_graph_answers_from_mcp_with_the_same_routing(agent, offline_models,
     assert result.outcome == "answered"
     assert trace.node_names() == [
         RECEIVE_QUESTION,
+        RECALL_MEMORY,
         PLAN_SOURCES,
         LOOKUP_TICKET,
         LOOKUP_STOCK,
         GENERATE_ANSWER,
+        COMPOSE_RESPONSE,
     ]
     assert [(e.name, e.output["decision"]) for e in trace.edge_events()] == [
         ("route_question", "plan"),
         ("route_after_plan", "incident_manager"),
         ("route_after_ticket", "inventory_manager"),
         ("route_after_stock", "generate"),
+        ("route_after_answer", "respond"),
     ]
     assert trace.sources() == ["incident_manager", "inventory_manager"]
     texts = " ".join(p["text"] for p in offline_models["passages"])
@@ -296,5 +303,5 @@ def test_the_graph_falls_back_honestly_when_the_mcp_server_is_down(
     assert result.outcome == "no_information"
     assert result.answer == TICKET_UNAVAILABLE_ANSWER.format(reference="TRF-000012")
     nodes = store.get_trace(result.run_id).node_names()
-    assert nodes[-2:] == [LOOKUP_TICKET, ANSWER_LOOKUP_FAILED]
+    assert nodes[-3:] == [LOOKUP_TICKET, ANSWER_LOOKUP_FAILED, COMPOSE_RESPONSE]
     assert "generate_answer" not in nodes

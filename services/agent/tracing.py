@@ -33,24 +33,41 @@ RunStatus = Literal["running", "completed", "failed"]
 EventKind = Literal["node", "edge"]
 EventStatus = Literal["ok", "error"]
 
-SCHEMA: Final = """
-CREATE TABLE IF NOT EXISTS agent_runs (
-    run_id        TEXT PRIMARY KEY,
-    user_id       TEXT,
-    graph_version TEXT NOT NULL,
-    question      TEXT NOT NULL,
-    status        TEXT NOT NULL CHECK (status IN ('running', 'completed', 'failed')),
-    outcome       TEXT CHECK (outcome IN ('answered', 'no_information', 'rejected')),
-    answer        TEXT,
-    attempts      INTEGER NOT NULL DEFAULT 1,
-    started_at    TEXT NOT NULL,
-    finished_at   TEXT,
-    error_node    TEXT,
-    error_type    TEXT,
-    error_message TEXT
+RUNS_TABLE: Final = """
+CREATE TABLE IF NOT EXISTS {name} (
+    run_id          TEXT PRIMARY KEY,
+    user_id         TEXT,
+    graph_version   TEXT NOT NULL,
+    question        TEXT NOT NULL,
+    status          TEXT NOT NULL CHECK (status IN ('running', 'completed', 'failed')),
+    outcome         TEXT CHECK (outcome IN
+                        ('answered', 'no_information', 'rejected', 'memory_reply')),
+    answer          TEXT,
+    attempts        INTEGER NOT NULL DEFAULT 1,
+    started_at      TEXT NOT NULL,
+    finished_at     TEXT,
+    error_node      TEXT,
+    error_type      TEXT,
+    error_message   TEXT,
+    conversation_id TEXT
 );
+"""
+
+RUNS_INDEXES: Final = """
 CREATE INDEX IF NOT EXISTS agent_runs_started_at_idx ON agent_runs (started_at DESC);
 CREATE INDEX IF NOT EXISTS agent_runs_user_id_idx ON agent_runs (user_id, started_at DESC);
+CREATE INDEX IF NOT EXISTS agent_runs_conversation_idx ON agent_runs (conversation_id, started_at);
+"""
+
+# The columns of `agent_runs` before MEM-092 (no `conversation_id`, no `memory_reply`).
+_PRE_MEMORY_COLUMNS: Final = (
+    "run_id, user_id, graph_version, question, status, outcome, answer, attempts, "
+    "started_at, finished_at, error_node, error_type, error_message"
+)
+
+SCHEMA: Final = (
+    RUNS_TABLE.format(name="agent_runs")
+    + """
 CREATE TABLE IF NOT EXISTS agent_run_events (
     run_id        TEXT NOT NULL REFERENCES agent_runs (run_id),
     seq           INTEGER NOT NULL,
@@ -68,6 +85,29 @@ CREATE TABLE IF NOT EXISTS agent_run_events (
     PRIMARY KEY (run_id, seq)
 );
 """
+)
+
+
+def _migrate_runs_table(connection: sqlite3.Connection) -> None:
+    """Bring an `agent_runs` table from before MEM-092 up to date, keeping every row.
+
+    SQLite cannot change a CHECK constraint in place, so the table is rebuilt:
+    created under a new name, filled, swapped. `agent_run_events` refers to it
+    by name, so its rows stay attached.
+    """
+    row = connection.execute(
+        "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'agent_runs'"
+    ).fetchone()
+    if row is None or "memory_reply" in row[0]:
+        return
+    connection.executescript(
+        "DROP TABLE IF EXISTS agent_runs_migrating;"
+        + RUNS_TABLE.format(name="agent_runs_migrating")
+        + f"INSERT INTO agent_runs_migrating ({_PRE_MEMORY_COLUMNS}) "
+        f"SELECT {_PRE_MEMORY_COLUMNS} FROM agent_runs;"
+        "DROP TABLE agent_runs;"
+        "ALTER TABLE agent_runs_migrating RENAME TO agent_runs;"
+    )
 
 
 def utc_now() -> str:
@@ -114,6 +154,8 @@ class RunTrace:
     error_type: str | None
     error_message: str | None
     events: tuple[TraceEvent, ...] = ()
+    # The conversation the run belongs to (MEM-092); None for runs recorded before it.
+    conversation_id: str | None = None
 
     def node_names(self) -> list[str]:
         """The nodes that ran, in order (a failed node included)."""
@@ -156,6 +198,7 @@ def _run_from_row(row: sqlite3.Row, events: tuple[TraceEvent, ...] = ()) -> RunT
         error_type=row["error_type"],
         error_message=row["error_message"],
         events=events,
+        conversation_id=row["conversation_id"],
     )
 
 
@@ -185,6 +228,13 @@ class TraceStore:
         with self._transaction() as connection:
             connection.execute("PRAGMA journal_mode=WAL")
             connection.executescript(SCHEMA)
+        # executescript() commits as it goes, so the migration runs on its own.
+        connection = sqlite3.connect(self.path, timeout=10)
+        try:
+            _migrate_runs_table(connection)
+            connection.executescript(RUNS_INDEXES)
+        finally:
+            connection.close()
 
     @contextmanager
     def _transaction(self) -> Iterator[sqlite3.Connection]:
@@ -199,13 +249,19 @@ class TraceStore:
     # --- Writing -------------------------------------------------------------------
 
     def start_run(
-        self, run_id: str, *, question: str, user_id: str | None, graph_version: str
+        self,
+        run_id: str,
+        *,
+        question: str,
+        user_id: str | None,
+        graph_version: str,
+        conversation_id: str | None = None,
     ) -> None:
         with self._transaction() as connection:
             connection.execute(
                 "INSERT INTO agent_runs (run_id, user_id, graph_version, question, status, "
-                "started_at) VALUES (?, ?, ?, ?, 'running', ?)",
-                (run_id, user_id, graph_version, question, utc_now()),
+                "started_at, conversation_id) VALUES (?, ?, ?, ?, 'running', ?, ?)",
+                (run_id, user_id, graph_version, question, utc_now(), conversation_id),
             )
 
     def start_attempt(self, run_id: str) -> int:

@@ -54,14 +54,19 @@ GENERATION_TEMPERATURE: Final = 0.0
 
 NO_CONTEXT: Final = "(No passage in the knowledge base is relevant enough to this question.)"
 
-SYSTEM_PROMPT: Final = """\
+# The prompt is three parts so the knowledge agent (`services/agent/respond.py`)
+# can give itself its own identity while answering by exactly the same rules.
+# Joined, they are the prompt `/knowledge/query` has always used, byte for byte.
+IDENTITY: Final = """\
 You are TrackFlow's commercial knowledge assistant. Account managers and \
 business-development staff on Miguel Torres's commercial team use you while they \
 talk to prospect and current client brands. Answer the way an experienced \
 TrackFlow salesperson would answer that client on a call: courteous, confident \
 and precise, with exact data, and never promising terms that do not exist in \
 TrackFlow's standard agreements.
+"""
 
+ANSWER_RULES: Final = """\
 How to answer:
 - Every fact about TrackFlow's services, prices, times, carriers and policies \
 must come from the CONTEXT passages. Do not add outside knowledge or assumptions.
@@ -77,7 +82,9 @@ Keep it brief: a few sentences or a short list.
 - Answer in the language of the question. Translate the wording, never the figures.
 - Finish with a line "Sources:" naming each passage you used as \
 "source document — section". If you used no passage, leave that line out.
+"""
 
+BUSINESS_RULES: Final = """\
 Business rules that always apply, even if the client insists:
 - Delivery SLA: never promise or guarantee an SLA for declared high-demand dates \
 (Black Friday, Christmas, January Sales in Spain). Whenever the answer gives \
@@ -92,6 +99,8 @@ say that any storage discount requires Miguel Torres's approval.
 exception or condition the CONTEXT does not document requires approval from \
 Carlos Vega (Head of Carrier Operations); never invent one.
 """
+
+SYSTEM_PROMPT: Final = "\n".join((IDENTITY, ANSWER_RULES, BUSINESS_RULES))
 
 
 @lru_cache(maxsize=1)
@@ -158,22 +167,26 @@ def retrieve(
     return hits
 
 
-def _format_passage(number: int, chunk: dict[str, Any]) -> str:
+def format_passage(number: int, chunk: dict[str, Any]) -> str:
+    """One CONTEXT passage as the prompt shows it: "[n] source — section", then the text."""
     # The score is deliberately left out: the model weighs passages by content.
     source = chunk.get("source_document", "unknown")
     section = chunk.get("section", "")
     return f"[{number}] {source} — {section}\n{chunk.get('text', '').strip()}"
 
 
+def format_context(context: list[dict[str, Any]]) -> str:
+    """The CONTEXT block: every passage numbered from 1, or the no-context notice."""
+    if not context:
+        return NO_CONTEXT
+    return "\n\n".join(format_passage(number, chunk) for number, chunk in enumerate(context, 1))
+
+
 def build_messages(
     question: str, context: list[dict[str, Any]]
 ) -> list[ChatCompletionMessageParam]:
     """Prompt assembly: the system rules, then the retrieved passages and the question."""
-    passages = (
-        "\n\n".join(_format_passage(number, chunk) for number, chunk in enumerate(context, 1))
-        if context
-        else NO_CONTEXT
-    )
+    passages = format_context(context)
     return [
         {"role": "system", "content": SYSTEM_PROMPT},
         {"role": "user", "content": f"CONTEXT\n{passages}\n\nQUESTION\n{question.strip()}"},

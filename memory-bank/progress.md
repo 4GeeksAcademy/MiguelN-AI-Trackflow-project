@@ -1,6 +1,59 @@
 # Development Progress
 
-Last updated: 2026-11-12
+Last updated: 2026-11-13
+
+## Update 2026-11-13 - Agent memory and self-improvement (MEM-092)
+
+Goals accomplished. The brief is ticket MEM-092 (the updated `lead-instr.png`), with its 5-section checklist in `stages-todo.png`. The rules for what may and must never be remembered are in the developer-supplied root `memory-briefing.md`. The work is on `feature/mcp-company-tools` and extends the same LangGraph agent that consumes the MCP server: no new graph, no second agent. The full write-up is in `docs/agent/agent-memory.md`, with the evidence in `docs/agent/memory-evidence.md`.
+
+- Decided with the developer: a SQLite backend in its own file, memory **shared** by all agent users (each entry names its approver), and `memory-briefing.md` as the source of the rules.
+- **Memory architecture:**
+  - `services/agent/memory/store.py`: an explicit read/write interface, separate from Qdrant (a guard test: no memory or agent code writes to `trackflow_knowledge`).
+  - The database enforces one pending proposal per conversation and one active memory per carrier + country (partial unique indexes), and an append-only decision log (triggers).
+  - The reasons are written up in the doc.
+- **Self-evaluation and proposal:**
+  - One structured call (`respond.py`: answer + `memory_check` + `memory_proposal`).
+  - The criterion is rendered from `policy.py`, which holds the briefing's lists verbatim (drift test). A regex validator, run three times, backs up the model for B2C **and** B2B locations, internal routes, single-package incidents and negotiations.
+  - The proposal is asked inside the response with a fixed template.
+  - The planner's `note_team_update` brings a no-evidence update to the self-evaluation.
+- **Confirmation and log:**
+  - The next message is classified first: a forced `classify_reply` call, then deterministic rules. Approval needs confidence >= 0.8 and a decision span really in the message.
+  - Discarded: unclear, a change of topic, a classifier failure, 24 h with no answer.
+  - An edit is asked again with the user's text before it is stored.
+  - "Yes, and <question>" is resolved, then answered.
+  - Every event is logged with the content, the decision, the redacted originating message, the user and the time.
+- **Consolidation and cleanup:**
+  - `topic_key` by carrier + country (route, or client). Updates are merged only through an approved proposal that shows what it replaces; the old entry is `superseded`.
+  - Duplicates are suppressed.
+  - TTLs: 14 days for incidents (at most 30), 180 for carrier rules, 365 for preferences.
+  - Caps of 24 / 20 / 50 with least-recently-used eviction, all logged.
+- **API and CLI:**
+  - `POST /agent/query` with `conversation_id`; `GET /agent/memory`;
+  - `npm run agent -- chat`, `memory list|log|show|cleanup`.
+- **Live verification** (4Geeks gateway models + Qdrant; MCP lookups unconfigured, so honest fallbacks):
+  - `npm run agent:record -- --memory` recorded 17 cases / 27 turns into `data/eval/agent/memory-traces.json`;
+  - `npm run agent:memory:eval`: **171 passed**, including both evidence cycles (approved -> recalled by a new conversation; rejected -> store unchanged).
+  - The first recording caught four real issues, all fixed before the final one:
+    - answers drifting into Spanish;
+    - Spanish memories;
+    - "it was a one-off" taken as a new request;
+    - "maybe later" labelled as a change of topic.
+  - `MIN_MEMORY_SCORE` 0.45 is measured (`npm run agent:memory:calibrate`): related >= 0.5085, unrelated <= 0.4072.
+- **Verification:**
+  - backend **1430 passed, 51 skipped**, without the two recorded-eval files;
+  - `ruff format` / `ruff check` clean on every changed Python file;
+  - mypy clean on `services/agent`, the scripts and the new tests (one existing finding in `test_agent_graph.py:113`, unchanged);
+  - `uv lock --check` OK, no new dependency;
+  - Compose config valid.
+
+Still missing / next goals:
+1. **Re-record the 17 Part 1-3 agent evals** (`data/eval/agent/traces.json`, still the Part 2 recording) against the live stack once Auth0 is configured: `LLM_TIMEOUT_SECONDS=120 npm run agent:record`, then `npm run agent:eval`. The routing-baseline check now sets the memory nodes aside, and a new check requires that no eval question is proposed as a memory.
+2. Auth0 configuration and the MCP Playground run, still pending from the MCP ticket (see the entry below).
+3. Commit when asked (AGENTS.md workflow). Ask whether `memory-briefing.md` and the updated PNGs go in.
+4. Optional:
+   - a UI for the conversation (the backoffice `/knowledge` page still calls `/knowledge/query`);
+   - Part 2 of Milestone 8 (the agent's harness);
+   - a reviewed-change path for shared memory, in production (omitted on purpose, per the ticket's disclaimer).
 
 ## Update 2026-11-12 (later) - MCP Server for company tools: server, OAuth (MCP Auth), agent migration
 

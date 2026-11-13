@@ -13,6 +13,8 @@ from services.agent import config as agent_config
 from services.agent import graph as agent_graph
 from services.agent import planner as agent_planner
 from services.agent import tracing as agent_tracing
+from services.agent.memory import classifier as agent_memory_classifier
+from services.agent.memory import store as agent_memory_store
 from services.agent.tools import mcp_client as agent_mcp_client
 from services.agent.tools import oauth as agent_oauth
 from services.core import config, supabase_client
@@ -120,15 +122,18 @@ def isolated_supabase(monkeypatch):
     monkeypatch.setattr(supabase_client, "get_supabase", forbid_supabase)
 
 
-# Held here because `isolated_agent_tools` replaces the module attribute.
+# Held here because `isolated_agent_tools` replaces the module attributes.
 _PLANNER_CLIENT_CACHE = agent_planner._planner_client
+_CLASSIFIER_CLIENT_CACHE = agent_memory_classifier._classifier_client
 
 
 def _reset_agent_store() -> None:
     agent_graph.close_agent_graph()
     agent_config.get_agent_settings.cache_clear()
     agent_tracing.get_trace_store.cache_clear()
+    agent_memory_store.get_memory_store.cache_clear()
     _PLANNER_CLIENT_CACHE.cache_clear()
+    _CLASSIFIER_CLIENT_CACHE.cache_clear()
     agent_oauth.reset_credentials()
 
 
@@ -147,12 +152,14 @@ AGENT_TOOL_SETTINGS = {
 
 @pytest.fixture(autouse=True)
 def isolated_agent_store(tmp_path, monkeypatch):
-    """The agent's checkpoints and traces go to a per-test file, never to `data/agent/`.
+    """The agent's checkpoints, traces and memory go to per-test files, never to `data/agent/`.
 
-    The compiled graph, its SQLite checkpointer and the trace store are cached,
-    so the caches are dropped on the way in and out, as for `get_settings`.
+    The compiled graph, its SQLite checkpointer, the trace store and the memory
+    store are cached, so the caches are dropped on the way in and out, as for
+    `get_settings`.
     """
     monkeypatch.setenv("AGENT_STORE_PATH", str(tmp_path / "agent_runs.sqlite"))
+    monkeypatch.setenv("AGENT_MEMORY_PATH", str(tmp_path / "agent_memory.sqlite"))
     for name, value in AGENT_TOOL_SETTINGS.items():
         monkeypatch.setenv(name, value)
     _reset_agent_store()
@@ -167,7 +174,9 @@ def isolated_agent_tools(monkeypatch):
     A test that needs the MCP server sets `mcp_client.http_client_factory` (an
     in-process server) or replaces `mcp_lookups`; one that needs a token injects
     `oauth.make_http_client`; one that needs the planner replaces
-    `planner.choose_sources` or `planner._planner_client`.
+    `planner.choose_sources` or `planner._planner_client`; one that needs the
+    memory reply classifier replaces `classifier.call_classifier` or
+    `classifier._classifier_client`.
     """
 
     def forbid_token_endpoint(timeout: float):
@@ -179,9 +188,13 @@ def isolated_agent_tools(monkeypatch):
     def forbid_planner():
         raise AssertionError("Unit tests must not create a real planner model client")
 
+    def forbid_classifier():
+        raise AssertionError("Unit tests must not create a real memory classifier client")
+
     monkeypatch.setattr(agent_oauth, "make_http_client", forbid_token_endpoint)
     monkeypatch.setattr(agent_mcp_client, "http_client_factory", forbid_mcp)
     monkeypatch.setattr(agent_planner, "_planner_client", forbid_planner)
+    monkeypatch.setattr(agent_memory_classifier, "_classifier_client", forbid_classifier)
 
 
 @pytest.fixture

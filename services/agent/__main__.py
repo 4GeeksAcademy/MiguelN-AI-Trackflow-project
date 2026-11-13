@@ -1,10 +1,23 @@
 """Knowledge agent CLI: `npm run agent -- <command>` (`python -m services.agent`).
 
     check                 compile the graph, print its nodes, version and Mermaid diagram
-    ask "<question>"      run the graph once and print the answer and run id
+    ask "<question>" [--conversation ID] [--user NAME]
+                          run the graph once and print the answer, run and conversation
+    chat [--conversation ID] [--user NAME]
+                          a multi-turn conversation in the terminal (empty line or Ctrl-D
+                          to leave); answer "Want me to remember this?" here
     trace <run_id>|--last print a run's trace: nodes, decisions and outputs in order
     runs [--limit N]      list recent runs
     resume <run_id>       continue a failed run from the node that failed
+    memory list [--all]   the team memory: active entries (--all: ended ones too)
+    memory log [--conversation ID] [--limit N]
+                          the memory decision log (append-only), oldest first
+    memory show <memory_id>
+                          one memory, and every decision about it
+    memory cleanup        expire what is past its date and apply the caps (logged)
+
+`--user` is who approves a memory in a CLI conversation (default `cli:<os user>`):
+every memory records who authorized it.
 
 Runs and traces go to the same store as the API's (`AGENT_STORE_PATH`). `ask`
 and `resume` need the models (`RagSettings`), plus Qdrant, and for questions
@@ -14,6 +27,7 @@ Exit codes: 0 done, 1 the run failed, 2 bad arguments or an unknown run.
 """
 
 import argparse
+import getpass
 import json
 import logging
 import sys
@@ -30,6 +44,7 @@ from services.agent.errors import (
     AgentRunNotResumable,
 )
 from services.agent.graph import NODES, build_agent_graph, graph_fingerprint
+from services.agent.memory.store import ConversationNotFound, Memory, get_memory_store
 from services.agent.tracing import RunTrace, TraceEvent, get_trace_store
 
 PREVIEW_CHARS = 160
@@ -47,6 +62,32 @@ def _describe_output(event: TraceEvent) -> str:
     if event.status == "error":
         return f"ERROR {event.error_type}: {event.error_message or '(message withheld)'}"
     output = event.output or {}
+    if "memory_reply" in output:
+        reply = output["memory_reply"] or {}
+        decision = reply.get("decision") or {}
+        rest = reply.get("remaining_question") or ""
+        return f"reply -> {decision.get('outcome')}: {decision.get('reason')}" + (
+            f"; continues with {_preview(rest)!r}" if rest else ""
+        )
+    if "memory_resolution" in output:
+        resolution = output["memory_resolution"] or {}
+        return f"proposal {resolution.get('outcome')}" + (
+            f" -> memory {resolution['memory_id']}" if resolution.get("memory_id") else ""
+        )
+    if "memory_recall" in output:
+        recall = output["memory_recall"] or {}
+        items = recall.get("items") or []
+        found = ", ".join(f"{i.get('scope')} ({i.get('matched_by')})" for i in items)
+        return f"memory {recall.get('outcome')}: {found or 'nothing relevant'}"
+    if "memory_proposal" in output:
+        proposal = output["memory_proposal"] or {}
+        return f"proposal {proposal.get('status')}: {_preview(proposal.get('reason') or '')}"
+    if "memory_candidate" in output:
+        candidate = output["memory_candidate"] or {}
+        return (
+            f"answer + self-evaluation {candidate.get('memory_check')}: "
+            f"{_preview(candidate.get('reason') or '')}"
+        )
     if "plan" in output:
         plan = output["plan"] or {}
         steps = " then ".join(step.get("source", "?") for step in plan.get("steps") or [])
@@ -82,6 +123,8 @@ def _print_trace(trace: RunTrace) -> None:
         f"Run {trace.run_id} · {trace.status} · {trace.outcome or '-'} · "
         f"graph {trace.graph_version} · {trace.attempts} attempt(s)"
     )
+    if trace.conversation_id:
+        print(f"Conversation: {trace.conversation_id}")
     print(f"Question: {_preview(trace.question) or '(empty)'}")
     print(f"Sources: {' -> '.join(trace.sources()) or 'none'}")
     for event in trace.events:
@@ -120,8 +163,91 @@ def _report_failure(error: AgentRunError) -> int:
 
 def _print_result(result: runner.AgentResult) -> None:
     print(f"Run id:  {result.run_id}")
+    print(f"Conversation: {result.conversation_id}")
     print(f"Outcome: {result.outcome}")
     print(result.answer if result.answer is not None else f"Refused: {result.error}")
+
+
+def _default_user() -> str:
+    return f"cli:{getpass.getuser()}"
+
+
+def _chat(conversation_id: str | None, user: str) -> int:
+    print(f"Conversation as {user}. An empty line or Ctrl-D leaves.")
+    while True:
+        try:
+            message = input("you> ")
+        except EOFError:
+            print()
+            break
+        if not message.strip():
+            break
+        try:
+            result = runner.run_agent(message, user_id=user, conversation_id=conversation_id)
+        except AgentRunError as error:
+            _report_failure(error)
+            continue
+        conversation_id = result.conversation_id
+        print(f"agent> {result.answer if result.answer is not None else result.error}")
+        print(f"       (run {result.run_id} · {result.outcome})")
+    if conversation_id:
+        print(f"Conversation id: {conversation_id}")
+    return 0
+
+
+def _print_memory(memory: Memory) -> None:
+    print(
+        f"{memory.memory_id}  {memory.status:10} {memory.category:24} [{memory.scope()}]\n"
+        f"    {memory.content}\n"
+        f"    approved by {memory.approved_by} on {memory.approved_at}; valid until "
+        f"{memory.valid_until}; recalled {memory.recall_count}x"
+        + (f"; ended {memory.ended_at}" if memory.ended_at else "")
+    )
+
+
+def _memory_command(args: argparse.Namespace) -> int:
+    store = get_memory_store()
+    if args.memory_command == "list":
+        memories = store.all_memories() if args.all else store.active_memories()
+        if not memories:
+            print("The team memory is empty.")
+        for memory in memories:
+            _print_memory(memory)
+        return 0
+    if args.memory_command == "log":
+        for decision in store.decision_log(conversation_id=args.conversation, limit=args.limit):
+            subject = decision.memory_id or decision.proposal_id or "-"
+            label = (
+                f" [{decision.label} {decision.confidence:.2f}]"
+                if decision.label and decision.confidence is not None
+                else ""
+            )
+            print(
+                f"{decision.decided_at}  #{decision.decision_id:<4} {decision.event:10} "
+                f"by {decision.user_id or '-'}{label} · {subject}\n"
+                f"    why: {decision.reason}"
+                + (f"\n    message: {_preview(decision.message)}" if decision.message else "")
+                + (f"\n    content: {_preview(decision.content)}" if decision.content else "")
+            )
+        return 0
+    if args.memory_command == "show":
+        shown = store.get_memory(args.memory_id)
+        if shown is None:
+            print(f"No memory {args.memory_id}", file=sys.stderr)
+            return 2
+        _print_memory(shown)
+        for decision in store.decision_log(limit=100_000):
+            if decision.memory_id == shown.memory_id or (
+                decision.proposal_id == shown.source_proposal_id
+            ):
+                print(f"  {decision.decided_at}  {decision.event:10} {decision.reason}")
+        return 0
+    report = store.cleanup()
+    print(
+        f"Expired memories: {len(report.expired_memories)} · expired proposals: "
+        f"{len(report.expired_proposals)} · evicted: {len(report.evicted_memories)}"
+    )
+    return 0
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -130,6 +256,21 @@ def main(argv: list[str] | None = None) -> int:
     commands.add_parser("check", help="compile the graph and print it")
     ask = commands.add_parser("ask", help="run the graph on one question")
     ask.add_argument("question")
+    ask.add_argument("--conversation", help="continue this conversation")
+    ask.add_argument("--user", default=_default_user(), help="who is asking (and approving)")
+    chat = commands.add_parser("chat", help="a multi-turn conversation in the terminal")
+    chat.add_argument("--conversation", help="continue this conversation")
+    chat.add_argument("--user", default=_default_user(), help="who is asking (and approving)")
+    memory = commands.add_parser("memory", help="inspect the team memory and its log")
+    memory_commands = memory.add_subparsers(dest="memory_command", required=True)
+    memory_list = memory_commands.add_parser("list", help="the active memories")
+    memory_list.add_argument("--all", action="store_true", help="ended memories too")
+    memory_log = memory_commands.add_parser("log", help="the decision log")
+    memory_log.add_argument("--conversation")
+    memory_log.add_argument("--limit", type=int, default=100)
+    memory_show = memory_commands.add_parser("show", help="one memory and its decisions")
+    memory_show.add_argument("memory_id")
+    memory_commands.add_parser("cleanup", help="expire and apply the caps")
     trace = commands.add_parser("trace", help="print a run's trace")
     target = trace.add_mutually_exclusive_group(required=True)
     target.add_argument("run_id", nargs="?")
@@ -145,12 +286,24 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "check":
         return _check()
 
-    if args.command == "ask":
+    if args.command in {"ask", "chat"}:
         try:
-            _print_result(runner.run_agent(args.question))
+            if args.command == "chat":
+                return _chat(args.conversation, args.user)
+            _print_result(
+                runner.run_agent(
+                    args.question, user_id=args.user, conversation_id=args.conversation
+                )
+            )
+        except ConversationNotFound:
+            print(f"No conversation {args.conversation} for {args.user}", file=sys.stderr)
+            return 2
         except AgentRunError as error:
             return _report_failure(error)
         return 0
+
+    if args.command == "memory":
+        return _memory_command(args)
 
     store = get_trace_store()
     if args.command == "trace":

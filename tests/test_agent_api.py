@@ -80,9 +80,11 @@ def test_answers_with_the_answer_and_the_run_id(api, fake_rag):
 
     assert response.status_code == 200
     body = response.json()
-    assert set(body) == {"run_id", "answer"}
+    assert set(body) == {"run_id", "conversation_id", "answer", "memory"}
     assert body["answer"] == ANSWER
+    assert body["memory"] is None  # nothing proposed, nothing pending
     uuid.UUID(body["run_id"])
+    uuid.UUID(body["conversation_id"])
     assert fake_rag.retrieve_calls == ["What's the standard return window?"]
     assert fake_rag.generate_calls == [("What's the standard return window?", [CHUNK])]
 
@@ -101,18 +103,27 @@ def test_no_context_is_answered_honestly(api, fake_rag):
 def test_the_endpoint_only_invokes_the_graph(client, monkeypatch):
     monkeypatch.setattr(security, "BCRYPT_ROUNDS", 4)
     headers, user_id = sign_in(client, "sales@trackflow.com")
-    calls: list[tuple[str, str | None]] = []
+    calls: list[tuple[str, str | None, str | None]] = []
 
-    def fake_run_agent(question: str, *, user_id: str | None = None) -> runner.AgentResult:
-        calls.append((question, user_id))
-        return runner.AgentResult(run_id="run-1", outcome="answered", answer="From the graph.")
+    def fake_run_agent(
+        question: str, *, user_id: str | None = None, conversation_id: str | None = None
+    ) -> runner.AgentResult:
+        calls.append((question, user_id, conversation_id))
+        return runner.AgentResult(
+            run_id="run-1", outcome="answered", answer="From the graph.", conversation_id="c-1"
+        )
 
     monkeypatch.setattr(runner, "run_agent", fake_run_agent)
 
     response = ask(client, headers, {"question": " as typed "})
 
-    assert response.json() == {"run_id": "run-1", "answer": "From the graph."}
-    assert calls == [(" as typed ", user_id)]  # unchanged: the graph normalises it
+    assert response.json() == {
+        "run_id": "run-1",
+        "conversation_id": "c-1",
+        "answer": "From the graph.",
+        "memory": None,
+    }
+    assert calls == [(" as typed ", user_id, None)]  # unchanged: the graph normalises it
 
 
 def test_router_holds_no_rag_or_graph_logic():
@@ -250,14 +261,18 @@ def test_the_trace_of_a_run_is_readable_by_its_owner(api, fake_rag):
     assert [(e["kind"], e["name"]) for e in trace["events"]] == [
         ("node", "receive_question"),
         ("edge", "route_question"),
+        ("node", "recall_memory"),
         ("node", "plan_sources"),
         ("edge", "route_after_plan"),
         ("node", "retrieve"),
         ("edge", "route_after_retrieve"),
         ("node", "generate_answer"),
+        ("edge", "route_after_answer"),
+        ("node", "compose_response"),
     ]
-    assert trace["events"][4]["output"] == {"context": [CHUNK]}
-    assert trace["events"][5]["output"]["to"] == "generate_answer"
+    assert trace["events"][5]["output"] == {"context": [CHUNK]}
+    assert trace["events"][6]["output"]["to"] == "generate_answer"
+    uuid.UUID(trace["conversation_id"])
 
 
 def test_another_users_run_is_not_found(api, fake_rag):
