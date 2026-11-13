@@ -5,18 +5,19 @@
 
 Runs every question in `data/eval/agent/eval-cases.json` once through the
 production graph (`build_agent_graph`, the real planner, `rag.retrieve`,
-`rag.generate_answer` and tools) and writes the run traces to
+`rag.generate_answer` and the MCP client nodes) and writes the run traces to
 `data/eval/agent/traces.json`, together with the graph version, the model ids
-and the tool timeout that produced them. Qdrant, both models, and the incident
-and inventory managers (`INCIDENTS_API_URL`, `INVENTORY_API_URL`, the
-`AGENT_INVENTORY_*` account) must be up: the cases ask about real tickets and
-products. The evals in `tests/pipelines/test_agent_evals.py` read only that
-file, so they run offline and the same every time; re-record after any change
+and the tool timeout that produced them. Qdrant, both models, the TrackFlow MCP
+server (`AGENT_MCP_URL`, `npm run mcp`) with the agent's OAuth client
+(`AGENT_OAUTH_*`), and behind it the Incidents Manager and the inventory must
+be up: the cases ask about real tickets and products. The evals in
+`tests/pipelines/test_agent_evals.py` read only that file, so they run
+offline and the same every time; re-record after any change
 to the graph, a prompt, the threshold or a tool schema (the evals refuse traces
 from another graph version).
 
-A case with `"services": {"incident_manager": "unreachable"}` is recorded with
-that service's URL pointed at a closed local port, for that case only: a real
+A case with `"services": {"mcp_server": "unreachable"}` is recorded with the
+agent's MCP URL pointed at a closed local port, for that case only: a real
 connection failure, so the fallback path is recorded as it happens.
 
 The runs use a temporary store, not the API's `AGENT_STORE_PATH`. Nothing is
@@ -49,7 +50,7 @@ from services.agent.errors import AgentRunError
 from services.agent.graph import build_agent_graph, graph_fingerprint
 from services.agent.runner import run_agent
 from services.agent.state import INCIDENT_MANAGER, INVENTORY_MANAGER, NODE_OF_SOURCE
-from services.agent.tools import incidents, inventory
+from services.agent.tools import mcp_lookups
 from services.agent.tools.contracts import StockLookupInput, TicketLookupInput
 from services.agent.tracing import TraceStore
 
@@ -58,8 +59,12 @@ DEFAULT_CASES = ROOT_DIR / "data" / "eval" / "agent" / "eval-cases.json"
 DEFAULT_OUTPUT = ROOT_DIR / "data" / "eval" / "agent" / "traces.json"
 
 # Port 9 (discard) is closed on a developer machine: a connection is refused at once.
-UNREACHABLE_URL = "http://127.0.0.1:9"
-URL_SETTING = {INCIDENT_MANAGER: "INCIDENTS_API_URL", INVENTORY_MANAGER: "INVENTORY_API_URL"}
+UNREACHABLE_URL = "http://127.0.0.1:9/mcp"
+MCP_SERVER = "mcp_server"
+# What a case may make unreachable, and the setting that points the agent at it.
+URL_SETTING = {MCP_SERVER: "AGENT_MCP_URL"}
+# The live sources, all read through the MCP server.
+LIVE_SOURCES = (INCIDENT_MANAGER, INVENTORY_MANAGER)
 
 
 def load_cases(path: Path) -> list[dict[str, Any]]:
@@ -87,43 +92,36 @@ def sources_needed(cases: list[dict[str, Any]]) -> set[str]:
     """The live services some case expects a successful lookup from."""
     needed = set()
     for case in cases:
+        if MCP_SERVER in (case.get("services") or {}):
+            continue
         nodes = case["checks"].get("nodes", [])
-        unreachable = case.get("services") or {}
-        needed |= {
-            source
-            for source in URL_SETTING
-            if NODE_OF_SOURCE[source] in nodes and source not in unreachable
-        }
+        needed |= {source for source in LIVE_SOURCES if NODE_OF_SOURCE[source] in nodes}
     return needed
 
 
 def preflight(needed: set[str]) -> list[str]:
-    """Why each needed service cannot be used now; empty when all of them answer.
+    """Why each needed source cannot be used now; empty when all of them answer.
 
-    One read-only lookup each: a ticket or product that does not exist answers
-    `not_found`, which proves the service is up and, for the inventory, that
-    the account can sign in.
+    One read-only lookup each, through the MCP server like the runs: a ticket or
+    product that does not exist answers `not_found`, which proves the agent's
+    token is accepted, the MCP server is up and the service behind it answers.
     """
     problems = []
-    settings = get_agent_settings()
+    url = get_agent_settings().agent_mcp_url
     if INCIDENT_MANAGER in needed:
-        ticket = incidents.lookup_ticket(TicketLookupInput(reference="TRF-999999"))
+        ticket = mcp_lookups.lookup_ticket(TicketLookupInput(reference="TRF-999999"))
         if ticket.outcome == "unavailable":
-            problems.append(
-                f"the incident manager at {settings.incidents_api_url} ({ticket.failure})"
-            )
+            problems.append(f"the MCP server at {url}, incident tools ({ticket.failure})")
     if INVENTORY_MANAGER in needed:
-        stock = inventory.lookup_stock(StockLookupInput(product="recorder preflight"))
+        stock = mcp_lookups.lookup_stock(StockLookupInput(product="RECORDER-PREFLIGHT-0"))
         if stock.outcome == "unavailable":
-            problems.append(
-                f"the inventory manager at {settings.inventory_api_url} ({stock.failure})"
-            )
+            problems.append(f"the MCP server at {url}, inventory tool ({stock.failure})")
     return problems
 
 
 @contextmanager
 def service_overrides(case: dict[str, Any]) -> Iterator[None]:
-    """Point the services the case marks unreachable at a closed port, for this case only."""
+    """Point the agent at a closed port for the MCP server, when the case says so."""
     overridden = {URL_SETTING[source]: UNREACHABLE_URL for source in case.get("services") or {}}
     previous = {name: os.environ.get(name) for name in overridden}
     os.environ.update(overridden)

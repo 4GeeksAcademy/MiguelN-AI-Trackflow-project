@@ -60,7 +60,7 @@ from services.agent.state import (
     TICKET_UNAVAILABLE_ANSWER,
     derive_outcome,
 )
-from services.agent.tools import incidents, inventory
+from services.agent.tools import mcp_lookups
 from services.agent.tools.contracts import (
     StockLookupInput,
     StockLookupResult,
@@ -117,7 +117,7 @@ KNOWLEDGE_PLAN = plan(step("knowledge_base"))
 def ticket_result(
     outcome: str = "ok", *, reference: str | None = "12", failure: str | None = None
 ) -> TicketLookupResult:
-    """A ticket lookup's result as `incidents.lookup_ticket` returns it."""
+    """A ticket lookup's result as `mcp_lookups.lookup_ticket` returns it."""
     request = (
         TicketLookupInput(reference=reference) if reference else TicketLookupInput(status="open")
     )
@@ -126,7 +126,7 @@ def ticket_result(
         {
             "request": request,
             "outcome": outcome,
-            "endpoint": "GET /api/incidents?reference=TRF-000012",
+            "endpoint": "MCP get_incident(reference=TRF-000012)",
             "reference": "TRF-000012" if reference == "12" else reference,
             "tickets": [TICKET_RECORD] if found else [],
             "total": 1 if found else 0,
@@ -145,7 +145,7 @@ def stock_result(
         {
             "request": StockLookupInput(product=product),
             "outcome": outcome,
-            "endpoint": "GET /inventory/products",
+            "endpoint": "MCP query_inventory(operation=list_products, name=black running shoes)",
             "products": [PRODUCT_RECORD] if found else [],
             "total": 1 if found else 0,
             "failure": failure,
@@ -203,8 +203,8 @@ def install_fakes(monkeypatch, fake: FakeRag) -> FakeRag:
     monkeypatch.setattr(rag, "retrieve", fake.retrieve)
     monkeypatch.setattr(rag, "generate_answer", fake.generate_answer)
     monkeypatch.setattr(planner, "choose_sources", fake.choose_sources)
-    monkeypatch.setattr(incidents, "lookup_ticket", fake.lookup_ticket)
-    monkeypatch.setattr(inventory, "lookup_stock", fake.lookup_stock)
+    monkeypatch.setattr(mcp_lookups, "lookup_ticket", fake.lookup_ticket)
+    monkeypatch.setattr(mcp_lookups, "lookup_stock", fake.lookup_stock)
 
     def monolithic_query(question: str) -> str:
         raise AssertionError("The graph must never call rag.query()")
@@ -952,7 +952,7 @@ def test_a_planner_fallback_takes_the_knowledge_base_route_and_says_why(fake_rag
 
 def test_a_lookup_node_refuses_to_run_without_its_planned_step(fake_rag):
     with pytest.raises(AgentContractError, match="no 'incident_manager' step"):
-        nodes.lookup_ticket({"question": "q", "plan": KNOWLEDGE_PLAN})
+        nodes.lookup_ticket_mcp({"question": "q", "plan": KNOWLEDGE_PLAN})
     assert fake_rag.ticket_calls == []
 
 
@@ -965,7 +965,7 @@ def test_a_tool_bug_still_fails_the_run_instead_of_hiding_it(fake_rag, graph, st
     def broken_lookup(request, **_):
         raise TypeError("a programming error, not a service failure")
 
-    monkeypatch.setattr(incidents, "lookup_ticket", broken_lookup)
+    monkeypatch.setattr(mcp_lookups, "lookup_ticket", broken_lookup)
     fake_rag.plan = plan(step("incident_manager", reference="12"))
 
     with pytest.raises(AgentRunError) as failure:

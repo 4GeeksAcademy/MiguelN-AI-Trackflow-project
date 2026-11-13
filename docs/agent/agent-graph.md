@@ -1,4 +1,4 @@
-# Knowledge agent: the RAG flow as a LangGraph graph, plus live tools
+# Knowledge agent: the RAG flow as a LangGraph graph, plus live tools over MCP
 
 Milestone 7. Ticket: `lead-instr.png`, checklist in `stages-todo.png`. The RAG system it builds on is described in [`docs/rag/rag-design.md`](../rag/rag-design.md).
 
@@ -6,6 +6,7 @@ Milestone 7. Ticket: `lead-instr.png`, checklist in `stages-todo.png`. The RAG s
 - **Part 2** gives the agent two read-only tools for data that changes all the time, and lets it decide on its own which source a question needs:
   - the live state of support tickets in the **incident manager**;
   - the live stock in the **inventory manager**, the stretch goal.
+- **Part 3** (the MCP Server ticket) moves those tools out of the graph. The agent no longer calls the Incidents Manager or the inventory itself: both are exposed by the OAuth-protected TrackFlow MCP server ([`docs/mcp/mcp-server.md`](../mcp/mcp-server.md)), and the agent consumes it as an MCP client through `langchain-mcp-adapters`. The routing is unchanged.
 
 ## Why
 
@@ -25,16 +26,16 @@ graph TD;
     __start__([start]) --> receive_question;
     receive_question -. rejected .-> __end__([end]);
     receive_question -. plan .-> plan_sources;
-    plan_sources -. incident_manager .-> lookup_ticket;
-    plan_sources -. inventory_manager .-> lookup_stock;
+    plan_sources -. incident_manager .-> lookup_ticket_mcp;
+    plan_sources -. inventory_manager .-> lookup_stock_mcp;
     plan_sources -. knowledge_base .-> retrieve;
-    lookup_ticket -. inventory_manager .-> lookup_stock;
-    lookup_ticket -. knowledge_base .-> retrieve;
-    lookup_ticket -. generate .-> generate_answer;
-    lookup_ticket -. lookup_failed .-> answer_lookup_failed;
-    lookup_stock -. knowledge_base .-> retrieve;
-    lookup_stock -. generate .-> generate_answer;
-    lookup_stock -. lookup_failed .-> answer_lookup_failed;
+    lookup_ticket_mcp -. inventory_manager .-> lookup_stock_mcp;
+    lookup_ticket_mcp -. knowledge_base .-> retrieve;
+    lookup_ticket_mcp -. generate .-> generate_answer;
+    lookup_ticket_mcp -. lookup_failed .-> answer_lookup_failed;
+    lookup_stock_mcp -. knowledge_base .-> retrieve;
+    lookup_stock_mcp -. generate .-> generate_answer;
+    lookup_stock_mcp -. lookup_failed .-> answer_lookup_failed;
     retrieve -. generate .-> generate_answer;
     retrieve -. lookup_failed .-> answer_lookup_failed;
     retrieve -. no_information .-> answer_no_information;
@@ -64,8 +65,8 @@ How a run flows:
 | `question` | caller; `receive_question` stores the stripped form | Every later node needs it |
 | `error` | `receive_question` | Lets `route_question` end the run before anything else |
 | `plan` | `plan_sources` | The sources to consult, in order, with each tool's validated arguments (`planner.Plan`) |
-| `ticket_lookup` | `lookup_ticket` | `TicketLookupResult`: outcome, the request made, the tickets, timing |
-| `stock_lookup` | `lookup_stock` | `StockLookupResult`, the same shape for products |
+| `ticket_lookup` | `lookup_ticket_mcp` | `TicketLookupResult`: outcome, the request made, the tickets, timing |
+| `stock_lookup` | `lookup_stock_mcp` | `StockLookupResult`, the same shape for products |
 | `context` | `retrieve` | `rag.retrieve()` output, possibly `[]` |
 | `answer` | `generate_answer`, `answer_lookup_failed` or `answer_no_information` | The result |
 
@@ -84,8 +85,8 @@ Each node declares the fields it reads and the fields it writes ([`services/agen
 |---|---|---|
 | `receive_question` | question → question, error | Strips the question and refuses an empty one |
 | `plan_sources` | question → plan | `planner.choose_sources(question)`; see [Routing](#routing-the-agent-decides-the-source) |
-| `lookup_ticket` | plan → ticket_lookup | `tools.incidents.lookup_ticket(...)`, live |
-| `lookup_stock` | plan → stock_lookup | `tools.inventory.lookup_stock(...)`, live |
+| `lookup_ticket_mcp` | plan → ticket_lookup | `tools.mcp_lookups.lookup_ticket(...)`: MCP `get_incident` / `search_incidents`, live |
+| `lookup_stock_mcp` | plan → stock_lookup | `tools.mcp_lookups.lookup_stock(...)`: MCP `query_inventory`, live |
 | `retrieve` | question → context | `rag.retrieve(question)`: k=5, `MIN_SCORE` 0.30, unchanged |
 | `generate_answer` | question, context, ticket_lookup, stock_lookup → answer | `rag.generate_answer(question, passages)`, where the passages are the successful lookups followed by the chunks. It refuses to run with no evidence. |
 | `answer_lookup_failed` | ticket_lookup, stock_lookup → answer | The fixed answer for each failed lookup, with no model call |
@@ -104,8 +105,8 @@ The Part 1 node contract still holds:
 |---|---|---|
 | `receive_question` | `route_question` | `rejected` → **END** (empty question); `plan` → `plan_sources` |
 | `plan_sources` | `route_after_plan` | The first planned source: `incident_manager` / `inventory_manager` / `knowledge_base` |
-| `lookup_ticket` | `route_after_ticket` | The next planned source, or `generate` / `lookup_failed` |
-| `lookup_stock` | `route_after_stock` | `knowledge_base`, or `generate` / `lookup_failed` |
+| `lookup_ticket_mcp` | `route_after_ticket` | The next planned source, or `generate` / `lookup_failed` |
+| `lookup_stock_mcp` | `route_after_stock` | `knowledge_base`, or `generate` / `lookup_failed` |
 | `retrieve` | `route_after_retrieve` | `generate` / `lookup_failed` / `no_information` |
 
 Each router writes its decision, the target and the reason to the run's stream, and the trace stores it as an `edge` row. Examples of reasons:
@@ -113,79 +114,73 @@ Each router writes its decision, the target and the reason to the run's stream, 
 - "the plan still needs knowledge_base"
 - "no evidence and a lookup failed: incident_manager not_found"
 
-## Tools: live, read-only lookups
+## Tools: live lookups through the MCP server (Part 3)
 
-Package [`services/agent/tools/`](../../services/agent/tools/). One tool per job: the ticket lookup never looks at stock, and the stock lookup never looks at tickets. Each has its own contract, module and node.
+Package [`services/agent/tools/`](../../services/agent/tools/). One lookup per job: the ticket lookup never looks at stock, and the stock lookup never looks at tickets. Each has its own contract and its own node, `lookup_ticket_mcp` and `lookup_stock_mcp`, which **replaced** the Part 2 nodes `lookup_ticket` and `lookup_stock`.
+
+**What changed, and what did not.** Part 2's tools called the services directly over HTTP from inside the graph (`tools/incidents.py`, `tools/inventory.py`, `tools/http.py`, `tools/auth.py`). Those modules are **deleted**: the agent has exactly one path to the Incidents Manager and the inventory, and it is the MCP server. The new nodes read and write the same state fields and return the same result models, so the planner, the routers, the fallback answers and the passages for generation are untouched. The node names changed so a trace shows which kind of node ran.
 
 ### Typed contracts ([`tools/contracts.py`](../../services/agent/tools/contracts.py))
 
-| Tool | Input | Output |
+| Lookup | Input (the planner's tool schema) | Output |
 |---|---|---|
-| Ticket lookup | `TicketLookupInput`: `reference` (as the user wrote it), or the search filters `status`, `category`, `origin`, `branch` (the incident enums). At least one is required. | `TicketLookupResult` |
-| Stock lookup | `StockLookupInput`: `product` (a name or SKU) and an optional `warehouse` (`Monterrey` / `Zaragoza`) | `StockLookupResult` |
+| Ticket | `TicketLookupInput`: `reference` (as the user wrote it), or the search filters `status`, `category`, `origin`, `branch` (the incident enums). At least one is required. | `TicketLookupResult` |
+| Stock | `StockLookupInput`: `product` (a name or SKU) and an optional `warehouse` (`Monterrey` / `Zaragoza`) | `StockLookupResult` |
 
 Every result carries:
 - `outcome`: `ok`, `not_found` or `unavailable`;
-- `endpoint`: the request made, without host or credentials, e.g. `GET /api/incidents?reference=TRF-000012`;
+- `endpoint`: the MCP call made, without host or token, e.g. `MCP get_incident(reference=TRF-000012)`;
 - the records found (at most 10) and the total;
-- `failure`: `timeout`, `unreachable`, `http_<code>`, `invalid_response`, `login_rejected` or `not_configured`;
-- `http_status` and `duration_ms`.
+- `failure`, for `unavailable` (see the fallback below);
+- `http_status` (only when the MCP server or the token endpoint answered an HTTP error) and `duration_ms`.
 
-`TicketRecord` mirrors `IncidentResponse` and `ProductStock` mirrors `ProductResponse`, field for field. A drift test fails if either side changes. The input models are also the JSON schemas the planner shows the model.
+`TicketRecord` mirrors `IncidentResponse` and the MCP tool's `Incident`; `ProductStock` mirrors `ProductResponse` and the MCP tool's `Product`. Drift tests fail if any side changes.
 
-### Reading the real services, over HTTP
+### The MCP client ([`tools/mcp_client.py`](../../services/agent/tools/mcp_client.py))
 
-Both services are routers of this API (earlier milestones). The tools call them over HTTP with `httpx`. `httpx` is already installed: it is a transitive dependency of supabase and langgraph-sdk, and it is in the dev group. No dependency was added. If upstream ever drops it, it has to be declared with `uv add`, after asking.
+For each lookup:
+1. an access token from the agent's OAuth client ([`tools/oauth.py`](../../services/agent/tools/oauth.py)): the client-credentials grant against Auth0, asking **only** for `incidents:read inventory:read`. It is cached until 60 s before it expires, shared by every run, and dropped on a 401;
+2. a Streamable HTTP session with `langchain-mcp-adapters` (`MultiServerMCPClient.session` → `load_mcp_tools`), the token in the `Authorization` header;
+3. the tools the server advertises, **kept to an allow-list**: `get_incident`, `search_incidents`, `query_inventory`. The server also offers `create_incident` and `update_incident_status`; the agent never loads them and holds no scope for them. A server that stops offering one of the three is a failure (`tool_missing`), never a reason to call something else;
+4. one `tool.ainvoke(...)`. The tool's structured content (its typed output) or its JSON error comes back as an `McpCall`.
 
-The base URLs are configuration (`INCIDENTS_API_URL`, `INVENTORY_API_URL`). The default is `http://localhost:8000`, the API itself, and in Compose it is `http://127.0.0.1:8000` inside the api container. Nothing is simulated: there is no fixture dataset, and the evals were recorded against the real rows.
+The graph runs synchronously and the adapters' tools are async-only, so each call runs its own event loop (`asyncio.run`) inside the node's worker thread, or in a fresh thread if one is already running there.
 
-**Ticket lookup** ([`tools/incidents.py`](../../services/agent/tools/incidents.py)). Support staff say "ticket 482", but the API only knew UUIDs. The helpdesk reference (`TRF-000482`) was stored on seeded incidents but never exposed. So the incident API now publishes it, read-only:
-- a `reference` field on `IncidentResponse`;
-- a `?reference=` filter on `GET /api/incidents`.
+How the planner's requests map onto MCP tools ([`tools/mcp_lookups.py`](../../services/agent/tools/mcp_lookups.py)):
+- a helpdesk number ("482", "TRF-482") → normalised to `TRF-000482` by `trackflow_shared.incidents.normalize_reference` → `get_incident(reference="TRF-000482")`;
+- any other reference, taken as an incident id → `get_incident(incident_id=...)`;
+- no reference → `search_incidents(status=..., ..., limit=10)`; zero matches is a real answer (`ok`, total 0);
+- a SKU-shaped product → `query_inventory(operation="list_products", sku="SHOE-BLK-42")`; a name → `query_inventory(operation="list_products", name="black running shoes")`, matched word for word by the server; the warehouse is passed through either way.
 
-See [`docs/INCIDENTS.md`](../INCIDENTS.md). The tool then reads it one of three ways:
-- **A helpdesk number** ("482", "TRF-482", "TRF-000482") is normalised to `TRF-000482` by `trackflow_shared.incidents.normalize_reference`, the same rule the API validates with. The call is `GET /api/incidents?reference=TRF-000482`, and an empty list means `not_found`.
-- **Any other reference** is taken as an incident id: `GET /api/incidents/{id}`. A 404 means `not_found`.
-- **No reference** is a search, e.g. `GET /api/incidents?status=in_progress`. Zero matches is a real answer (`ok`, total 0).
+`incident_not_found`, or no product, is `not_found`.
 
-**Stock lookup** ([`tools/inventory.py`](../../services/agent/tools/inventory.py)):
-- A SKU-shaped product is filtered by the service: `GET /inventory/products?sku=SHOE-BLK-42`.
-- A name ("black running shoes") is matched here against the real rows, because the products route has no name filter: every meaningful word must be a word of the product's name or SKU, case-insensitive, with a plural "s" ignored.
-- The warehouse, when named, is passed through as a filter either way.
+### Configuration
 
-### Authentication
+`AGENT_MCP_URL` (default `http://localhost:8100/mcp`; Compose `http://mcp:8100/mcp`), `AGENT_OAUTH_TOKEN_URL`, `AGENT_OAUTH_CLIENT_ID`, `AGENT_OAUTH_CLIENT_SECRET`, `AGENT_OAUTH_AUDIENCE` (the MCP server's Auth0 API identifier) and `AGENT_OAUTH_SCOPES` (default `incidents:read inventory:read`). Without an OAuth client, every live lookup answers `unavailable / not_configured` without a request. The agent no longer has, or needs, the inventory service account: the MCP server holds it.
 
-- **Incident routes:** none. They are unauthenticated by design (`docs/INCIDENTS.md`), so the ticket tool sends no credentials. Reviewers should not expect any.
-- **Inventory routes:** a bearer token. The stock tool signs in as a **service account** whose credentials come from configuration (`AGENT_INVENTORY_EMAIL`, `AGENT_INVENTORY_PASSWORD`), never from code ([`tools/auth.py`](../../services/agent/tools/auth.py)).
-  - The account is created once: `uv run seed-user --email agent-inventory@trackflow.com --role user`.
-  - The token is cached until 60 s before its `exp`. A 401 drops it and signs in once more; a second 401 is a failure, not a loop.
-  - Without credentials, the stock tool answers `unavailable / not_configured` without making a request.
+### Least privilege, on both sides
 
-### Read-only
+- The agent's token carries only the read scopes, so even a bug in the agent could not create or change an incident: the server would refuse it with `insufficient_scope` (tested end to end).
+- The agent loads only its allow-listed read tools.
+- The inventory is read-only on the server itself, whatever any token carries.
 
-The lookups only ever GET:
-- `tools/http.py::get_json` is the only request the lookup modules make.
-- An AST test forbids `post/put/patch/delete/request/stream/send` in them.
-- A `MockTransport` test checks the method of every request a lookup makes.
+### Timeout
 
-The one POST in the package is the sign-in (`/auth/login`), and it lives in `auth.py`.
-
-### Numeric timeout
-
-- `AGENT_TOOL_TIMEOUT_SECONDS`, default **4.0**, validated to 0 < value ≤ 5.
-- Applied as `httpx.Timeout(4.0)` per phase (connect, write, read, pool), with no retries and no redirects.
-- A service that does not answer in time gives `unavailable / timeout`, and the run goes on to the fallback.
-- Proven in a test against a local socket that accepts and never replies (0.3 s timeout, done in under 1.5 s).
-- Live on 2026-11-11: a hung "incident manager" on a local port. `lookup_ticket` gave up after 4022 ms, and the run ended with the honest answer 7 s after it started.
+`AGENT_TOOL_TIMEOUT_SECONDS`, default **5.0**, validated to 0 < value ≤ 10. It is now the whole budget of one lookup (the MCP session, the tool call and the service behind it), enforced with `asyncio.timeout` and the transport's own timeouts. A server that does not answer in time gives `unavailable / mcp_timeout`. The MCP server has its own per-request timeout towards the services (`MCP_UPSTREAM_TIMEOUT_SECONDS`, default 4).
 
 ### Fallback path
 
-A tool **never raises for a service failure**. A timeout, connection error, error status, unreadable body, refused sign-in or missing configuration all become a result with `outcome != ok`. The routers then send the run to a fixed answer, written in `state.py`, never by the model:
+A lookup **never raises for a service failure**. Every failure becomes a result with `outcome: unavailable` and a `failure` label:
+- `not_configured`, `oauth_unreachable`, `oauth_timeout`, `oauth_rejected`, `oauth_http_<code>`: no token could be obtained;
+- `mcp_unreachable`, `mcp_timeout`, `mcp_unauthorized` (after one token refresh), `mcp_forbidden`, `mcp_http_<code>`, `mcp_protocol_error`, `tool_missing`, `invalid_response`: the MCP server could not be used;
+- a tool error code from the server (`upstream_unavailable`, `insufficient_scope`, ...): the server answered, but the service behind it did not, or the token lacks the scope.
+
+The routers then send the run to the same fixed answers as before, written in `state.py`, never by the model:
 - **Ticket not found:** "I couldn't confirm the status of ticket TRF-000482: the incident manager has no ticket with that reference. Please check the reference and try again."
-- **Incident manager not responding:** "I couldn't confirm the status of ticket TRF-000012 right now: the incident manager is not responding. Please try again in a few minutes."
+- **Not responding** (incident manager, MCP server or token endpoint): "I couldn't confirm the status of ticket TRF-000012 right now: the incident manager is not responding. Please try again in a few minutes."
 - **Stock:** the same two shapes for products.
 
-A programming error in a tool (a `TypeError`, say) still fails the run with a 500: only service failures have a recovery path, so bugs are not hidden.
+A programming error in a lookup (a `TypeError`, say) still fails the run with a 500: only service failures have a recovery path, so bugs are not hidden.
 
 ## Routing: the agent decides the source
 
@@ -253,7 +248,7 @@ npm run agent -- trace --last            # or: trace <run_id> [--json]; runs [--
 curl -H "Authorization: Bearer $TOKEN" localhost:8000/agent/runs/<run_id>
 ```
 
-A real trace (2026-11-11):
+A real trace (2026-11-11, Part 2, before the lookups moved to MCP; the lookup row now reads `node lookup_ticket_mcp … MCP get_incident(reference=TRF-000043) -> ok (…)`):
 
 ```
 Run 6b8b7759-… · completed · answered · graph faabff53fa40c2ca · 1 attempt(s)
@@ -274,12 +269,12 @@ Sources: incident_manager -> knowledge_base
 - the planner prompt and the tool schemas;
 - the source order, the result caps and every fixed answer.
 
-Service URLs, credentials and the tool timeout are deployment settings and stay out of it. The recorder writes the timeout into the recording instead.
+It also covers the agent's MCP tool allow-list. The MCP server's URL, the OAuth client and its scopes, and the tool timeout are deployment settings and stay out of it. The recorder writes the timeout into the recording instead.
 
 ## Evals: run against recorded traces
 
 - **Cases:** [`data/eval/agent/eval-cases.json`](../../data/eval/agent/eval-cases.json), 17 of them.
-- **Recording:** `LLM_TIMEOUT_SECONDS=120 npm run agent:record` runs each case once through the real graph. It needs Qdrant, the 4Geeks models, the incident and inventory managers, and the inventory account. It checks first that every service a case needs answers; otherwise it exits 2 and writes nothing. It writes [`data/eval/agent/traces.json`](../../data/eval/agent/traces.json), which is committed.
+- **Recording:** `LLM_TIMEOUT_SECONDS=120 npm run agent:record` runs each case once through the real graph. It needs Qdrant, the 4Geeks models, the MCP server (`npm run mcp`) with the agent's OAuth client, and behind the server the Incidents Manager and the inventory. It checks first, through the MCP server like the runs, that every source a case needs answers; otherwise it exits 2 and writes nothing. It writes [`data/eval/agent/traces.json`](../../data/eval/agent/traces.json), which is committed.
 - **Evals:** `npm run agent:eval` reads only that file, so it needs no service. It is also part of `npm run test:api`.
 
 Part 2 cases:
@@ -292,7 +287,7 @@ Part 2 cases:
 | `routing-both-ticket-and-policy` (TRF-000043 + who pays a damaged return) | **Both, in order.** Sources `incident_manager → knowledge_base`, the live status, and the returns-policy rule. |
 | `routing-tool-stock` (black running shoes in Monterrey) | Stretch tool: the live figure (45 units), never the RAG. |
 | `fallback-ticket-not-found` ("ticket 482") | The ticket does not exist. The fixed answer, with no `generate_answer`. |
-| `fallback-incident-service-down` | The incident manager does not respond. It was recorded against a closed port (`"services": {"incident_manager": "unreachable"}`), a real connection failure: `unavailable / unreachable` and the fixed answer. |
+| `fallback-mcp-server-down` (Part 2: `fallback-incident-service-down`) | The MCP server does not respond. It is recorded with the agent's MCP URL pointed at a closed port (`"services": {"mcp_server": "unreachable"}`), a real connection failure: `unavailable / mcp_unreachable` and the fixed answer. Since the agent has no other way to the Incidents Manager, nothing bypasses the server. |
 
 The 10 Part 1 cases are unchanged, except that `plan_sources` now runs and each also asserts that no tool was called.
 
@@ -301,21 +296,24 @@ Checked on every case or every answered case:
   - the sources consulted, in order;
   - for each routing eval, that the planner chose the kind of source **itself** (`decided_by: "model"`; a fallback route fails the eval);
   - the exact node order and the nodes that must not run;
-  - every decision leading to the node that ran next, with a reason.
+  - every decision leading to the node that ran next, with a reason;
+  - **routing unchanged by the MCP migration**: every case's nodes and decisions equal those of the Part 2 recording, frozen in [`data/eval/agent/routing-baseline.json`](../../data/eval/agent/routing-baseline.json) before the migration, with only the two lookup nodes renamed.
 - **Node contract:** every planned source ran exactly once, before `generate_answer`, and generation received exactly what they produced.
 - **Live data:**
   - each lookup ended as expected;
-  - lookups are GETs;
+  - every lookup went through the MCP server's read tools (`MCP get_incident`, `MCP search_incidents`, `MCP query_inventory(operation=list_products, …)`);
   - the answer states the live value;
   - a failed lookup gets exactly its fixed text, and nothing is generated.
 - **Faithfulness (BRIEFING §4):** every figure in an answer appears in the question, a retrieved chunk or a live record.
 - **Freshness:** traces recorded by another graph version fail the evals with "re-record".
 
-**Result (2026-11-11, gpt-6-luna / pplx-embed-v1-0.6b, graph `faabff53fa40c2ca`): 130 of 130 evals pass.** All 16 non-empty questions were routed by the model's own choice, with no fallback and no ignored call. The incident data was the 98-incident TinyDB store. The inventory came from the seeded throwaway Postgres, because Supabase was unreachable; re-record against Supabase once it is back.
+**Part 3: pending re-recording.** The committed `traces.json` is still the Part 2 recording (graph `faabff53fa40c2ca`), so the freshness check fails until `npm run agent:record` runs against the live stack (MCP server + Auth0 + the gateway).
+
+**Part 2 result (2026-11-11, gpt-6-luna / pplx-embed-v1-0.6b, graph `faabff53fa40c2ca`): 130 of 130 evals pass.** All 16 non-empty questions were routed by the model's own choice, with no fallback and no ignored call. The incident data was the 98-incident TinyDB store. The inventory came from the seeded throwaway Postgres, because Supabase was unreachable; re-record against Supabase once it is back.
 
 ## API
 
-Both routes need a bearer token and live in [`services/agent/router.py`](../../services/agent/router.py). The router holds no business logic: it calls `runner.run_agent()` and maps how the run ended to a status code. An AST test pins this and forbids the planner, the tools and `httpx` there.
+Both routes need a bearer token and live in [`services/agent/router.py`](../../services/agent/router.py). The router holds no business logic: it calls `runner.run_agent()` and maps how the run ended to a status code. An AST test pins this and forbids the planner, the lookups, the MCP client and `httpx` there.
 
 | Request | Answer |
 |---|---|
@@ -334,16 +332,17 @@ Verified live on 2026-11-11 against the real app: "Do we have stock of the Dell 
 |---|---|
 | `services/agent/state.py` | `AgentState`, node and source names, fixed answers, `derive_outcome` |
 | `services/agent/planner.py` | `choose_sources`, the tool schemas, the validation of the model's choice |
-| `services/agent/tools/` | `contracts`, `incidents`, `inventory`, `auth`, `http`, `passages` |
-| `services/agent/nodes.py` | The eight nodes |
+| `services/agent/tools/` | `contracts`, `mcp_lookups`, `mcp_client`, `oauth`, `passages` |
+| `services/agent/nodes.py` | The eight nodes (`lookup_ticket_mcp` and `lookup_stock_mcp` are the MCP client nodes) |
 | `services/agent/graph.py` | Contracts, routers, `build_agent_graph`, checks, fingerprint, the app's checkpointed graph |
 | `services/agent/tracing.py` | `TraceStore`, `RunTrace.sources()` |
 | `services/agent/runner.py` | `run_agent`, `resume_run` |
 | `services/agent/router.py`, `models.py` | HTTP |
 | `services/agent/__main__.py` | CLI (`npm run agent -- check / ask / trace / runs / resume`) |
-| `services/agent/config.py` | `AGENT_STORE_PATH`, `INCIDENTS_API_URL`, `INVENTORY_API_URL`, `AGENT_TOOL_TIMEOUT_SECONDS`, `AGENT_INVENTORY_*` |
+| `services/agent/config.py` | `AGENT_STORE_PATH`, `AGENT_MCP_URL`, `AGENT_OAUTH_*`, `AGENT_TOOL_TIMEOUT_SECONDS` |
 | `scripts/record_agent_traces.py` | `npm run agent:record` |
-| `tests/pipelines/test_agent_tools.py` (62) | Contracts and drift, each lookup path, every failure, a real timeout, read-only guards, sign-in, against the real incident router |
+| `tests/pipelines/test_agent_mcp_client.py` | Contracts and drift, the mapping onto MCP tools, every failure label, the OAuth token cache and its single retry, the allow-list, and the guard that the agent has no other path to the services |
+| `tests/mcps/test_agent_over_mcp.py` | End to end: the agent's lookups and the whole graph against the real MCP server on a local port and the real Incidents Manager |
 | `tests/pipelines/test_agent_planner.py` (24) | Tool schemas, plans, refused calls, fallback, fingerprint |
 | `tests/pipelines/test_agent_graph.py` (58) | Compilation errors, nodes, every route and fallback, checkpoints, resume, trace |
 | `tests/pipelines/test_agent_evals.py` (130) | The evals |
@@ -352,8 +351,8 @@ Verified live on 2026-11-11 against the real app: "Do we have stock of the Dell 
 
 ## Known limitations
 
-- The agent calls its own API over HTTP. Under heavy concurrency the threadpool could saturate. Tool calls would then end at the 4 s timeout with the honest fallback instead of hanging.
-- A pre-existing issue, TinyDB's shared file handle under concurrent reads, can make an inventory sign-in 500. The fallback covers it.
+- Each lookup opens its own MCP session (initialize, tools/list, tools/call): a few extra local round trips per lookup, in exchange for no shared connection state between runs.
+- A pre-existing issue, TinyDB's shared file handle under concurrent reads, can make the MCP server's inventory sign-in fail. The fallback covers it.
 - One ticket and one product per question: a second call to the same tool is ignored and recorded as such.
 - Stock name matching is literal, word for word: "portátil" does not find "laptop".
 - The fallback and no-information answers are English. Generated answers follow the question's language.

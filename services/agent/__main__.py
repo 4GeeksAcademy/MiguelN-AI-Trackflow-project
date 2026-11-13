@@ -7,9 +7,9 @@
     resume <run_id>       continue a failed run from the node that failed
 
 Runs and traces go to the same store as the API's (`AGENT_STORE_PATH`). `ask`
-and `resume` need the models (`RagSettings`), plus Qdrant and the incident and
-inventory managers for the questions that use them (`INCIDENTS_API_URL`,
-`INVENTORY_API_URL`); the others need none of them.
+and `resume` need the models (`RagSettings`), plus Qdrant, and for questions
+about tickets or stock the TrackFlow MCP server (`AGENT_MCP_URL`) with the
+agent's OAuth client (`AGENT_OAUTH_*`); the others need none of them.
 Exit codes: 0 done, 1 the run failed, 2 bad arguments or an unknown run.
 """
 
@@ -66,7 +66,7 @@ def _describe_output(event: TraceEvent) -> str:
 
 
 def _describe_lookup(result: dict[str, Any]) -> str:
-    """'GET /api/incidents?reference=TRF-000012 -> ok (1 found, 12.0 ms)'."""
+    """'MCP get_incident(reference=TRF-000012) -> ok (1 found, 12.0 ms)'."""
     outcome = result.get("outcome")
     if outcome == "ok":
         detail = f"{result.get('total', 0)} found"

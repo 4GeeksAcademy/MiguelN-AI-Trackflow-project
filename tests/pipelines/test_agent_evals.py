@@ -10,11 +10,14 @@ so they need no service and give the same result every run.
 Four kinds of criteria, all over the trace:
 - routing: which sources were consulted and in what order, that the planner
   chose them itself (RAG, a tool, or both - never its fallback), which nodes
-  ran and which never ran, and that every transition is a recorded decision
-  leading to the node that ran next;
+  ran and which never ran, that every transition is a recorded decision
+  leading to the node that ran next, and that every decision is the one the
+  graph made before the lookups moved to the MCP server
+  (`routing-baseline.json`, frozen from the Part 2 recording);
 - node contract: every planned source ran exactly once, before
   `generate_answer`, and generation received exactly what they produced;
-- live data: each lookup ended as expected, the answer states the value the
+- live data: each lookup ended as expected and went through the MCP server's
+  read tools (the agent has no other path), the answer states the value the
   live record holds, and a failed lookup gets its fixed honest answer with no
   generation at all;
 - grounding (the acceptance gate, in addition to the RAG tests): the expected
@@ -56,6 +59,11 @@ from services.agent.tools.passages import stock_passages, ticket_passages
 ROOT_DIR = Path(__file__).resolve().parents[2]
 CASES_PATH = ROOT_DIR / "data" / "eval" / "agent" / "eval-cases.json"
 TRACES_PATH = ROOT_DIR / "data" / "eval" / "agent" / "traces.json"
+BASELINE_PATH = ROOT_DIR / "data" / "eval" / "agent" / "routing-baseline.json"
+# The MCP read tools a lookup may use, and the inventory reads.
+MCP_LOOKUP = re.compile(
+    r"^MCP (get_incident|search_incidents|query_inventory)\((?:.*operation=(\w+))?.*\)$"
+)
 RERECORD = "re-record them with `LLM_TIMEOUT_SECONDS=120 npm run agent:record`"
 
 CASES: list[dict[str, Any]] = json.loads(CASES_PATH.read_text(encoding="utf-8"))["cases"]
@@ -218,6 +226,25 @@ def test_every_transition_is_a_recorded_decision(case, runs):
             assert following[:1] == [event["output"]["to"]]
 
 
+@pytest.mark.parametrize("case", ALL_CASES)
+def test_the_routing_is_unchanged_since_the_direct_tools(case, runs):
+    """Moving the lookups to the MCP server changed which node calls the tool, not
+    a single routing decision: same nodes (two renamed), same decisions in order."""
+    baseline = json.loads(BASELINE_PATH.read_text(encoding="utf-8"))
+    case_id = baseline["renamed_cases"].get(case["id"], case["id"])
+    assert case_id in baseline["cases"], f"{case['id']} has no baseline"
+    expected = baseline["cases"][case_id]
+    renamed = baseline["renamed_nodes"]
+    run = runs[case["id"]]
+
+    assert run.node_names() == [renamed.get(name, name) for name in expected["nodes"]]
+    assert [
+        [event["name"], event["output"]["decision"]]
+        for event in run.events
+        if event["kind"] == "edge"
+    ] == expected["decisions"]
+
+
 @pytest.mark.parametrize("case", _cases_where("rejected"))
 def test_a_rejected_question_is_never_retrieved(case, runs):
     run = runs[case["id"]]
@@ -272,7 +299,10 @@ def test_each_lookup_ended_as_expected(case, runs):
         result = run.lookup(source)
         assert result is not None, f"{source} was not consulted"
         assert result["outcome"] == outcome
-        assert result["endpoint"].startswith("GET "), "a lookup only ever reads"
+        match = MCP_LOOKUP.match(result["endpoint"])
+        assert match, f"{result['endpoint']}: a lookup only reads, through the MCP server"
+        if match.group(1) == "query_inventory":
+            assert match.group(2) == "list_products"
     for source, failure in case["checks"].get("lookup_failures", {}).items():
         assert run.lookup(source)["failure"] == failure
 

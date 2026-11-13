@@ -6,14 +6,17 @@ are: `retrieve` calls `rag.retrieve()`, and `generate_answer` calls
 produced. The monolithic `rag.query()` is never called here: it would run
 retrieval again inside one opaque step.
 
-Each tool is a node of its own - `lookup_ticket`, `lookup_stock` - running the
-step `plan_sources` planned for it. A tool never raises for a failing service:
-its result says `not_found` or `unavailable`, and the routers send the run to
-an honest fixed answer instead.
+Each live lookup is an MCP client node of its own - `lookup_ticket_mcp`,
+`lookup_stock_mcp` - running the step `plan_sources` planned for it through the
+TrackFlow MCP server (`tools.mcp_lookups`, tools loaded with
+`langchain-mcp-adapters`). The agent has no other path to the Incidents Manager
+or the inventory. A lookup never raises for a failing service: its result says
+`not_found` or `unavailable`, and the routers send the run to an honest fixed
+answer instead.
 
 Everything external is reached through its module at call time (`rag`,
-`planner`, `incidents`, `inventory`), so tests can replace it with
-`monkeypatch.setattr`, as the RAG tests do.
+`planner`, `mcp_lookups`), so tests can replace it with `monkeypatch.setattr`,
+as the RAG tests do.
 """
 
 from typing import Any
@@ -37,7 +40,7 @@ from services.agent.state import (
     TICKET_UNAVAILABLE_ANSWER,
     AgentState,
 )
-from services.agent.tools import incidents, inventory
+from services.agent.tools import mcp_lookups
 from services.agent.tools.contracts import (
     StockLookupInput,
     StockLookupResult,
@@ -73,17 +76,18 @@ def _planned_arguments(state: AgentState, source: str, node: str) -> dict[str, A
     raise AgentContractError(f"'{node}' ran but the plan has no '{source}' step")
 
 
-def lookup_ticket(state: AgentState) -> dict[str, Any]:
-    """Read the ticket(s) the plan names from the incident manager, live."""
+def lookup_ticket_mcp(state: AgentState) -> dict[str, Any]:
+    """Read the ticket(s) the plan names, live, through the MCP server's incident tools."""
     arguments = _planned_arguments(state, INCIDENT_MANAGER, LOOKUP_TICKET)
-    result = incidents.lookup_ticket(TicketLookupInput.model_validate(arguments))
+    result = mcp_lookups.lookup_ticket(TicketLookupInput.model_validate(arguments))
     return {"ticket_lookup": result.model_dump(mode="json")}
 
 
-def lookup_stock(state: AgentState) -> dict[str, Any]:
-    """Read the stock of the product the plan names from the inventory manager, live."""
+def lookup_stock_mcp(state: AgentState) -> dict[str, Any]:
+    """Read the stock of the product the plan names, live, through the MCP server's
+    read-only inventory tool."""
     arguments = _planned_arguments(state, INVENTORY_MANAGER, LOOKUP_STOCK)
-    result = inventory.lookup_stock(StockLookupInput.model_validate(arguments))
+    result = mcp_lookups.lookup_stock(StockLookupInput.model_validate(arguments))
     return {"stock_lookup": result.model_dump(mode="json")}
 
 

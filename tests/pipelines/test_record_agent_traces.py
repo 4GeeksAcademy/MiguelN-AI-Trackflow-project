@@ -8,7 +8,7 @@ from data.process.knowledge_base import KnowledgeBaseError
 from scripts import record_agent_traces
 from services.agent.config import get_agent_settings
 from services.agent.graph import graph_fingerprint
-from services.agent.tools import incidents
+from services.agent.tools import mcp_lookups
 from tests.pipelines.rag_support import offline_rag, pinned_rag_settings  # noqa: F401
 from tests.pipelines.test_agent_graph import (
     CHUNK,
@@ -59,7 +59,7 @@ def test_records_one_trace_per_case_with_the_graph_version(fake_rag, tmp_path):
     document = json.loads(output.read_text(encoding="utf-8"))
     assert document["graph_version"] == graph_fingerprint()
     assert document["generation_model"] == "test-generation-model"
-    assert document["tool_timeout_seconds"] == 4.0
+    assert document["tool_timeout_seconds"] == 5.0
     assert [case["id"] for case in document["cases"]] == [case["id"] for case in CASES]
     for recorded in document["cases"]:
         trace = recorded["trace"]
@@ -122,9 +122,9 @@ def test_only_the_services_some_case_needs_are_checked():
     ticket_case = {
         "id": "t",
         "question": "q",
-        "checks": {"outcome": "answered", "nodes": ["lookup_ticket"]},
+        "checks": {"outcome": "answered", "nodes": ["lookup_ticket_mcp"]},
     }
-    outage_case = {**ticket_case, "id": "o", "services": {"incident_manager": "unreachable"}}
+    outage_case = {**ticket_case, "id": "o", "services": {"mcp_server": "unreachable"}}
     rag_case = {
         "id": "r",
         "question": "q",
@@ -136,19 +136,21 @@ def test_only_the_services_some_case_needs_are_checked():
     assert record_agent_traces.sources_needed(CASES) == {"incident_manager", "inventory_manager"}
 
 
-def test_an_unreachable_service_is_unreachable_for_its_case_only(fake_rag, tmp_path, monkeypatch):
+def test_an_unreachable_mcp_server_is_unreachable_for_its_case_only(
+    fake_rag, tmp_path, monkeypatch
+):
     seen: list[str] = []
 
     def lookup_ticket(request, **_):
-        seen.append(get_agent_settings().incidents_api_url)
+        seen.append(get_agent_settings().agent_mcp_url)
         return fake_rag.ticket
 
-    monkeypatch.setattr(incidents, "lookup_ticket", lookup_ticket)
+    monkeypatch.setattr(mcp_lookups, "lookup_ticket", lookup_ticket)
     fake_rag.plan = plan(step("incident_manager", reference="12"))
     case = {"id": "a", "question": "Ticket 12?", "checks": {"outcome": "no_information"}}
     cases = [
         case,
-        {**case, "id": "b", "services": {"incident_manager": "unreachable"}},
+        {**case, "id": "b", "services": {"mcp_server": "unreachable"}},
         {**case, "id": "c"},
     ]
     output = tmp_path / "traces.json"
@@ -159,9 +161,9 @@ def test_an_unreachable_service_is_unreachable_for_its_case_only(fake_rag, tmp_p
 
     assert code == 0
     assert seen == [
-        "http://incidents.invalid",
+        "http://mcp.invalid/mcp",
         record_agent_traces.UNREACHABLE_URL,
-        "http://incidents.invalid",
+        "http://mcp.invalid/mcp",
     ]
 
 
@@ -169,7 +171,12 @@ def test_a_case_may_only_make_a_known_service_unreachable(fake_rag, tmp_path):
     case = {"id": "a", "question": "q", "checks": {"outcome": "answered"}}
     output = tmp_path / "traces.json"
 
-    for services in ({"knowledge_base": "unreachable"}, {"incident_manager": "slow"}):
+    for services in (
+        {"knowledge_base": "unreachable"},
+        # The agent cannot reach the Incidents Manager directly any more.
+        {"incident_manager": "unreachable"},
+        {"mcp_server": "slow"},
+    ):
         path = write_cases(tmp_path, [{**case, "services": services}])
         assert record_agent_traces.main(["--cases", str(path), "--output", str(output)]) == 2
     assert not output.exists()

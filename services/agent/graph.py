@@ -3,16 +3,19 @@
     START -> receive_question
                --route_question--> END                                    (empty question)
                --route_question--> plan_sources
-    plan_sources  --route_after_plan-->     lookup_ticket | lookup_stock | retrieve
-    lookup_ticket --route_after_ticket-->   lookup_stock | retrieve | generate_answer
-                                            | answer_lookup_failed
-    lookup_stock  --route_after_stock-->    retrieve | generate_answer | answer_lookup_failed
+    plan_sources      --route_after_plan-->     lookup_ticket_mcp | lookup_stock_mcp | retrieve
+    lookup_ticket_mcp --route_after_ticket-->   lookup_stock_mcp | retrieve | generate_answer
+                                                | answer_lookup_failed
+    lookup_stock_mcp  --route_after_stock-->    retrieve | generate_answer | answer_lookup_failed
     retrieve      --route_after_retrieve--> generate_answer | answer_lookup_failed
                                             | answer_no_information
     generate_answer, answer_lookup_failed, answer_no_information -> END
 
 `plan_sources` asks the model which sources the question needs; the planned
-sources then run in `SOURCE_ORDER` (ticket, stock, knowledge base). After the
+sources then run in `SOURCE_ORDER` (ticket, stock, knowledge base). The two
+live lookups are MCP client nodes: they read the Incidents Manager and the
+inventory through the TrackFlow MCP server, with tools loaded by
+`langchain-mcp-adapters` (`tools/mcp_client.py`). After the
 last one, the evidence decides the answer:
 
 - something to answer from (chunks, or a lookup that succeeded) -> generate it,
@@ -78,6 +81,7 @@ from services.agent.state import (
     AgentState,
     lookup_succeeded,
 )
+from services.agent.tools import mcp_client
 from services.agent.tools.contracts import MAX_PRODUCTS, MAX_TICKETS
 
 
@@ -273,13 +277,13 @@ NODES: Final[tuple[NodeSpec, ...]] = (
     ),
     NodeSpec(
         LOOKUP_TICKET,
-        nodes.lookup_ticket,
+        nodes.lookup_ticket_mcp,
         reads=frozenset({"plan"}),
         writes=frozenset({"ticket_lookup"}),
     ),
     NodeSpec(
         LOOKUP_STOCK,
-        nodes.lookup_stock,
+        nodes.lookup_stock_mcp,
         reads=frozenset({"plan"}),
         writes=frozenset({"stock_lookup"}),
     ),
@@ -449,9 +453,9 @@ def graph_fingerprint() -> str:
 
     Stored on every run and in the recorded eval traces, so evals can refuse
     traces recorded by a different graph, prompt, threshold, tool schema or
-    fallback text. Service URLs, credentials and the tool timeout are
-    deployment settings and stay out of it; the recorder writes the timeout
-    into the recording instead.
+    fallback text. The MCP server's URL, the OAuth client, its scopes and the
+    tool timeout are deployment settings and stay out of it; the recorder
+    writes the timeout into the recording instead.
     """
     payload = {
         "nodes": [
@@ -482,6 +486,7 @@ def graph_fingerprint() -> str:
         },
         "source_order": list(SOURCE_ORDER),
         "tools": {"max_tickets": MAX_TICKETS, "max_products": MAX_PRODUCTS},
+        "mcp": {"server": mcp_client.SERVER_NAME, "tools": sorted(mcp_client.AGENT_TOOLS)},
         "fallback_answers": [
             TICKET_NOT_FOUND_ANSWER,
             TICKET_UNAVAILABLE_ANSWER,

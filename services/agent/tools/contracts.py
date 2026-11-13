@@ -2,13 +2,16 @@
 
 The input models are also the JSON schemas the planner shows the model
 (`planner.tool_definitions`), so their field descriptions are written for it.
-The record models mirror the services' own response models field for field -
-`TicketRecord` is `IncidentResponse`, `ProductStock` is `ProductResponse` - and
-`tests/pipelines/test_agent_tools.py` fails if either side drifts.
+The record models are what the MCP server's read tools return, which in turn
+mirror the services' own response models - `TicketRecord` is `IncidentResponse`,
+`ProductStock` is `ProductResponse` - and `tests/pipelines/test_agent_mcp_client.py`
+fails if either side drifts.
 
-A result always says how the lookup went (`outcome`), which request was made
-(`endpoint`, without host or credentials) and how long it took, so the run
-trace shows exactly what the tool did.
+A result always says how the lookup went (`outcome`), which MCP call was made
+(`endpoint`, e.g. `MCP get_incident(reference=TRF-000482)`, without host or
+token) and how long it took, so the run trace shows exactly what the tool did.
+`http_status` is only set when the MCP server or the token endpoint answered
+with an HTTP error.
 """
 
 from datetime import datetime

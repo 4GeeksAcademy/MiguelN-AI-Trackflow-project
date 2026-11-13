@@ -67,13 +67,15 @@ services:
       # The knowledge agent's checkpoints and run traces (SQLite), kept on the
       # same volume so runs stay inspectable and resumable across restarts.
       AGENT_STORE_PATH: /app/var/agent_runs.sqlite
-      # The agent's tools read the incident and inventory managers, which are
-      # routers of this same container.
-      INCIDENTS_API_URL: ${COMPOSE_INCIDENTS_API_URL:-http://127.0.0.1:8000}
-      INVENTORY_API_URL: ${COMPOSE_INVENTORY_API_URL:-http://127.0.0.1:8000}
+      # The agent reads tickets and stock only through the MCP server, as an
+      # OAuth client with the read scopes.
+      AGENT_MCP_URL: ${COMPOSE_AGENT_MCP_URL:-http://mcp:8100/mcp}
       AGENT_TOOL_TIMEOUT_SECONDS: ${AGENT_TOOL_TIMEOUT_SECONDS:-}
-      AGENT_INVENTORY_EMAIL: ${AGENT_INVENTORY_EMAIL:-}
-      AGENT_INVENTORY_PASSWORD: ${AGENT_INVENTORY_PASSWORD:-}
+      AGENT_OAUTH_TOKEN_URL: ${AGENT_OAUTH_TOKEN_URL:-}
+      AGENT_OAUTH_CLIENT_ID: ${AGENT_OAUTH_CLIENT_ID:-}
+      AGENT_OAUTH_CLIENT_SECRET: ${AGENT_OAUTH_CLIENT_SECRET:-}
+      AGENT_OAUTH_AUDIENCE: ${AGENT_OAUTH_AUDIENCE:-}
+      AGENT_OAUTH_SCOPES: ${AGENT_OAUTH_SCOPES:-}
     volumes:
       - .:/app
       - api_data:/app/var
@@ -96,6 +98,37 @@ services:
       timeout: 3s
       retries: 10
       start_period: 20s
+    networks:
+      - trackflow
+
+  # The TrackFlow MCP server (mcps/trackflow_tools): the Incidents Manager and
+  # the read-only inventory over MCP, OAuth via MCP Auth. It calls the api
+  # service over HTTP; it never imports it.
+  mcp:
+    build:
+      context: .
+      dockerfile: services/Dockerfile
+    command: ["python", "-m", "mcps.trackflow_tools", "serve", "--host", "0.0.0.0", "--port", "8100"]
+    ports:
+      - "127.0.0.1:8100:8100"
+    environment:
+      MCP_RESOURCE_URL: ${MCP_RESOURCE_URL:-http://localhost:8100/mcp}
+      MCP_AUTH_ISSUER: ${MCP_AUTH_ISSUER:-}
+      MCP_AUTH_AUDIENCE: ${MCP_AUTH_AUDIENCE:-}
+      MCP_INCIDENTS_API_URL: http://api:8000
+      MCP_INVENTORY_API_URL: http://api:8000
+      MCP_INVENTORY_EMAIL: ${MCP_INVENTORY_EMAIL:-}
+      MCP_INVENTORY_PASSWORD: ${MCP_INVENTORY_PASSWORD:-}
+      # The api container reaches this one as `mcp`.
+      MCP_ALLOWED_HOSTS: mcp
+      MCP_CORS_ORIGINS: ${MCP_CORS_ORIGINS:-}
+      MCP_AUDIT_LOG_PATH: /app/var/mcp_tool_calls.jsonl
+    volumes:
+      - .:/app
+      - api_data:/app/var
+    depends_on:
+      api:
+        condition: service_healthy
     networks:
       - trackflow
 

@@ -21,9 +21,9 @@ class AgentState(TypedDict):
     # `plan_sources` output (`planner.Plan`): the sources the question needs, in
     # the order they run, with each tool's arguments.
     plan: NotRequired[dict[str, Any]]
-    # `lookup_ticket` output (`tools.contracts.TicketLookupResult`).
+    # `lookup_ticket_mcp` output (`tools.contracts.TicketLookupResult`).
     ticket_lookup: NotRequired[dict[str, Any]]
-    # `lookup_stock` output (`tools.contracts.StockLookupResult`).
+    # `lookup_stock_mcp` output (`tools.contracts.StockLookupResult`).
     stock_lookup: NotRequired[dict[str, Any]]
     # `rag.retrieve()` output: chunk payloads plus `score`, best first; may be [].
     context: NotRequired[list[dict[str, Any]]]
@@ -36,8 +36,11 @@ STATE_KEYS: Final = frozenset(AgentState.__required_keys__ | AgentState.__option
 # Node names. They are also the `name` of the node rows in the run trace.
 RECEIVE_QUESTION: Final = "receive_question"
 PLAN_SOURCES: Final = "plan_sources"
-LOOKUP_TICKET: Final = "lookup_ticket"
-LOOKUP_STOCK: Final = "lookup_stock"
+# The live lookups are MCP client nodes: they read the Incidents Manager and the
+# inventory through the MCP server, never directly (they replaced the direct
+# `lookup_ticket` / `lookup_stock` nodes).
+LOOKUP_TICKET: Final = "lookup_ticket_mcp"
+LOOKUP_STOCK: Final = "lookup_stock_mcp"
 RETRIEVE: Final = "retrieve"
 GENERATE_ANSWER: Final = "generate_answer"
 ANSWER_LOOKUP_FAILED: Final = "answer_lookup_failed"

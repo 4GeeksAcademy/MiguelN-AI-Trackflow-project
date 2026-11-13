@@ -13,8 +13,8 @@ from services.agent import config as agent_config
 from services.agent import graph as agent_graph
 from services.agent import planner as agent_planner
 from services.agent import tracing as agent_tracing
-from services.agent.tools import http as agent_http
-from services.agent.tools import inventory as agent_inventory
+from services.agent.tools import mcp_client as agent_mcp_client
+from services.agent.tools import oauth as agent_oauth
 from services.core import config, supabase_client
 from services.core import db as core_db
 from services.incidents.read_cache import clear_read_cache
@@ -129,17 +129,19 @@ def _reset_agent_store() -> None:
     agent_config.get_agent_settings.cache_clear()
     agent_tracing.get_trace_store.cache_clear()
     _PLANNER_CLIENT_CACHE.cache_clear()
-    agent_inventory.reset_credentials()
+    agent_oauth.reset_credentials()
 
 
-# The agent's tool settings, whatever the developer's `.env` holds: unreachable
-# service URLs, the default timeout, and no inventory account.
+# The agent's MCP settings, whatever the developer's `.env` holds: an
+# unreachable MCP server, the default timeout, and no OAuth client.
 AGENT_TOOL_SETTINGS = {
-    "INCIDENTS_API_URL": "http://incidents.invalid",
-    "INVENTORY_API_URL": "http://inventory.invalid",
-    "AGENT_TOOL_TIMEOUT_SECONDS": "4",
-    "AGENT_INVENTORY_EMAIL": "",
-    "AGENT_INVENTORY_PASSWORD": "",
+    "AGENT_MCP_URL": "http://mcp.invalid/mcp",
+    "AGENT_TOOL_TIMEOUT_SECONDS": "5",
+    "AGENT_OAUTH_TOKEN_URL": "",
+    "AGENT_OAUTH_CLIENT_ID": "",
+    "AGENT_OAUTH_CLIENT_SECRET": "",
+    "AGENT_OAUTH_AUDIENCE": "",
+    "AGENT_OAUTH_SCOPES": "incidents:read inventory:read",
 }
 
 
@@ -160,20 +162,25 @@ def isolated_agent_store(tmp_path, monkeypatch):
 
 @pytest.fixture(autouse=True)
 def isolated_agent_tools(monkeypatch):
-    """No test reaches a real service or model through the agent's tools or planner.
+    """No test reaches a real MCP server, token endpoint or model through the agent.
 
-    A test that needs HTTP injects its own client (`client=`) or a
-    `httpx.MockTransport`; a test that needs the planner replaces
+    A test that needs the MCP server sets `mcp_client.http_client_factory` (an
+    in-process server) or replaces `mcp_lookups`; one that needs a token injects
+    `oauth.make_http_client`; one that needs the planner replaces
     `planner.choose_sources` or `planner._planner_client`.
     """
 
-    def forbid_http():
-        raise AssertionError("Unit tests must not create a real HTTP client for agent tools")
+    def forbid_token_endpoint(timeout: float):
+        raise AssertionError("Unit tests must not call a real OAuth token endpoint")
+
+    def forbid_mcp(headers=None, timeout=None, auth=None):
+        raise AssertionError("Unit tests must not connect to a real MCP server")
 
     def forbid_planner():
         raise AssertionError("Unit tests must not create a real planner model client")
 
-    monkeypatch.setattr(agent_http, "make_client", forbid_http)
+    monkeypatch.setattr(agent_oauth, "make_http_client", forbid_token_endpoint)
+    monkeypatch.setattr(agent_mcp_client, "http_client_factory", forbid_mcp)
     monkeypatch.setattr(agent_planner, "_planner_client", forbid_planner)
 
 

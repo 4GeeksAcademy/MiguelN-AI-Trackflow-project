@@ -114,8 +114,13 @@ silently empty list. `reference` must be the canonical form (`TRF-000123`; a
 incident: an empty list means no ticket has that reference. Each reference is
 its own read-cache key.
 
-The routes have no authentication, so a backend caller - the agent's ticket
-tool - sends no credentials either.
+The routes have no authentication, so a backend caller sends no credentials
+either. Since the MCP Server milestone that caller is the TrackFlow MCP server
+(`mcps/trackflow_tools`, [`docs/mcp/mcp-server.md`](mcp/mcp-server.md)): it
+exposes these routes to authorized MCP clients - the knowledge agent included -
+behind OAuth (MCP Auth) with one scope per operation, and moves statuses only
+through `PATCH /api/incidents/{id}/status`. The agent no longer calls these
+routes itself.
 
 `/summary` is declared before `/{id}` in the router. An incident id is an
 arbitrary string, so the parameterised route would otherwise match the literal

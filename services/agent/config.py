@@ -1,8 +1,12 @@
-"""Agent settings: where checkpoints and run traces are stored, and how the tools
-reach the services they read.
+"""Agent settings: where checkpoints and run traces are stored, and how the agent
+reaches the TrackFlow MCP server for live data.
 
 Only what the agent itself needs, so the CLIs run without the API's settings
 (JWT secret, Supabase). The model and Qdrant settings stay in `RagSettings`.
+
+The agent no longer knows where the Incidents Manager or the inventory live:
+it reads both through the MCP server (`mcps/trackflow_tools`), as an OAuth
+client with its own client-credentials grant and only the read scopes.
 """
 
 from functools import lru_cache
@@ -17,22 +21,27 @@ ROOT_DIR: Final = Path(__file__).resolve().parents[2]
 # Git-ignored. One SQLite file holds LangGraph's checkpoints and the run traces.
 DEFAULT_STORE_PATH: Final = ROOT_DIR / "data" / "agent" / "agent_runs.sqlite"
 
-# The incident and inventory managers are routers of this repository's API, so
-# by default the tools call the API they run in.
-DEFAULT_SERVICE_URL: Final = "http://localhost:8000"
+# The MCP server's endpoint (`npm run mcp`).
+DEFAULT_MCP_URL: Final = "http://localhost:8100/mcp"
+# Least privilege: the agent only reads. It cannot create or update incidents,
+# and nothing can write to the inventory.
+DEFAULT_OAUTH_SCOPES: Final = "incidents:read inventory:read"
 
-# Per phase of one HTTP call (connect, write, read, pool). A service that does
-# not answer in time makes the lookup return `unavailable`; the run goes on.
-DEFAULT_TOOL_TIMEOUT_SECONDS: Final = 4.0
-MAX_TOOL_TIMEOUT_SECONDS: Final = 5.0
+# The whole budget of one live lookup through MCP (token, connection, tool call,
+# and the service behind it). A lookup that runs out makes it `unavailable`;
+# the run goes on.
+DEFAULT_TOOL_TIMEOUT_SECONDS: Final = 5.0
+MAX_TOOL_TIMEOUT_SECONDS: Final = 10.0
 
 _DEFAULTS: Final[dict[str, Any]] = {
     "agent_store_path": DEFAULT_STORE_PATH,
-    "incidents_api_url": DEFAULT_SERVICE_URL,
-    "inventory_api_url": DEFAULT_SERVICE_URL,
+    "agent_mcp_url": DEFAULT_MCP_URL,
     "agent_tool_timeout_seconds": DEFAULT_TOOL_TIMEOUT_SECONDS,
-    "agent_inventory_email": None,
-    "agent_inventory_password": None,
+    "agent_oauth_token_url": None,
+    "agent_oauth_client_id": None,
+    "agent_oauth_client_secret": None,
+    "agent_oauth_audience": None,
+    "agent_oauth_scopes": DEFAULT_OAUTH_SCOPES,
 }
 
 
@@ -44,16 +53,19 @@ class AgentSettings(BaseSettings):
     )
 
     agent_store_path: Path = DEFAULT_STORE_PATH
-    # Base URLs of the services the tools read; the tools add the route paths.
-    incidents_api_url: str = DEFAULT_SERVICE_URL
-    inventory_api_url: str = DEFAULT_SERVICE_URL
+    # The MCP server's Streamable HTTP endpoint.
+    agent_mcp_url: str = DEFAULT_MCP_URL
     agent_tool_timeout_seconds: float = Field(
         default=DEFAULT_TOOL_TIMEOUT_SECONDS, gt=0, le=MAX_TOOL_TIMEOUT_SECONDS
     )
-    # The inventory routes need a bearer token: the stock tool signs in as this
-    # account. Unset, the stock tool answers `unavailable` without a request.
-    agent_inventory_email: str | None = None
-    agent_inventory_password: SecretStr | None = None
+    # The agent's OAuth client (Auth0 machine-to-machine application). Unset,
+    # every live lookup answers `unavailable / not_configured` without a request.
+    agent_oauth_token_url: str | None = None
+    agent_oauth_client_id: str | None = None
+    agent_oauth_client_secret: SecretStr | None = None
+    # The API the token is for: Auth0's `audience` (the MCP server's API identifier).
+    agent_oauth_audience: str | None = None
+    agent_oauth_scopes: str = DEFAULT_OAUTH_SCOPES
 
     @field_validator(*_DEFAULTS, mode="before")
     @classmethod
@@ -69,19 +81,29 @@ class AgentSettings(BaseSettings):
         # A relative path means the same file whichever directory a CLI runs from.
         return value if value.is_absolute() else ROOT_DIR / value
 
-    @field_validator("incidents_api_url", "inventory_api_url", mode="after")
+    @field_validator("agent_mcp_url", "agent_oauth_token_url", mode="after")
     @classmethod
-    def http_base_url(cls, value: str) -> str:
+    def http_url(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
         value = value.strip().rstrip("/")
         if not value.startswith(("http://", "https://")):
-            raise ValueError("must be an http:// or https:// base URL")
+            raise ValueError("must be an http:// or https:// URL")
         return value
 
-    def inventory_credentials(self) -> tuple[str, str] | None:
-        """(email, password) for the stock tool, or None when either is unset."""
-        if not self.agent_inventory_email or self.agent_inventory_password is None:
+    def oauth_client(self) -> tuple[str, str, str] | None:
+        """(token URL, client id, client secret), or None when any is unset."""
+        if (
+            not self.agent_oauth_token_url
+            or not self.agent_oauth_client_id
+            or self.agent_oauth_client_secret is None
+        ):
             return None
-        return self.agent_inventory_email, self.agent_inventory_password.get_secret_value()
+        return (
+            self.agent_oauth_token_url,
+            self.agent_oauth_client_id,
+            self.agent_oauth_client_secret.get_secret_value(),
+        )
 
 
 @lru_cache(maxsize=1)

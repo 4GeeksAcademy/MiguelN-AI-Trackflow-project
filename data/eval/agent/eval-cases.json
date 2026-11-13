@@ -13,8 +13,8 @@
         ],
         "never": [
           "plan_sources",
-          "lookup_ticket",
-          "lookup_stock",
+          "lookup_ticket_mcp",
+          "lookup_stock_mcp",
           "retrieve",
           "generate_answer",
           "answer_no_information"
@@ -39,8 +39,8 @@
         ],
         "never": [
           "generate_answer",
-          "lookup_ticket",
-          "lookup_stock"
+          "lookup_ticket_mcp",
+          "lookup_stock_mcp"
         ],
         "answer_is_no_information": true
       }
@@ -63,8 +63,8 @@
         ],
         "never": [
           "generate_answer",
-          "lookup_ticket",
-          "lookup_stock"
+          "lookup_ticket_mcp",
+          "lookup_stock_mcp"
         ],
         "answer_is_no_information": true
       }
@@ -87,8 +87,8 @@
         ],
         "never": [
           "answer_no_information",
-          "lookup_ticket",
-          "lookup_stock"
+          "lookup_ticket_mcp",
+          "lookup_stock_mcp"
         ],
         "retrieved_from": "sla-delivery",
         "grounded_facts": [
@@ -117,8 +117,8 @@
         ],
         "never": [
           "answer_no_information",
-          "lookup_ticket",
-          "lookup_stock"
+          "lookup_ticket_mcp",
+          "lookup_stock_mcp"
         ],
         "retrieved_from": "sla-delivery",
         "grounded_facts": [
@@ -147,8 +147,8 @@
         ],
         "never": [
           "answer_no_information",
-          "lookup_ticket",
-          "lookup_stock"
+          "lookup_ticket_mcp",
+          "lookup_stock_mcp"
         ],
         "retrieved_from": "returns-policy",
         "grounded_facts": [
@@ -177,8 +177,8 @@
         ],
         "never": [
           "answer_no_information",
-          "lookup_ticket",
-          "lookup_stock"
+          "lookup_ticket_mcp",
+          "lookup_stock_mcp"
         ],
         "retrieved_from": "storage-pricing",
         "grounded_facts": [
@@ -204,8 +204,8 @@
         ],
         "never": [
           "answer_no_information",
-          "lookup_ticket",
-          "lookup_stock"
+          "lookup_ticket_mcp",
+          "lookup_stock_mcp"
         ],
         "retrieved_from": "carrier-coverage",
         "grounded_facts": [
@@ -231,8 +231,8 @@
         ],
         "never": [
           "answer_no_information",
-          "lookup_ticket",
-          "lookup_stock"
+          "lookup_ticket_mcp",
+          "lookup_stock_mcp"
         ],
         "retrieved_from": "returns-policy",
         "grounded_facts": [
@@ -258,8 +258,8 @@
         ],
         "never": [
           "answer_no_information",
-          "lookup_ticket",
-          "lookup_stock"
+          "lookup_ticket_mcp",
+          "lookup_stock_mcp"
         ],
         "answer_matches": [
           "(?i)\\b(not|no|n't)\\b[^.]{0,80}\\binformation\\b"
@@ -279,12 +279,12 @@
         "nodes": [
           "receive_question",
           "plan_sources",
-          "lookup_ticket",
+          "lookup_ticket_mcp",
           "generate_answer"
         ],
         "never": [
           "retrieve",
-          "lookup_stock",
+          "lookup_stock_mcp",
           "answer_lookup_failed"
         ],
         "lookups": {
@@ -308,12 +308,12 @@
         "nodes": [
           "receive_question",
           "plan_sources",
-          "lookup_ticket",
+          "lookup_ticket_mcp",
           "generate_answer"
         ],
         "never": [
           "retrieve",
-          "lookup_stock"
+          "lookup_stock_mcp"
         ],
         "lookups": {
           "incident_manager": "ok"
@@ -340,8 +340,8 @@
           "generate_answer"
         ],
         "never": [
-          "lookup_ticket",
-          "lookup_stock",
+          "lookup_ticket_mcp",
+          "lookup_stock_mcp",
           "answer_no_information"
         ],
         "retrieved_from": "storage-pricing",
@@ -364,12 +364,12 @@
         "nodes": [
           "receive_question",
           "plan_sources",
-          "lookup_ticket",
+          "lookup_ticket_mcp",
           "retrieve",
           "generate_answer"
         ],
         "never": [
-          "lookup_stock",
+          "lookup_stock_mcp",
           "answer_lookup_failed",
           "answer_no_information"
         ],
@@ -398,12 +398,12 @@
         "nodes": [
           "receive_question",
           "plan_sources",
-          "lookup_stock",
+          "lookup_stock_mcp",
           "generate_answer"
         ],
         "never": [
           "retrieve",
-          "lookup_ticket",
+          "lookup_ticket_mcp",
           "answer_lookup_failed"
         ],
         "lookups": {
@@ -427,7 +427,7 @@
         "nodes": [
           "receive_question",
           "plan_sources",
-          "lookup_ticket",
+          "lookup_ticket_mcp",
           "answer_lookup_failed"
         ],
         "never": [
@@ -441,11 +441,11 @@
       }
     },
     {
-      "id": "fallback-incident-service-down",
-      "purpose": "Fallback (optional third eval): the incident manager does not respond - recorded against a closed port, a real connection failure - so the run still completes with the honest fixed answer instead of an error or a made-up status.",
+      "id": "fallback-mcp-server-down",
+      "purpose": "Fallback: the MCP server does not respond - recorded with the agent's MCP URL pointed at a closed port, a real connection failure - so the run still completes with the honest fixed answer instead of an error or a made-up status. The agent has no other way to the Incidents Manager, so nothing bypasses the server.",
       "question": "What's the status of ticket 12?",
       "services": {
-        "incident_manager": "unreachable"
+        "mcp_server": "unreachable"
       },
       "checks": {
         "outcome": "no_information",
@@ -456,7 +456,7 @@
         "nodes": [
           "receive_question",
           "plan_sources",
-          "lookup_ticket",
+          "lookup_ticket_mcp",
           "answer_lookup_failed"
         ],
         "never": [
@@ -467,7 +467,7 @@
           "incident_manager": "unavailable"
         },
         "lookup_failures": {
-          "incident_manager": "unreachable"
+          "incident_manager": "mcp_unreachable"
         },
         "answer_is_lookup_fallback": true
       }

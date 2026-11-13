@@ -1,6 +1,82 @@
 # Development Progress
 
-Last updated: 2026-11-11
+Last updated: 2026-11-12
+
+## Update 2026-11-12 (later) - MCP Server for company tools: server, OAuth (MCP Auth), agent migration
+
+Goals accomplished. The brief is the updated `lead-instr.png`, with its checklist in `stages-todo.png`. The work is on the new branch `feature/mcp-company-tools`. The full write-up is in `docs/mcp/mcp-server.md` (the decisions, Auth0 setup, error and exit codes), with the generated `docs/mcp/TOOLS.md` and the runbook `docs/mcp/PLAYGROUND.md`.
+
+- Decided with the developer: Auth0 is the OAuth/OIDC provider, and **both** agent lookups (ticket and stock) move to MCP.
+- MCP Server (`mcps/trackflow_tools/`, FastMCP 3.4.11):
+  - Tools on the real routes: `create_incident`, `update_incident_status` (through `PATCH /api/incidents/{id}/status`), `get_incident` (id or helpdesk reference), `search_incidents`, and the read-only `query_inventory` (`list_products` / `get_product` / `list_orders`).
+  - Field names come from the APIs (drift tests), and the server never imports `services/`.
+  - Discovery: descriptions with "Use it when", the scopes and the errors; every field described; output schemas; annotations; `_meta.required_scopes`; server instructions; `npm run mcp:tools`; and `TOOLS.md`, kept in sync by a test.
+- Authentication and security:
+  - MCP Auth 0.2.0b1 in resource-server mode, with Protected Resource Metadata and bearer JWT validation (signature, exp, iss, aud) before any MCP method. FastMCP's auth is not used.
+  - Per-tool scopes `incidents:read|create|update` and `inventory:read`, enforced by `ScopeGuard` from MCP Auth's `AuthInfo`.
+  - The read-only inventory has four layers: no write scope exists; a startup policy check (exit 5); `ReadOnlyInventoryGuard` explicitly refuses write operations, `quantity` and write tool names with `inventory_read_only`; and a GET-only upstream client.
+  - Error contract: HTTP 401 codes with `WWW-Authenticate`; JSON tool error codes (`errors.ErrorCode`); CLI exit codes 0-5.
+  - An audit JSONL line per tool call (tool, client, scopes, arguments by value only when identifying, outcome, upstream requests, duration) plus `auth_rejected` records.
+  - Transport: Streamable HTTP, stateless, with a Host/Origin guard and optional CORS.
+- Two bugs caught during development, both fixed and covered by tests:
+  - **Auth context leaked between concurrent requests.** The bridge mutated `scope["state"]`, which asgi-lifespan shares across requests; it now creates a new dict per request.
+  - **MCP Auth's built-in "jwt" mode downloads the JWKS on every request.** It was replaced with MCP Auth's own `create_verify_jwt` and a cached `PyJWKClient`.
+- Agent migration:
+  - `lookup_ticket` / `lookup_stock` were replaced by the MCP client nodes `lookup_ticket_mcp` / `lookup_stock_mcp`. They use `langchain-mcp-adapters`, an allow-list of the three read tools, and an Auth0 client-credentials token with `incidents:read inventory:read`, cached.
+  - The direct modules (`tools/incidents.py`, `inventory.py`, `http.py`, `auth.py`) and `INCIDENTS_API_URL`, `INVENTORY_API_URL` and `AGENT_INVENTORY_*` are deleted. A guard test ensures there is no other path to the services.
+  - Routing unchanged: `data/eval/agent/routing-baseline.json` freezes the Part 2 decisions, with a new eval check against it, and a graph-level end-to-end test shows the same decisions.
+- Infra:
+  - npm `mcp`, `mcp:tools`, `mcp:token`;
+  - Compose service `mcp`, and the api's `AGENT_MCP_URL` / `AGENT_OAUTH_*`;
+  - the Dockerfile copies `mcps` (the editable install needs it);
+  - `.devcontainer/devcontainer.json` for Codespaces;
+  - `.env.example` documents every new setting.
+- Live rehearsal (local OIDC stand-in for Auth0, throwaway Postgres, real `npm run mcp` + API on :8010):
+  - all 14 Playground runbook rows behaved as designed; stock stayed at 8 after the write attempts;
+  - the agent CLI answered ticket 12 + Dell stock through `lookup_ticket_mcp` / `lookup_stock_mcp` with the real models;
+  - with the MCP server stopped, the honest fallback;
+  - `POST /agent/query` answered 45 units.
+- Verification:
+  - backend **1308 passed, 51 skipped** without the evals (128 new in `tests/mcps/`, plus the new agent client suite);
+  - `ruff format` / `ruff check` clean on every changed file (no unrelated hunks);
+  - mypy clean on `mcps`, `services/agent`, the recorder and the new tests;
+  - `uv lock --check` OK;
+  - Compose config valid.
+- **The agent evals: 45 failed, 102 passed.** This is expected until the re-recording: `traces.json` is still the Part 2 recording (old graph version and node names).
+
+Still missing / next goals:
+1. **Auth0, by the developer**: the API "TrackFlow MCP Server" with its 4 permissions, the M2M apps `trackflow-agent` (read scopes) and `trackflow-mcp-tester` (all), and the values in `.env` (steps in `docs/mcp/mcp-server.md`). Seed the service account `mcp-inventory@trackflow.com`. Then verify `.env` with a masked read.
+2. **MCP Playground from Codespaces** (`docs/mcp/PLAYGROUND.md`): public port 8100, `MCP_RESOURCE_URL` = the forwarded URL, `MCP_CORS_ORIGINS` = the Playground's origin; record the 14 rows' results in that file.
+3. **Re-record the agent evals** against the live stack (`LLM_TIMEOUT_SECONDS=120 npm run agent:record` with `npm run api` + `npm run mcp` + Auth0 + Qdrant), then `npm run agent:eval` must pass, including the routing-baseline check. If the planner model routes a case differently from Part 2, report it rather than editing the baseline.
+4. Commit when asked (AGENTS.md workflow). Include `mcps/`, `tests/mcps/`, `docs/mcp/`, `.devcontainer/`, `data/eval/agent/routing-baseline.json`, the updated eval cases and the re-recorded traces. Ask about the two PNGs.
+5. Housekeeping: an old uvicorn from 2026-11-11 is still listening on :8000 with pre-migration code, and the Part 2 throwaway container `tools-verify-pg` is still running. Ask the developer before stopping either.
+6. Optional: step-up authorization (an HTTP 403 `insufficient_scope` challenge); a Postgres-backed inventory fixture for `tests/mcps`; authentication on the incident routes themselves.
+
+## Update 2026-11-12 - MCP Server milestone: preparation (dependencies + migration point)
+
+Goals accomplished. The tech lead's new brief is the updated `lead-instr.png` with its checklist in `stages-todo.png` (both untracked). It asks for an OAuth-protected MCP Server under `mcps/` that exposes the Incidents Manager (create, update status, check status) and read-only inventory. The agent must then consume that server through `langchain-mcp-adapters` instead of calling the Incidents Manager directly. Work continues on `feature/langgraph-external-tools`; no branch was created yet.
+
+- The services the MCP Server wraps are the existing ones; it does not replace them:
+  - Incidents Manager, `services/incidents/router.py`, no auth: `POST /api/incidents`, `GET /api/incidents` (filters `status`, `origin`, `branch`, `category`, `reference`), `GET /api/incidents/summary`, `GET /api/incidents/{id}`, and `PATCH /api/incidents/{id}/status`, the lifecycle endpoint the brief requires for status changes. The vocabulary and transitions are in `trackflow_shared.incidents`.
+  - Inventory, `services/inventory/routers/inventory.py`, bearer token: reads are `GET /inventory/products`, `/products/{id}` and `/orders`; writes are `POST /inventory/products`, `/products/inbound` and `/products/outbound`.
+- Dependencies, added with `uv add` (no existing package changed version; `requirements.txt` re-exported with its header and Flask line):
+  - `fastmcp>=3.4.11,<4` (3.4.11). fastmcp 4 needs `mcp>=2.3`, and every `langchain-mcp-adapters` release needs `mcp<2`.
+  - `mcpauth>=0.2.0b1,<0.3` (0.2.0b1, a pre-release). Stable 0.1.1 has no resource-server mode or Protected Resource Metadata. 0.2.0b1 has `MCPAuth(protected_resources=ResourceServerConfig(...))`, `resource_metadata_router()` and `bearer_auth_middleware("jwt", resource=..., audience=..., required_scopes=...)`.
+  - `langchain-mcp-adapters>=0.3.2` (0.3.2), which brings `mcp` 1.30.0.
+  - The reason for the pins is in a comment in `pyproject.toml`.
+- Migration point (direct path to the Incidents Manager):
+  - Node `lookup_ticket` (`services/agent/nodes.py:76`) → `services/agent/tools/incidents.py::lookup_ticket` → `tools/http.py::get_json` (httpx GET to `INCIDENTS_API_URL` + `/api/incidents...`).
+  - It is wired in `graph.py:274` (NodeSpec) and `graph.py:322` (`route_after_ticket`), and declared to the planner as the `lookup_ticket` tool (`planner.py:38`, `:77`).
+  - A second direct caller is the recorder preflight, `scripts/record_agent_traces.py:110`. It must move too, or there are two paths.
+
+Still missing / next goals:
+1. Build `mcps/` (FastMCP + MCP Auth resource-server mode, per-tool scopes, explicit rejection of inventory writes, discovery docs, error codes, invocation log), then migrate `lookup_ticket` to MCP-loaded tools without changing the routing. Re-record the agent evals afterwards.
+2. Open design points:
+   - Transport: Streamable HTTP, since remote clients and the Playground need it.
+   - The OIDC provider for MCP Auth (none is configured yet).
+   - The agent graph is synchronous (`graph.stream`, sync endpoints), while MCP adapter tools are async-only.
+   - Whether `lookup_stock` also moves to MCP. The brief only requires incidents.
+3. Commit when asked (AGENTS.md workflow). Ask whether the new `lead-instr.png` / `stages-todo.png` belong in it.
 
 ## Update 2026-11-11 (later) - Milestone 7 Part 2: live tools for the agent (incident manager + inventory)
 
