@@ -15,6 +15,8 @@ COPY packages/shared ./packages/shared
 COPY data/__init__.py ./data/__init__.py
 COPY data/pipelines ./data/pipelines
 COPY data/process ./data/process
+# The MCP server (the `mcp` Compose service runs it from this same image).
+COPY mcps ./mcps
 RUN uv pip install --system --no-deps --editable .
 
 EXPOSE 8000

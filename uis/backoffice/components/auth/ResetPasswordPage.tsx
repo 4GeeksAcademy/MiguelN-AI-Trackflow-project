@@ -122,7 +122,7 @@ export default function ResetPasswordPage() {
           <StateMessage tone="error">{blockingMessage}</StateMessage>
           <Link
             href={FORGOT_PASSWORD_PATH}
-            className="rounded-xl bg-[color:var(--brand-primary)] px-4 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-[color:var(--brand-secondary)]"
+            className="rounded-xl bg-[color:var(--brand-primary)] px-4 py-2.5 text-center text-sm font-semibold text-[color:var(--on-brand)] transition hover:bg-[color:var(--brand-secondary)]"
           >
             Request a new link
           </Link>
@@ -154,7 +154,7 @@ export default function ResetPasswordPage() {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="mt-2 rounded-xl bg-[color:var(--brand-primary)] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[color:var(--brand-secondary)] disabled:cursor-not-allowed disabled:opacity-60"
+            className="mt-2 rounded-xl bg-[color:var(--brand-primary)] px-4 py-2.5 text-sm font-semibold text-[color:var(--on-brand)] transition hover:bg-[color:var(--brand-secondary)] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isSubmitting ? "Saving..." : "Set new password"}
           </button>

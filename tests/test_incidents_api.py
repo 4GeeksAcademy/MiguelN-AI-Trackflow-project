@@ -2,6 +2,8 @@
 
 import pytest
 
+from services.incidents import service
+from services.incidents.models import IncidentCreate
 from tests.conftest import VALID_INCIDENT
 
 
@@ -136,6 +138,74 @@ def test_list_rejects_an_unknown_filter_value_with_400(client):
 
     assert response.status_code == 400
     assert response.json()["detail"]["field"] == "status"
+
+
+# --- Helpdesk reference -----------------------------------------------------
+
+
+def seed(reference, **overrides):
+    """An incident as the historical seed stores it, with its helpdesk reference."""
+    payload = IncidentCreate(**{**VALID_INCIDENT, **overrides})
+    return service.create_incident(payload, source_incident_id=reference)
+
+
+def test_an_incident_created_through_the_api_has_no_reference(client):
+    created = create(client)
+
+    assert created["reference"] is None
+
+
+def test_a_seeded_incident_shows_its_helpdesk_reference(client):
+    seeded = seed("TRF-000012")
+
+    detail = client.get(f"/api/incidents/{seeded.id}").json()
+    listed = client.get("/api/incidents").json()
+    assert detail["reference"] == "TRF-000012"
+    assert [item["reference"] for item in listed] == ["TRF-000012"]
+    assert "source_incident_id" not in detail, "the stored name stays internal"
+
+
+def test_list_filters_on_the_exact_reference(client):
+    seed("TRF-000012", title="Wanted")
+    seed("TRF-000120", title="Similar digits")
+    create(client, title="No reference")
+
+    match = client.get("/api/incidents?reference=TRF-000012")
+    miss = client.get("/api/incidents?reference=TRF-000482")
+
+    assert [item["title"] for item in match.json()] == ["Wanted"]
+    assert miss.status_code == 200
+    assert miss.json() == []
+
+
+def test_the_reference_filter_combines_with_the_others(client):
+    seed("TRF-000012", category="lost_parcel")
+
+    assert client.get("/api/incidents?reference=TRF-000012&category=lost_parcel").json()
+    assert client.get("/api/incidents?reference=TRF-000012&category=other").json() == []
+
+
+@pytest.mark.parametrize("bad", ["482", "TRF-482", "trf-000482", "TRF-0004821", " "])
+def test_list_rejects_a_reference_not_in_canonical_form_with_400(client, bad):
+    response = client.get("/api/incidents", params={"reference": bad})
+
+    assert response.status_code == 400
+    detail = response.json()["detail"]
+    assert detail["field"] == "reference"
+    assert "TRF-000123" in detail["message"]
+
+
+def test_each_reference_is_cached_under_its_own_key(client):
+    seed("TRF-000012", title="Twelve")
+    seed("TRF-000013", title="Thirteen")
+
+    first = client.get("/api/incidents?reference=TRF-000012").json()
+    second = client.get("/api/incidents?reference=TRF-000013").json()
+    everything = client.get("/api/incidents").json()
+
+    assert [item["title"] for item in first] == ["Twelve"]
+    assert [item["title"] for item in second] == ["Thirteen"]
+    assert len(everything) == 2
 
 
 # --- GET detail -------------------------------------------------------------

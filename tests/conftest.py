@@ -9,6 +9,14 @@ incidents leak into the next and into `data/suppliers.json`.
 import pytest
 from fastapi.testclient import TestClient
 
+from services.agent import config as agent_config
+from services.agent import graph as agent_graph
+from services.agent import planner as agent_planner
+from services.agent import tracing as agent_tracing
+from services.agent.memory import classifier as agent_memory_classifier
+from services.agent.memory import store as agent_memory_store
+from services.agent.tools import mcp_client as agent_mcp_client
+from services.agent.tools import oauth as agent_oauth
 from services.core import config, supabase_client
 from services.core import db as core_db
 from services.incidents.read_cache import clear_read_cache
@@ -112,6 +120,81 @@ def isolated_supabase(monkeypatch):
         raise AssertionError("Unit tests must not call Supabase")
 
     monkeypatch.setattr(supabase_client, "get_supabase", forbid_supabase)
+
+
+# Held here because `isolated_agent_tools` replaces the module attributes.
+_PLANNER_CLIENT_CACHE = agent_planner._planner_client
+_CLASSIFIER_CLIENT_CACHE = agent_memory_classifier._classifier_client
+
+
+def _reset_agent_store() -> None:
+    agent_graph.close_agent_graph()
+    agent_config.get_agent_settings.cache_clear()
+    agent_tracing.get_trace_store.cache_clear()
+    agent_memory_store.get_memory_store.cache_clear()
+    _PLANNER_CLIENT_CACHE.cache_clear()
+    _CLASSIFIER_CLIENT_CACHE.cache_clear()
+    agent_oauth.reset_credentials()
+
+
+# The agent's MCP settings, whatever the developer's `.env` holds: an
+# unreachable MCP server, the default timeout, and no OAuth client.
+AGENT_TOOL_SETTINGS = {
+    "AGENT_MCP_URL": "http://mcp.invalid/mcp",
+    "AGENT_TOOL_TIMEOUT_SECONDS": "5",
+    "AGENT_OAUTH_TOKEN_URL": "",
+    "AGENT_OAUTH_CLIENT_ID": "",
+    "AGENT_OAUTH_CLIENT_SECRET": "",
+    "AGENT_OAUTH_AUDIENCE": "",
+    "AGENT_OAUTH_SCOPES": "incidents:read inventory:read",
+}
+
+
+@pytest.fixture(autouse=True)
+def isolated_agent_store(tmp_path, monkeypatch):
+    """The agent's checkpoints, traces and memory go to per-test files, never to `data/agent/`.
+
+    The compiled graph, its SQLite checkpointer, the trace store and the memory
+    store are cached, so the caches are dropped on the way in and out, as for
+    `get_settings`.
+    """
+    monkeypatch.setenv("AGENT_STORE_PATH", str(tmp_path / "agent_runs.sqlite"))
+    monkeypatch.setenv("AGENT_MEMORY_PATH", str(tmp_path / "agent_memory.sqlite"))
+    for name, value in AGENT_TOOL_SETTINGS.items():
+        monkeypatch.setenv(name, value)
+    _reset_agent_store()
+    yield
+    _reset_agent_store()
+
+
+@pytest.fixture(autouse=True)
+def isolated_agent_tools(monkeypatch):
+    """No test reaches a real MCP server, token endpoint or model through the agent.
+
+    A test that needs the MCP server sets `mcp_client.http_client_factory` (an
+    in-process server) or replaces `mcp_lookups`; one that needs a token injects
+    `oauth.make_http_client`; one that needs the planner replaces
+    `planner.choose_sources` or `planner._planner_client`; one that needs the
+    memory reply classifier replaces `classifier.call_classifier` or
+    `classifier._classifier_client`.
+    """
+
+    def forbid_token_endpoint(timeout: float):
+        raise AssertionError("Unit tests must not call a real OAuth token endpoint")
+
+    def forbid_mcp(headers=None, timeout=None, auth=None):
+        raise AssertionError("Unit tests must not connect to a real MCP server")
+
+    def forbid_planner():
+        raise AssertionError("Unit tests must not create a real planner model client")
+
+    def forbid_classifier():
+        raise AssertionError("Unit tests must not create a real memory classifier client")
+
+    monkeypatch.setattr(agent_oauth, "make_http_client", forbid_token_endpoint)
+    monkeypatch.setattr(agent_mcp_client, "http_client_factory", forbid_mcp)
+    monkeypatch.setattr(agent_planner, "_planner_client", forbid_planner)
+    monkeypatch.setattr(agent_memory_classifier, "_classifier_client", forbid_classifier)
 
 
 @pytest.fixture

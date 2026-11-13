@@ -1,0 +1,385 @@
+{
+  "description": "Routing baseline frozen from the Part 2 recording (direct HTTP tools, commit e5fd285), before the agent's lookups moved to the MCP server. For every case: the nodes that ran and each router's decision, in order. tests/pipelines/test_agent_evals.py requires the re-recorded MCP traces to make exactly these decisions; only the two lookup nodes were renamed (renamed_nodes).",
+  "frozen_from": {
+    "commit": "e5fd285",
+    "graph_version": "faabff53fa40c2ca",
+    "recorded_at": "2026-11-12T04:28:14+00:00"
+  },
+  "renamed_nodes": {
+    "lookup_ticket": "lookup_ticket_mcp",
+    "lookup_stock": "lookup_stock_mcp"
+  },
+  "cases": {
+    "route-empty-question": {
+      "nodes": [
+        "receive_question"
+      ],
+      "decisions": [
+        [
+          "route_question",
+          "rejected"
+        ]
+      ]
+    },
+    "route-no-information-unrelated": {
+      "nodes": [
+        "receive_question",
+        "plan_sources",
+        "retrieve",
+        "answer_no_information"
+      ],
+      "decisions": [
+        [
+          "route_question",
+          "plan"
+        ],
+        [
+          "route_after_plan",
+          "knowledge_base"
+        ],
+        [
+          "route_after_retrieve",
+          "no_information"
+        ]
+      ]
+    },
+    "route-no-information-near-threshold": {
+      "nodes": [
+        "receive_question",
+        "plan_sources",
+        "retrieve",
+        "answer_no_information"
+      ],
+      "decisions": [
+        [
+          "route_question",
+          "plan"
+        ],
+        [
+          "route_after_plan",
+          "knowledge_base"
+        ],
+        [
+          "route_after_retrieve",
+          "no_information"
+        ]
+      ]
+    },
+    "grounding-standard-delivery-times": {
+      "nodes": [
+        "receive_question",
+        "plan_sources",
+        "retrieve",
+        "generate_answer"
+      ],
+      "decisions": [
+        [
+          "route_question",
+          "plan"
+        ],
+        [
+          "route_after_plan",
+          "knowledge_base"
+        ],
+        [
+          "route_after_retrieve",
+          "generate"
+        ]
+      ]
+    },
+    "grounding-black-friday-sla": {
+      "nodes": [
+        "receive_question",
+        "plan_sources",
+        "retrieve",
+        "generate_answer"
+      ],
+      "decisions": [
+        [
+          "route_question",
+          "plan"
+        ],
+        [
+          "route_after_plan",
+          "knowledge_base"
+        ],
+        [
+          "route_after_retrieve",
+          "generate"
+        ]
+      ]
+    },
+    "grounding-international-returns": {
+      "nodes": [
+        "receive_question",
+        "plan_sources",
+        "retrieve",
+        "generate_answer"
+      ],
+      "decisions": [
+        [
+          "route_question",
+          "plan"
+        ],
+        [
+          "route_after_plan",
+          "knowledge_base"
+        ],
+        [
+          "route_after_retrieve",
+          "generate"
+        ]
+      ]
+    },
+    "grounding-storage-discount": {
+      "nodes": [
+        "receive_question",
+        "plan_sources",
+        "retrieve",
+        "generate_answer"
+      ],
+      "decisions": [
+        [
+          "route_question",
+          "plan"
+        ],
+        [
+          "route_after_plan",
+          "knowledge_base"
+        ],
+        [
+          "route_after_retrieve",
+          "generate"
+        ]
+      ]
+    },
+    "grounding-carrier-exception": {
+      "nodes": [
+        "receive_question",
+        "plan_sources",
+        "retrieve",
+        "generate_answer"
+      ],
+      "decisions": [
+        [
+          "route_question",
+          "plan"
+        ],
+        [
+          "route_after_plan",
+          "knowledge_base"
+        ],
+        [
+          "route_after_retrieve",
+          "generate"
+        ]
+      ]
+    },
+    "grounding-return-window": {
+      "nodes": [
+        "receive_question",
+        "plan_sources",
+        "retrieve",
+        "generate_answer"
+      ],
+      "decisions": [
+        [
+          "route_question",
+          "plan"
+        ],
+        [
+          "route_after_plan",
+          "knowledge_base"
+        ],
+        [
+          "route_after_retrieve",
+          "generate"
+        ]
+      ]
+    },
+    "out-of-scope-above-threshold": {
+      "nodes": [
+        "receive_question",
+        "plan_sources",
+        "retrieve",
+        "generate_answer"
+      ],
+      "decisions": [
+        [
+          "route_question",
+          "plan"
+        ],
+        [
+          "route_after_plan",
+          "knowledge_base"
+        ],
+        [
+          "route_after_retrieve",
+          "generate"
+        ]
+      ]
+    },
+    "routing-tool-ticket-status": {
+      "nodes": [
+        "receive_question",
+        "plan_sources",
+        "lookup_ticket",
+        "generate_answer"
+      ],
+      "decisions": [
+        [
+          "route_question",
+          "plan"
+        ],
+        [
+          "route_after_plan",
+          "incident_manager"
+        ],
+        [
+          "route_after_ticket",
+          "generate"
+        ]
+      ]
+    },
+    "routing-tool-ticket-search": {
+      "nodes": [
+        "receive_question",
+        "plan_sources",
+        "lookup_ticket",
+        "generate_answer"
+      ],
+      "decisions": [
+        [
+          "route_question",
+          "plan"
+        ],
+        [
+          "route_after_plan",
+          "incident_manager"
+        ],
+        [
+          "route_after_ticket",
+          "generate"
+        ]
+      ]
+    },
+    "routing-rag-not-tool": {
+      "nodes": [
+        "receive_question",
+        "plan_sources",
+        "retrieve",
+        "generate_answer"
+      ],
+      "decisions": [
+        [
+          "route_question",
+          "plan"
+        ],
+        [
+          "route_after_plan",
+          "knowledge_base"
+        ],
+        [
+          "route_after_retrieve",
+          "generate"
+        ]
+      ]
+    },
+    "routing-both-ticket-and-policy": {
+      "nodes": [
+        "receive_question",
+        "plan_sources",
+        "lookup_ticket",
+        "retrieve",
+        "generate_answer"
+      ],
+      "decisions": [
+        [
+          "route_question",
+          "plan"
+        ],
+        [
+          "route_after_plan",
+          "incident_manager"
+        ],
+        [
+          "route_after_ticket",
+          "knowledge_base"
+        ],
+        [
+          "route_after_retrieve",
+          "generate"
+        ]
+      ]
+    },
+    "routing-tool-stock": {
+      "nodes": [
+        "receive_question",
+        "plan_sources",
+        "lookup_stock",
+        "generate_answer"
+      ],
+      "decisions": [
+        [
+          "route_question",
+          "plan"
+        ],
+        [
+          "route_after_plan",
+          "inventory_manager"
+        ],
+        [
+          "route_after_stock",
+          "generate"
+        ]
+      ]
+    },
+    "fallback-ticket-not-found": {
+      "nodes": [
+        "receive_question",
+        "plan_sources",
+        "lookup_ticket",
+        "answer_lookup_failed"
+      ],
+      "decisions": [
+        [
+          "route_question",
+          "plan"
+        ],
+        [
+          "route_after_plan",
+          "incident_manager"
+        ],
+        [
+          "route_after_ticket",
+          "lookup_failed"
+        ]
+      ]
+    },
+    "fallback-incident-service-down": {
+      "nodes": [
+        "receive_question",
+        "plan_sources",
+        "lookup_ticket",
+        "answer_lookup_failed"
+      ],
+      "decisions": [
+        [
+          "route_question",
+          "plan"
+        ],
+        [
+          "route_after_plan",
+          "incident_manager"
+        ],
+        [
+          "route_after_ticket",
+          "lookup_failed"
+        ]
+      ]
+    }
+  },
+  "renamed_cases": {
+    "fallback-mcp-server-down": "fallback-incident-service-down"
+  }
+}

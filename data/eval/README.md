@@ -12,4 +12,10 @@ This folder is for **evaluation and validation**: evaluation datasets, golden se
 - `weekly_warehouse_client_performance/` (git-ignored, created by the pipeline): one JSON validation snapshot per completed run. Each holds the weeks, events read and excluded by reason, the validation result, totals per week and warehouse, load counts and collection health. There are no per-client figures, which are commercially sensitive. Writing it is non-critical: a failure never fails the run.
 - `weekly_warehouse_client_performance/run_log_fallback.jsonl` (git-ignored): the run log's fallback. When `reporting.pipeline_runs` cannot record a failed run - the database is unreachable, or the run failed before its row existed - the failure hook appends one JSON line: start, end, events read, status, error and the reason it was recorded here.
 
+- `test-queries.json` (versioned, hand-written): the knowledge assistant's retrieval test set (`contexts/RAG-briefing.md` section 5). It holds:
+  - 20 questions covering the four knowledge-base documents, three of them about high-demand peaks (Black Friday, January Sales, Christmas). Five are tagged `paraphrase`: phrased the way a salesperson asks rather than in the documents' wording, because those are the ones that score lowest;
+  - for each question, the expected document and a phrase the correct chunk contains;
+  - 6 out-of-scope questions, two of them business-sounding (revenue, refrigerated storage), used to choose the similarity threshold and never counted in Recall@3.
+- `rag/retrieval_eval.json` (versioned, rewritten by `npm run rag:eval`): Recall@3 on the ranking alone and with `MIN_SCORE` applied (the ≥ 80% gate), each question's rank and score, and the threshold evidence. It needs the indexed collection and the embeddings model. See `docs/rag/rag-design.md`.
+
 > _Spanish version: [README.es.md](./README.es.md)._

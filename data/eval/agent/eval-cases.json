@@ -1,0 +1,508 @@
+{
+  "description": "Knowledge agent evals (Milestone 7, Parts 1 and 2). Each case is one question run once through the real graph by `npm run agent:record`, which stores the run traces in traces.json; `npm run agent:eval` (tests/pipelines/test_agent_evals.py) checks every criterion below against those recorded traces, never against a live run. Checks: `outcome` (answered | no_information | rejected); `resolved_by` (rag | tool | both: which kind of source the planner itself chose); `sources` (the sources consulted, in order); `nodes` (the exact order the nodes ran in); `never` (nodes that must not run); `lookups` (each tool's expected outcome: ok | not_found | unavailable); `lookup_failures` (the failure a lookup recorded); `states_live` (fields of the live record - status, total, current_stock - whose recorded value the answer must state); `retrieved_from` (a source_document that must be among the retrieved chunks); `grounded_facts` (text that must appear both in the answer and in a retrieved chunk, case and spacing ignored); `answer_matches` (regular expressions the answer must match); `answer_is_no_information` (the answer is the fixed no-information text); `answer_is_lookup_fallback` (the answer is exactly the fixed text for the lookups that failed). A case's `services` makes the recorder point a source at a closed port for that case only. Every answered case is also checked for faithfulness: each figure in the answer must appear in the question, a retrieved chunk or a live record (BRIEFING section 4). Part 1 questions come from data/eval/test-queries.json and the out-of-scope set in data/eval/rag/retrieval_eval.json; Part 2 tickets and products are real rows of the incident and inventory managers.",
+  "cases": [
+    {
+      "id": "route-empty-question",
+      "purpose": "An empty question is refused by receive_question and the run ends: nothing is retrieved or generated.",
+      "question": "   ",
+      "checks": {
+        "outcome": "rejected",
+        "sources": [],
+        "nodes": [
+          "receive_question"
+        ],
+        "never": [
+          "plan_sources",
+          "lookup_ticket_mcp",
+          "lookup_stock_mcp",
+          "retrieve",
+          "generate_answer",
+          "answer_no_information"
+        ]
+      }
+    },
+    {
+      "id": "route-no-information-unrelated",
+      "purpose": "No chunk passes the threshold (retrieval score 0.093), so the honest no-information node answers and the generation model is never called.",
+      "question": "Who won the last football World Cup?",
+      "checks": {
+        "outcome": "no_information",
+        "resolved_by": "rag",
+        "sources": [
+          "knowledge_base"
+        ],
+        "nodes": [
+          "receive_question",
+          "recall_memory",
+          "plan_sources",
+          "retrieve",
+          "answer_no_information",
+          "compose_response"
+        ],
+        "never": [
+          "generate_answer",
+          "lookup_ticket_mcp",
+          "lookup_stock_mcp"
+        ],
+        "answer_is_no_information": true
+      }
+    },
+    {
+      "id": "route-no-information-near-threshold",
+      "purpose": "The closest out-of-scope question below the threshold (0.201) still takes the no-information route.",
+      "question": "How do I reset my password in the backoffice?",
+      "checks": {
+        "outcome": "no_information",
+        "resolved_by": "rag",
+        "sources": [
+          "knowledge_base"
+        ],
+        "nodes": [
+          "receive_question",
+          "recall_memory",
+          "plan_sources",
+          "retrieve",
+          "answer_no_information",
+          "compose_response"
+        ],
+        "never": [
+          "generate_answer",
+          "lookup_ticket_mcp",
+          "lookup_stock_mcp"
+        ],
+        "answer_is_no_information": true
+      }
+    },
+    {
+      "id": "grounding-standard-delivery-times",
+      "purpose": "retrieve runs before generate_answer, once, and feeds it; the answer states the documented delivery time and the high-demand caveat the business rules require.",
+      "question": "What delivery times do we commit to for standard shipments?",
+      "checks": {
+        "outcome": "answered",
+        "resolved_by": "rag",
+        "sources": [
+          "knowledge_base"
+        ],
+        "nodes": [
+          "receive_question",
+          "recall_memory",
+          "plan_sources",
+          "retrieve",
+          "generate_answer",
+          "compose_response"
+        ],
+        "never": [
+          "answer_no_information",
+          "lookup_ticket_mcp",
+          "lookup_stock_mcp"
+        ],
+        "retrieved_from": "sla-delivery",
+        "grounded_facts": [
+          "3 to 5 business days"
+        ],
+        "answer_matches": [
+          "(?i)black friday|high-demand"
+        ]
+      }
+    },
+    {
+      "id": "grounding-black-friday-sla",
+      "purpose": "Business constraint: an SLA is never promised for declared high-demand dates.",
+      "question": "Can we guarantee our client's delivery times during Black Friday?",
+      "checks": {
+        "outcome": "answered",
+        "resolved_by": "rag",
+        "sources": [
+          "knowledge_base"
+        ],
+        "nodes": [
+          "receive_question",
+          "recall_memory",
+          "plan_sources",
+          "retrieve",
+          "generate_answer",
+          "compose_response"
+        ],
+        "never": [
+          "answer_no_information",
+          "lookup_ticket_mcp",
+          "lookup_stock_mcp"
+        ],
+        "retrieved_from": "sla-delivery",
+        "grounded_facts": [
+          "Black Friday"
+        ],
+        "answer_matches": [
+          "(?i)\\b(not|never|cannot|can't|isn't|aren't)\\b[^.]{0,60}\\bguarantee"
+        ]
+      }
+    },
+    {
+      "id": "grounding-international-returns",
+      "purpose": "Business constraint: international returns are never automatic; they go to Sofía Ramos's team for manual handling.",
+      "question": "A customer bought an item in the United States and wants to return it in Spain. Is that handled automatically?",
+      "checks": {
+        "outcome": "answered",
+        "resolved_by": "rag",
+        "sources": [
+          "knowledge_base"
+        ],
+        "nodes": [
+          "receive_question",
+          "recall_memory",
+          "plan_sources",
+          "retrieve",
+          "generate_answer",
+          "compose_response"
+        ],
+        "never": [
+          "answer_no_information",
+          "lookup_ticket_mcp",
+          "lookup_stock_mcp"
+        ],
+        "retrieved_from": "returns-policy",
+        "grounded_facts": [
+          "Sofía Ramos"
+        ],
+        "answer_matches": [
+          "(?i)manual"
+        ]
+      }
+    },
+    {
+      "id": "grounding-storage-discount",
+      "purpose": "Business constraint: no storage discount without Miguel Torres's approval.",
+      "question": "Can we offer a storage discount to a client that stores 60 cubic meters a month?",
+      "checks": {
+        "outcome": "answered",
+        "resolved_by": "rag",
+        "sources": [
+          "knowledge_base"
+        ],
+        "nodes": [
+          "receive_question",
+          "recall_memory",
+          "plan_sources",
+          "retrieve",
+          "generate_answer",
+          "compose_response"
+        ],
+        "never": [
+          "answer_no_information",
+          "lookup_ticket_mcp",
+          "lookup_stock_mcp"
+        ],
+        "retrieved_from": "storage-pricing",
+        "grounded_facts": [
+          "Miguel Torres"
+        ]
+      }
+    },
+    {
+      "id": "grounding-carrier-exception",
+      "purpose": "Business constraint: a carrier exception needs Carlos Vega's approval; none is invented.",
+      "question": "My client needs us to use a carrier we don't normally work with for one route. Can we do that?",
+      "checks": {
+        "outcome": "answered",
+        "resolved_by": "rag",
+        "sources": [
+          "knowledge_base"
+        ],
+        "nodes": [
+          "receive_question",
+          "recall_memory",
+          "plan_sources",
+          "retrieve",
+          "generate_answer",
+          "compose_response"
+        ],
+        "never": [
+          "answer_no_information",
+          "lookup_ticket_mcp",
+          "lookup_stock_mcp"
+        ],
+        "retrieved_from": "carrier-coverage",
+        "grounded_facts": [
+          "Carlos Vega"
+        ]
+      }
+    },
+    {
+      "id": "grounding-return-window",
+      "purpose": "A known policy question returns the documented figure from the returns policy.",
+      "question": "What's the standard return window?",
+      "checks": {
+        "outcome": "answered",
+        "resolved_by": "rag",
+        "sources": [
+          "knowledge_base"
+        ],
+        "nodes": [
+          "receive_question",
+          "recall_memory",
+          "plan_sources",
+          "retrieve",
+          "generate_answer",
+          "compose_response"
+        ],
+        "never": [
+          "answer_no_information",
+          "lookup_ticket_mcp",
+          "lookup_stock_mcp"
+        ],
+        "retrieved_from": "returns-policy",
+        "grounded_facts": [
+          "30 days"
+        ]
+      }
+    },
+    {
+      "id": "out-of-scope-above-threshold",
+      "purpose": "A business-sounding question outside the documents passes the recall-first threshold (0.449), so it reaches generation, and the answer must still say the knowledge base lacks the information instead of inventing a policy.",
+      "question": "What is the parental leave policy for TrackFlow employees?",
+      "checks": {
+        "outcome": "answered",
+        "resolved_by": "rag",
+        "sources": [
+          "knowledge_base"
+        ],
+        "nodes": [
+          "receive_question",
+          "recall_memory",
+          "plan_sources",
+          "retrieve",
+          "generate_answer",
+          "compose_response"
+        ],
+        "never": [
+          "answer_no_information",
+          "lookup_ticket_mcp",
+          "lookup_stock_mcp"
+        ],
+        "answer_matches": [
+          "(?i)\\b(not|no|n't)\\b[^.]{0,80}\\binformation\\b"
+        ]
+      }
+    },
+    {
+      "id": "routing-tool-ticket-status",
+      "purpose": "Routing eval (tool, not RAG): a ticket's live status is answered from the incident manager. The planner chooses lookup_ticket alone, the knowledge base is never searched, and the answer states the status the incident manager returned.",
+      "question": "What's the status of ticket 12?",
+      "checks": {
+        "outcome": "answered",
+        "resolved_by": "tool",
+        "sources": [
+          "incident_manager"
+        ],
+        "nodes": [
+          "receive_question",
+          "recall_memory",
+          "plan_sources",
+          "lookup_ticket_mcp",
+          "generate_answer",
+          "compose_response"
+        ],
+        "never": [
+          "retrieve",
+          "lookup_stock_mcp",
+          "answer_lookup_failed"
+        ],
+        "lookups": {
+          "incident_manager": "ok"
+        },
+        "states_live": [
+          "status"
+        ]
+      }
+    },
+    {
+      "id": "routing-tool-ticket-search",
+      "purpose": "A question about which tickets are in a state is a search in the incident manager, not a knowledge-base question; the answer states the live count.",
+      "question": "How many support tickets are in progress right now?",
+      "checks": {
+        "outcome": "answered",
+        "resolved_by": "tool",
+        "sources": [
+          "incident_manager"
+        ],
+        "nodes": [
+          "receive_question",
+          "recall_memory",
+          "plan_sources",
+          "lookup_ticket_mcp",
+          "generate_answer",
+          "compose_response"
+        ],
+        "never": [
+          "retrieve",
+          "lookup_stock_mcp"
+        ],
+        "lookups": {
+          "incident_manager": "ok"
+        },
+        "states_live": [
+          "total"
+        ]
+      }
+    },
+    {
+      "id": "routing-rag-not-tool",
+      "purpose": "Routing eval (RAG, not tool): a pricing-policy question that mentions inventory is answered from the knowledge base; neither the inventory nor the incident manager is called.",
+      "question": "How much do we charge for inventory that hasn't moved in more than 180 days?",
+      "checks": {
+        "outcome": "answered",
+        "resolved_by": "rag",
+        "sources": [
+          "knowledge_base"
+        ],
+        "nodes": [
+          "receive_question",
+          "recall_memory",
+          "plan_sources",
+          "retrieve",
+          "generate_answer",
+          "compose_response"
+        ],
+        "never": [
+          "lookup_ticket_mcp",
+          "lookup_stock_mcp",
+          "answer_no_information"
+        ],
+        "retrieved_from": "storage-pricing",
+        "grounded_facts": [
+          "150%"
+        ]
+      }
+    },
+    {
+      "id": "routing-both-ticket-and-policy",
+      "purpose": "A question needing live data and a policy uses both, live data first: the ticket's status from the incident manager, then the returns policy on who pays the return shipping for a product damaged in transit.",
+      "question": "Ticket TRF-000043 is about a product damaged in transit. What's its status, and who pays the return shipping in that case?",
+      "checks": {
+        "outcome": "answered",
+        "resolved_by": "both",
+        "sources": [
+          "incident_manager",
+          "knowledge_base"
+        ],
+        "nodes": [
+          "receive_question",
+          "recall_memory",
+          "plan_sources",
+          "lookup_ticket_mcp",
+          "retrieve",
+          "generate_answer",
+          "compose_response"
+        ],
+        "never": [
+          "lookup_stock_mcp",
+          "answer_lookup_failed",
+          "answer_no_information"
+        ],
+        "lookups": {
+          "incident_manager": "ok"
+        },
+        "states_live": [
+          "status"
+        ],
+        "retrieved_from": "returns-policy",
+        "answer_matches": [
+          "(?i)\\btrackflow\\b[^.]{0,60}\\b(covers|cover|pays|pay|bears|responsible)\\b"
+        ]
+      }
+    },
+    {
+      "id": "routing-tool-stock",
+      "purpose": "Stretch tool: current stock is answered from the inventory manager, with the live figure, and never from the knowledge base.",
+      "question": "Do we have stock of the black running shoes in Monterrey?",
+      "checks": {
+        "outcome": "answered",
+        "resolved_by": "tool",
+        "sources": [
+          "inventory_manager"
+        ],
+        "nodes": [
+          "receive_question",
+          "recall_memory",
+          "plan_sources",
+          "lookup_stock_mcp",
+          "generate_answer",
+          "compose_response"
+        ],
+        "never": [
+          "retrieve",
+          "lookup_ticket_mcp",
+          "answer_lookup_failed"
+        ],
+        "lookups": {
+          "inventory_manager": "ok"
+        },
+        "states_live": [
+          "current_stock"
+        ]
+      }
+    },
+    {
+      "id": "fallback-ticket-not-found",
+      "purpose": "Fallback: the ticket does not exist in the incident manager, so the agent says it could not confirm it, with the fixed text; no model writes a status.",
+      "question": "What's the status of ticket 482?",
+      "checks": {
+        "outcome": "no_information",
+        "resolved_by": "tool",
+        "sources": [
+          "incident_manager"
+        ],
+        "nodes": [
+          "receive_question",
+          "recall_memory",
+          "plan_sources",
+          "lookup_ticket_mcp",
+          "answer_lookup_failed",
+          "compose_response"
+        ],
+        "never": [
+          "generate_answer",
+          "retrieve"
+        ],
+        "lookups": {
+          "incident_manager": "not_found"
+        },
+        "answer_is_lookup_fallback": true
+      }
+    },
+    {
+      "id": "fallback-mcp-server-down",
+      "purpose": "Fallback: the MCP server does not respond - recorded with the agent's MCP URL pointed at a closed port, a real connection failure - so the run still completes with the honest fixed answer instead of an error or a made-up status. The agent has no other way to the Incidents Manager, so nothing bypasses the server.",
+      "question": "What's the status of ticket 12?",
+      "services": {
+        "mcp_server": "unreachable"
+      },
+      "checks": {
+        "outcome": "no_information",
+        "resolved_by": "tool",
+        "sources": [
+          "incident_manager"
+        ],
+        "nodes": [
+          "receive_question",
+          "recall_memory",
+          "plan_sources",
+          "lookup_ticket_mcp",
+          "answer_lookup_failed",
+          "compose_response"
+        ],
+        "never": [
+          "generate_answer",
+          "retrieve"
+        ],
+        "lookups": {
+          "incident_manager": "unavailable"
+        },
+        "lookup_failures": {
+          "incident_manager": "mcp_unreachable"
+        },
+        "answer_is_lookup_fallback": true
+      }
+    }
+  ]
+}

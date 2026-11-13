@@ -1,0 +1,21 @@
+{
+  // GitHub Codespaces / Dev Containers: the API and the MCP server, to test the
+  // MCP server from the MCP Playground (docs/mcp/PLAYGROUND.md).
+  "name": "TrackFlow (API + MCP server)",
+  "image": "mcr.microsoft.com/devcontainers/python:3.14",
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": { "version": "24" },
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+  "postCreateCommand": "pip install --user uv && uv sync",
+  "forwardPorts": [8000, 8100],
+  "portsAttributes": {
+    "8000": { "label": "TrackFlow API (Incidents Manager, inventory)", "onAutoForward": "silent" },
+    "8100": { "label": "MCP server (make public for the Playground)", "onAutoForward": "notify" }
+  },
+  // Secrets (MCP_AUTH_ISSUER, AGENT_OAUTH_CLIENT_SECRET, DATABASE_URL, ...) come
+  // from Codespaces secrets or a .env written in the codespace, never from git.
+  "remoteEnv": {
+    "MCP_HOST": "0.0.0.0"
+  }
+}

@@ -43,7 +43,7 @@ export function OrdersPage() {
       {error ? <div role="alert"><StateMessage tone="error">{error}<div className="mt-3"><button className={inventoryButtonClass} onClick={retry}>Try again</button></div></StateMessage></div> : null}
       {orders?.length === 0 ? <StateMessage tone="info">No orders on record.</StateMessage> : null}
       {orders && orders.length > 0 ? (
-        <div className="overflow-x-auto border-y border-[color:var(--border-soft)] bg-white">
+        <div className="overflow-x-auto border-y border-[color:var(--border-soft)] bg-[color:var(--surface)]">
           <table className="block w-full text-left text-sm sm:table sm:min-w-[740px] sm:table-fixed">
             <caption className="sr-only">Inbound and outbound orders, newest first</caption>
             <thead className="hidden border-b border-[color:var(--border-soft)] bg-slate-50 text-slate-600 sm:table-header-group">

@@ -48,7 +48,7 @@ export default function BackofficeHomePage() {
           </article>
         </div>
 
-        <div className="mt-8 rounded-2xl border border-dashed border-[color:var(--border-soft)] bg-white p-5">
+        <div className="mt-8 rounded-2xl border border-dashed border-[color:var(--border-soft)] bg-[color:var(--surface)] p-5">
           <p className="font-mono text-xs uppercase tracking-[0.18em] text-slate-500">Context Source</p>
           <p className="mt-2 text-sm leading-relaxed text-slate-700">{contextMessage}</p>
         </div>

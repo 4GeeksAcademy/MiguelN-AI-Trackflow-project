@@ -6,6 +6,7 @@ in `/scripts` has to produce exactly the values the API accepts, and a second
 copy of the lists would drift the first time one of them gained a category.
 """
 
+import re
 from enum import Enum
 
 
@@ -89,6 +90,32 @@ ALLOWED_TRANSITIONS: dict[IncidentStatus, frozenset[IncidentStatus]] = {
 SLA_CRITICAL_CATEGORIES: frozenset[IncidentCategory] = frozenset(
     {IncidentCategory.LOST_PARCEL, IncidentCategory.CARRIER_ISSUE}
 )
+
+
+# The helpdesk reference a seeded incident came from (`incident_id` in the CSV,
+# `contexts/indicent-file-analysis.md`): "TRF-" and six digits. Support staff
+# quote it shortened ("ticket 482"), so `normalize_reference` restores the
+# canonical form before anything is looked up.
+REFERENCE_EXAMPLE = "TRF-000123"
+REFERENCE_PATTERN = re.compile(r"^TRF-\d{6}$")
+_LOOSE_REFERENCE = re.compile(r"^(?:TRF[\s-]*)?0*(\d{1,6})$", re.IGNORECASE)
+
+
+def is_reference(value: str) -> bool:
+    """True when `value` is a reference in canonical form, e.g. 'TRF-000123'."""
+    return REFERENCE_PATTERN.fullmatch(value) is not None
+
+
+def normalize_reference(raw: str) -> str | None:
+    """'482', 'TRF-482', 'trf 000482' -> 'TRF-000482'; None if it is not a reference.
+
+    Leading zeros are dropped before padding, so a number longer than six
+    digits after them is not a reference.
+    """
+    match = _LOOSE_REFERENCE.fullmatch(raw.strip())
+    if match is None or int(match.group(1)) == 0:
+        return None
+    return f"TRF-{int(match.group(1)):06d}"
 
 
 def is_final_status(status: IncidentStatus) -> bool:

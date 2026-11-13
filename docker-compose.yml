@@ -16,6 +16,18 @@ x-backend-environment: &backend-environment
   # The host .env may point REDIS_URL at localhost; inside Compose Redis is the
   # `redis` service, hence the COMPOSE_ alias, like DATABASE_URL above.
   REDIS_URL: ${COMPOSE_REDIS_URL:-redis://redis:6379/0}
+  # Knowledge-base vector store (Milestone 7, RAG). Same COMPOSE_ alias pattern:
+  # the host .env points QDRANT_URL at localhost, Compose at the `qdrant` service.
+  QDRANT_URL: ${COMPOSE_QDRANT_URL:-http://qdrant:6333}
+  # The 4Geeks embeddings and generation models (OpenAI-compatible API). Empty
+  # values count as unset: the API still starts, and /knowledge/query answers 503.
+  EMBEDDING_MODEL: ${EMBEDDING_MODEL:-}
+  GENERATION_MODEL: ${GENERATION_MODEL:-}
+  LLM_BASE_URL: ${LLM_BASE_URL:-}
+  LLM_API_KEY: ${LLM_API_KEY:-}
+  EMBEDDING_BASE_URL: ${EMBEDDING_BASE_URL:-}
+  EMBEDDING_API_KEY: ${EMBEDDING_API_KEY:-}
+  LLM_TIMEOUT_SECONDS: ${LLM_TIMEOUT_SECONDS:-}
 
 services:
   ui:
@@ -52,6 +64,21 @@ services:
       # The TinyDB file lives outside /app/data, which now holds the pipeline
       # code the reporting endpoints import; a volume there would hide it.
       DB_PATH: /app/var/suppliers.json
+      # The knowledge agent's checkpoints and run traces (SQLite), kept on the
+      # same volume so runs stay inspectable and resumable across restarts.
+      AGENT_STORE_PATH: /app/var/agent_runs.sqlite
+      # The agent's memory (MEM-092): proposals, the decision log and the approved
+      # memories, on the same volume so they survive restarts.
+      AGENT_MEMORY_PATH: /app/var/agent_memory.sqlite
+      # The agent reads tickets and stock only through the MCP server, as an
+      # OAuth client with the read scopes.
+      AGENT_MCP_URL: ${COMPOSE_AGENT_MCP_URL:-http://mcp:8100/mcp}
+      AGENT_TOOL_TIMEOUT_SECONDS: ${AGENT_TOOL_TIMEOUT_SECONDS:-}
+      AGENT_OAUTH_TOKEN_URL: ${AGENT_OAUTH_TOKEN_URL:-}
+      AGENT_OAUTH_CLIENT_ID: ${AGENT_OAUTH_CLIENT_ID:-}
+      AGENT_OAUTH_CLIENT_SECRET: ${AGENT_OAUTH_CLIENT_SECRET:-}
+      AGENT_OAUTH_AUDIENCE: ${AGENT_OAUTH_AUDIENCE:-}
+      AGENT_OAUTH_SCOPES: ${AGENT_OAUTH_SCOPES:-}
     volumes:
       - .:/app
       - api_data:/app/var
@@ -60,6 +87,10 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      # service_started, not service_healthy: the API boots without Qdrant and
+      # only the knowledge endpoint needs it, per request.
+      qdrant:
+        condition: service_started
     healthcheck:
       test:
         - CMD
@@ -70,6 +101,37 @@ services:
       timeout: 3s
       retries: 10
       start_period: 20s
+    networks:
+      - trackflow
+
+  # The TrackFlow MCP server (mcps/trackflow_tools): the Incidents Manager and
+  # the read-only inventory over MCP, OAuth via MCP Auth. It calls the api
+  # service over HTTP; it never imports it.
+  mcp:
+    build:
+      context: .
+      dockerfile: services/Dockerfile
+    command: ["python", "-m", "mcps.trackflow_tools", "serve", "--host", "0.0.0.0", "--port", "8100"]
+    ports:
+      - "127.0.0.1:8100:8100"
+    environment:
+      MCP_RESOURCE_URL: ${MCP_RESOURCE_URL:-http://localhost:8100/mcp}
+      MCP_AUTH_ISSUER: ${MCP_AUTH_ISSUER:-}
+      MCP_AUTH_AUDIENCE: ${MCP_AUTH_AUDIENCE:-}
+      MCP_INCIDENTS_API_URL: http://api:8000
+      MCP_INVENTORY_API_URL: http://api:8000
+      MCP_INVENTORY_EMAIL: ${MCP_INVENTORY_EMAIL:-}
+      MCP_INVENTORY_PASSWORD: ${MCP_INVENTORY_PASSWORD:-}
+      # The api container reaches this one as `mcp`.
+      MCP_ALLOWED_HOSTS: mcp
+      MCP_CORS_ORIGINS: ${MCP_CORS_ORIGINS:-}
+      MCP_AUDIT_LOG_PATH: /app/var/mcp_tool_calls.jsonl
+    volumes:
+      - .:/app
+      - api_data:/app/var
+    depends_on:
+      api:
+        condition: service_healthy
     networks:
       - trackflow
 
@@ -144,6 +206,27 @@ services:
     networks:
       - trackflow
 
+  # Vector store for the knowledge base (Milestone 7, RAG): the collection
+  # `trackflow_knowledge` that data/process setup() builds from
+  # docs/company-knowledge-base/. The image is pinned to the qdrant-client
+  # version in uv.lock (1.20); the client warns when they drift apart.
+  # Published on 127.0.0.1 only: no API key is set on this instance. The image
+  # ships no curl/wget, hence the bash /dev/tcp probe.
+  qdrant:
+    image: qdrant/qdrant:v1.20.0
+    ports:
+      - "127.0.0.1:6333:6333" # REST API and web dashboard (/dashboard)
+      - "127.0.0.1:6334:6334" # gRPC
+    volumes:
+      - qdrant_data:/qdrant/storage
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c ':> /dev/tcp/127.0.0.1/6333' || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - trackflow
+
   # Queue monitoring for development. Flower needs only the broker, so it runs
   # the upstream image and none of the API's settings or code.
   flower:
@@ -167,6 +250,7 @@ volumes:
   api_data:
   postgres_data:
   redis_data:
+  qdrant_data:
   website_node_modules:
   backoffice_node_modules:
   website_next:

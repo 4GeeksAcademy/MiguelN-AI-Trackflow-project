@@ -327,13 +327,13 @@ export function IncidentForm({ onCreated }: IncidentFormProps) {
           type="submit"
           disabled={isSubmitting}
           aria-busy={isSubmitting}
-          className="inline-flex min-h-12 items-center gap-2 rounded-xl bg-[color:var(--brand-primary)] px-6 py-3 text-base font-semibold text-white transition hover:bg-[color:var(--brand-secondary)] disabled:cursor-not-allowed disabled:opacity-60"
+          className="inline-flex min-h-12 items-center gap-2 rounded-xl bg-[color:var(--brand-primary)] px-6 py-3 text-base font-semibold text-[color:var(--on-brand)] transition hover:bg-[color:var(--brand-secondary)] disabled:cursor-not-allowed disabled:opacity-60"
         >
           {isSubmitting ? (
             <>
               <span
                 aria-hidden="true"
-                className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white"
+                className="h-4 w-4 animate-spin rounded-full border-2 border-[color:var(--on-brand)]/40 border-t-[color:var(--on-brand)]"
               />
               Registering...
             </>

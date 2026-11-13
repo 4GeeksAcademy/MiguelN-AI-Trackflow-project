@@ -1,0 +1,379 @@
+{
+  "description": "Memory evals (MEM-092): multi-turn conversations through the real agent, each case on a fresh, empty memory store. The self-evaluation examples are memory-briefing.md's own; the rest walk the checklist: approval reflected later (cycle A), rejection leaving memory unchanged (cycle B), edit, change of topic, an answer plus a new question, one pending proposal at a time, unclear replies, and every kind of forbidden content. `npm run agent:record -- --memory` records them into memory-traces.json; tests/pipelines/test_agent_memory_evals.py checks them offline. A turn's `conversation` label starts a conversation the first time it is used and continues it afterwards.",
+  "cases": [
+    {
+      "id": "propose-carrier-correction",
+      "purpose": "Briefing example 1 (should generate a proposal): a corrected carrier assignment rule. Proposed in the response, never written.",
+      "turns": [
+        {
+          "conversation": "a",
+          "message": "Actually SEUR no longer covers that rural area of Zaragoza, we've had to use the local carrier since last month.",
+          "checks": {
+            "self_evaluation": "propose",
+            "category": "carrier_rule",
+            "proposal": "pending",
+            "active_memories": 0
+          }
+        }
+      ]
+    },
+    {
+      "id": "propose-recurring-incident",
+      "purpose": "Briefing example 2 (should generate a proposal): context from a known, recurring incident, so the same alert isn't re-escalated.",
+      "turns": [
+        {
+          "conversation": "a",
+          "message": "Those delays reported in Los Angeles incidents this week are from the port strike, not something on our end — that's the third ticket about it already.",
+          "checks": {
+            "self_evaluation": "propose",
+            "category": "recurring_incident",
+            "proposal": "pending",
+            "active_memories": 0
+          }
+        }
+      ]
+    },
+    {
+      "id": "propose-client-report-preference",
+      "purpose": "Briefing example 3 (should generate a proposal): a recurring B2B client's monthly report preference. No knowledge-base document covers it; the planner marks the message as an update (note_team_update), so it reaches the self-evaluation even when no chunk passes the threshold.",
+      "turns": [
+        {
+          "conversation": "a",
+          "message": "The cosmetics client always wants their monthly report with the returns breakdown first, before shipment volume.",
+          "checks": {
+            "self_evaluation": "propose",
+            "category": "client_report_preference",
+            "proposal": "pending",
+            "active_memories": 0
+          }
+        }
+      ]
+    },
+    {
+      "id": "no-proposal-one-off-tracking",
+      "purpose": "Briefing counter-example 1: a one-off tracking query is not a pattern.",
+      "turns": [
+        {
+          "conversation": "a",
+          "message": "Where's the package with tracking XJ4471?",
+          "checks": {
+            "self_evaluation": "not_propose",
+            "proposal": null,
+            "active_memories": 0
+          }
+        }
+      ]
+    },
+    {
+      "id": "no-proposal-closing",
+      "purpose": "Briefing counter-example 2: a conversation closing.",
+      "turns": [
+        {
+          "conversation": "a",
+          "message": "Great, that's resolved.",
+          "checks": {
+            "self_evaluation": "not_propose",
+            "proposal": null,
+            "active_memories": 0
+          }
+        }
+      ]
+    },
+    {
+      "id": "no-proposal-single-use-task",
+      "purpose": "Briefing counter-example 3: a single-use task.",
+      "turns": [
+        {
+          "conversation": "a",
+          "message": "Translate this into English for the client.",
+          "checks": {
+            "self_evaluation": "not_propose",
+            "proposal": null,
+            "active_memories": 0
+          }
+        }
+      ]
+    },
+    {
+      "id": "forbidden-b2c-address",
+      "purpose": "Never remembered: an end customer's (B2C) exact address. Neither proposed nor stored, and the address never reaches the decision log.",
+      "turns": [
+        {
+          "conversation": "a",
+          "message": "Remember for next time: the end customer on the SEUR rural route lives at Calle Mayor 12, 3ºB, 50001 Zaragoza, always leave it with the neighbour.",
+          "checks": {
+            "self_evaluation": "not_propose",
+            "proposal": null,
+            "active_memories": 0,
+            "never_logged": [
+              "Calle Mayor 12",
+              "50001"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "forbidden-b2b-location",
+      "purpose": "Never remembered: a client brand's (B2B) exact location and an access code - the briefing asks for location data of both client types.",
+      "turns": [
+        {
+          "conversation": "a",
+          "message": "Note this for next time: the cosmetics client's pickup point is their warehouse at 455 Industrial Way, Los Angeles, gate code 4471.",
+          "checks": {
+            "self_evaluation": "not_propose",
+            "proposal": null,
+            "active_memories": 0,
+            "never_logged": [
+              "455 Industrial Way",
+              "4471"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "forbidden-single-package-incident",
+      "purpose": "Never remembered: data from a single, non-repeating package incident.",
+      "turns": [
+        {
+          "conversation": "a",
+          "message": "Remember that the customer on ticket TRF-000482 complained their parcel arrived wet.",
+          "checks": {
+            "self_evaluation": "not_propose",
+            "proposal": null,
+            "active_memories": 0
+          }
+        }
+      ]
+    },
+    {
+      "id": "forbidden-contract-negotiation",
+      "purpose": "Never remembered: information from an active commercial contract negotiation.",
+      "turns": [
+        {
+          "conversation": "a",
+          "message": "Keep in mind we're negotiating a 12% storage discount with the cosmetics client in their contract renewal.",
+          "checks": {
+            "self_evaluation": "not_propose",
+            "proposal": null,
+            "active_memories": 0
+          }
+        }
+      ]
+    },
+    {
+      "id": "cycle-a-approved-and-reflected",
+      "purpose": "Evidence cycle A: proposed, approved, and reflected in a later interaction - a new conversation recalls the memory and the answer uses it.",
+      "turns": [
+        {
+          "conversation": "a",
+          "message": "Actually SEUR no longer covers that rural area of Zaragoza, we've had to use the local carrier since last month.",
+          "checks": {
+            "self_evaluation": "propose",
+            "category": "carrier_rule",
+            "proposal": "pending",
+            "active_memories": 0
+          }
+        },
+        {
+          "conversation": "a",
+          "message": "Yes, please remember that.",
+          "checks": {
+            "outcome": "memory_reply",
+            "decision": "approved",
+            "proposal": null,
+            "active_memories": 1
+          }
+        },
+        {
+          "conversation": "b",
+          "message": "Which carrier should we use for deliveries to rural areas of Zaragoza?",
+          "checks": {
+            "recalled": 1,
+            "answer_mentions_any": [
+              "local carrier",
+              "local last-mile"
+            ],
+            "active_memories": 1
+          }
+        }
+      ]
+    },
+    {
+      "id": "cycle-b-rejected-memory-unchanged",
+      "purpose": "Evidence cycle B: proposed and rejected - memory stays unchanged, a later conversation recalls nothing, and the record of the rejected proposal stays in the log.",
+      "turns": [
+        {
+          "conversation": "a",
+          "message": "The cosmetics client always wants their monthly report with the returns breakdown first, before shipment volume.",
+          "checks": {
+            "self_evaluation": "propose",
+            "category": "client_report_preference",
+            "proposal": "pending",
+            "active_memories": 0
+          }
+        },
+        {
+          "conversation": "a",
+          "message": "No, don't save that, it was a one-off request.",
+          "checks": {
+            "outcome": "memory_reply",
+            "decision": "rejected",
+            "proposal": null,
+            "active_memories": 0
+          }
+        },
+        {
+          "conversation": "b",
+          "message": "How does the cosmetics client want its monthly report?",
+          "checks": {
+            "recalled": 0,
+            "active_memories": 0
+          }
+        }
+      ]
+    },
+    {
+      "id": "edit-then-confirm",
+      "purpose": "An edit is asked again with the user's text, and stored only once confirmed.",
+      "turns": [
+        {
+          "conversation": "a",
+          "message": "The cosmetics client always wants their monthly report with the returns breakdown first, before shipment volume.",
+          "checks": {
+            "self_evaluation": "propose",
+            "category": "client_report_preference",
+            "proposal": "pending",
+            "active_memories": 0
+          }
+        },
+        {
+          "conversation": "a",
+          "message": "Almost: also note that they want the report as a PDF.",
+          "checks": {
+            "decision": "revised",
+            "proposal": "pending",
+            "active_memories": 0
+          }
+        },
+        {
+          "conversation": "a",
+          "message": "Yes, that's right.",
+          "checks": {
+            "decision": "approved",
+            "proposal": null,
+            "active_memories": 1,
+            "memory_mentions_any": [
+              "PDF"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "topic-change-discards",
+      "purpose": "Changing the topic without answering discards the proposal (approval is never assumed) and the new question is answered normally.",
+      "turns": [
+        {
+          "conversation": "a",
+          "message": "Actually SEUR no longer covers that rural area of Zaragoza, we've had to use the local carrier since last month.",
+          "checks": {
+            "self_evaluation": "propose",
+            "proposal": "pending",
+            "active_memories": 0
+          }
+        },
+        {
+          "conversation": "a",
+          "message": "What's the standard return window?",
+          "checks": {
+            "outcome": "answered",
+            "decision": "discarded",
+            "proposal": null,
+            "active_memories": 0
+          }
+        }
+      ]
+    },
+    {
+      "id": "unclear-reply-discards",
+      "purpose": "A hesitant reply is not approval: the proposal is discarded by default.",
+      "turns": [
+        {
+          "conversation": "a",
+          "message": "Actually SEUR no longer covers that rural area of Zaragoza, we've had to use the local carrier since last month.",
+          "checks": {
+            "self_evaluation": "propose",
+            "proposal": "pending",
+            "active_memories": 0
+          }
+        },
+        {
+          "conversation": "a",
+          "message": "Hmm, I'm not sure, maybe later.",
+          "checks": {
+            "decision": "discarded",
+            "proposal": null,
+            "active_memories": 0,
+            "outcome": "memory_reply"
+          }
+        }
+      ]
+    },
+    {
+      "id": "answer-and-ask-in-one-message",
+      "purpose": "The user answers the proposal and asks another question in the same message: it is resolved, then the conversation goes on.",
+      "turns": [
+        {
+          "conversation": "a",
+          "message": "Actually SEUR no longer covers that rural area of Zaragoza, we've had to use the local carrier since last month.",
+          "checks": {
+            "self_evaluation": "propose",
+            "proposal": "pending",
+            "active_memories": 0
+          }
+        },
+        {
+          "conversation": "a",
+          "message": "Yes, save it. And what's the standard return window?",
+          "checks": {
+            "outcome": "answered",
+            "decision": "approved",
+            "planned": true,
+            "active_memories": 1,
+            "answer_mentions_any": [
+              "30 days"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "one-pending-proposal-at-a-time",
+      "purpose": "While a proposal is pending (here, the confirmation of an edit), no second one is launched.",
+      "turns": [
+        {
+          "conversation": "a",
+          "message": "The cosmetics client always wants their monthly report with the returns breakdown first, before shipment volume.",
+          "checks": {
+            "self_evaluation": "propose",
+            "category": "client_report_preference",
+            "proposal": "pending",
+            "active_memories": 0
+          }
+        },
+        {
+          "conversation": "a",
+          "message": "Almost: say they want it as a PDF. Also, SEUR no longer covers that rural area of Zaragoza, we use the local carrier now.",
+          "checks": {
+            "decision": "revised",
+            "proposal": "pending",
+            "pending_category": "client_report_preference",
+            "active_memories": 0
+          }
+        }
+      ]
+    }
+  ]
+}

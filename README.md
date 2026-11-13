@@ -77,6 +77,18 @@ Alternatively, `docker compose up worker` runs the worker in Docker, next to `ap
 
 Tasks enqueued while no worker is running wait in Redis and run when one starts.
 
+### Knowledge assistant (RAG)
+
+The commercial team asks questions about TrackFlow's policies in plain language: delivery SLAs, returns, carrier coverage and storage pricing. They get a generated answer that names its sources. The four policy documents in `docs/company-knowledge-base/` are indexed in Qdrant (`trackflow_knowledge`). `POST /knowledge/query` answers from them, and the backoffice page is `/knowledge`.
+
+```sh
+docker compose up -d qdrant     # Qdrant on localhost:6333
+npm run rag:setup               # index the documents (re-runnable)
+npm run rag:eval                # Recall@3 against data/eval/test-queries.json
+```
+
+The embeddings and generation models are configured in `.env` (see `.env.example`). The design, chunking, threshold and prompt rules are in [RAG design](./docs/rag/rag-design.md).
+
 ---
 
 ## Milestones (reference)

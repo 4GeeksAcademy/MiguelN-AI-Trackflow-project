@@ -11,7 +11,12 @@ from uuid import uuid4
 from pydantic import ValidationError
 from tinydb import Query
 from tinydb.table import Table
-from trackflow_shared.incidents import can_transition, explain_invalid_transition
+from trackflow_shared.incidents import (
+    REFERENCE_EXAMPLE,
+    can_transition,
+    explain_invalid_transition,
+    is_reference,
+)
 
 from services.core.errors import IncidentNotFound, ValidationFailed
 from services.incidents.db import get_table
@@ -90,13 +95,23 @@ def list_incidents(
     origin: IncidentOrigin | None = None,
     branch: IncidentBranch | None = None,
     category: IncidentCategory | None = None,
+    reference: str | None = None,
 ) -> list[IncidentInDB]:
     """Every incident matching the filters given, newest first.
 
-    Filters combine with AND. All four omitted returns the whole table; an
-    empty table returns an empty list rather than failing.
+    Filters combine with AND. All omitted returns the whole table; an empty
+    table returns an empty list rather than failing. `reference` must be a
+    canonical helpdesk reference (`TRF-000123`) and matches it exactly.
     """
+    if reference is not None and not is_reference(reference):
+        raise ValidationFailed(
+            field="reference",
+            message=f"Must be a helpdesk reference such as '{REFERENCE_EXAMPLE}'.",
+        )
     incidents = _all_incidents()
+
+    if reference is not None:
+        incidents = [item for item in incidents if item.source_incident_id == reference]
 
     if status is not None:
         incidents = [item for item in incidents if item.status is status]

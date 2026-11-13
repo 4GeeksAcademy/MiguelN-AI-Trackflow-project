@@ -34,8 +34,11 @@ _INCIDENT_RESPONSE_LIST = TypeAdapter(list[IncidentResponse])
 
 
 def to_response(incident: IncidentInDB) -> IncidentResponse:
-    """Drop the seed-only bookkeeping before the incident goes on the wire."""
-    return IncidentResponse(**incident.model_dump(exclude={"source_incident_id"}))
+    """The stored row as the API shows it: the helpdesk id becomes `reference`."""
+    return IncidentResponse(
+        **incident.model_dump(exclude={"source_incident_id"}),
+        reference=incident.source_incident_id,
+    )
 
 
 @router.post(
@@ -63,14 +66,20 @@ def list_incidents(
     origin: IncidentOrigin | None = Query(default=None),
     branch: IncidentBranch | None = Query(default=None),
     category: IncidentCategory | None = Query(default=None),
+    reference: str | None = Query(default=None, max_length=32),
 ) -> Response:
-    """List incidents, optionally filtered. Filters combine with AND."""
+    """List incidents, optionally filtered. Filters combine with AND.
+
+    `reference` matches the helpdesk reference exactly (`TRF-000123`), so it
+    returns at most one incident.
+    """
     cache_key = (
         "list",
         None if status is None else status.value,
         None if origin is None else origin.value,
         None if branch is None else branch.value,
         None if category is None else category.value,
+        reference,
     )
     cached_payload = incident_read_cache.get(cache_key)
     if cached_payload is not None:
@@ -78,7 +87,7 @@ def list_incidents(
 
     cache_generation = incident_read_cache.generation
     incidents = service.list_incidents(
-        status=status, origin=origin, branch=branch, category=category
+        status=status, origin=origin, branch=branch, category=category, reference=reference
     )
     payload = _INCIDENT_RESPONSE_LIST.dump_json(
         [to_response(incident) for incident in incidents]
@@ -111,9 +120,7 @@ def get_incident(incident_id: str) -> IncidentResponse:
 
 
 @router.patch("/{incident_id}/status", response_model=IncidentResponse)
-def update_incident_status(
-    incident_id: str, payload: IncidentStatusUpdate
-) -> IncidentResponse:
+def update_incident_status(incident_id: str, payload: IncidentStatusUpdate) -> IncidentResponse:
     """Advance an incident along its lifecycle.
 
     `open` leads to `in_progress` or `discarded`; `in_progress` leads to

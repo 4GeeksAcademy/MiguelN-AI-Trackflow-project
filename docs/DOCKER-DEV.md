@@ -31,6 +31,7 @@ docker compose up --build
 | Redis | localhost:6379 | Celery broker and result backend ([Async Tasks](./ASYNC_TASKS.md)) |
 | Worker | none | Celery worker running the tasks the API enqueues |
 | Flower | http://localhost:5555 | Queue monitoring: queued, running and finished tasks |
+| Qdrant | http://localhost:6333/dashboard | Vector store for the knowledge base (`trackflow_knowledge` collection, RAG) |
 
 Both Next.js apps run in the single `ui` container. Their `/backend/...` requests are rewritten server-side to the `api` service; browser code does not need to resolve Docker service names. The website's candidate-records API remains external and uses the browser-reachable `NEXT_PUBLIC_API_URL` from `.env`.
 
@@ -39,5 +40,9 @@ The named `trackflow-development` network provides service-name DNS. PostgreSQL 
 The API's local PostgreSQL URL uses `sslmode=disable` only with `APP_ENV=development`. Other environments continue to require PostgreSQL SSL. The local sample JWT secret and database password are placeholders for this development stack, not production credentials.
 
 Redis and Flower are published on `127.0.0.1` only: neither has a password. The `worker` builds from the same image as `api` and reads the same settings; `REDIS_URL` inside Compose is `redis://redis:6379/0` (override with `COMPOSE_REDIS_URL`). Run either this worker or `npm run worker` on the host, not both: they share Redis but use different databases.
+
+Qdrant is also published on `127.0.0.1` only (6333 REST, 6334 gRPC) and has no API key. Its image is pinned to `qdrant/qdrant:v1.20.0`, the same minor as `qdrant-client` in `uv.lock`; bump both together. Collections persist in the `qdrant_data` volume. Inside Compose `QDRANT_URL` is `http://qdrant:6333` (override with `COMPOSE_QDRANT_URL`); on the host it is `http://localhost:6333`. The API starts without waiting for Qdrant to be healthy, because only the knowledge endpoint uses it, per request. To run only the vector store: `docker compose up -d qdrant`.
+
+The knowledge assistant's model settings (`EMBEDDING_MODEL`, `GENERATION_MODEL`, `LLM_BASE_URL`, `LLM_API_KEY`, and the optional `EMBEDDING_BASE_URL` and `EMBEDDING_API_KEY`) are passed through from the root `.env` to `api` and `worker`. While they are empty, the API still starts and `POST /knowledge/query` answers 503. See [RAG design](./rag/rag-design.md).
 
 Stop the containers with Ctrl+C. `docker compose down` preserves named data volumes; removing volumes deletes local database and API data.

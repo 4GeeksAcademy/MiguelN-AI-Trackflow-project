@@ -13,6 +13,9 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 
+from services.agent import graph as agent_graph
+from services.agent.router import router as agent_router
+from services.agent.tracing import get_trace_store
 from services.auth.router import router as auth_router
 from services.core.config import get_settings
 from services.core.errors import (
@@ -32,6 +35,7 @@ from services.core.http_errors import (
 from services.incidents.router import router as incidents_router
 from services.inventory import database as inventory_database
 from services.inventory.routers.inventory import router as inventory_router
+from services.knowledge.router import router as knowledge_router
 from services.profiles.router import router as profiles_router
 from services.reporting.router import router as reporting_router
 from services.suppliers.router import router as suppliers_router
@@ -56,8 +60,13 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         inventory_database.check_connection()
         inventory_database.initialize_schema()
         telemetry_database.initialize_schema()
+        # Compile the agent graph before any request: a structural error in it
+        # stops startup here (AgentGraphBuildError) instead of failing a query.
+        agent_graph.get_agent_graph()
+        get_trace_store()
         yield
     finally:
+        agent_graph.close_agent_graph()
         inventory_database.dispose_engine()
 
 
@@ -117,6 +126,8 @@ app.include_router(inventory_router)
 app.include_router(telemetry_router)
 app.include_router(reporting_router)
 app.include_router(tasks_router)
+app.include_router(knowledge_router)
+app.include_router(agent_router)
 
 # Error translation.
 #

@@ -187,7 +187,7 @@ export function InventoryOrderForm({ direction }: { direction: OrderDirection })
             }} className={inventoryControlClass} aria-invalid={Boolean(quantityMessage)} aria-describedby={quantityMessage ? "quantity-error" : undefined} />
             {quantityMessage ? <p id="quantity-error" role="alert" className="mt-2 text-sm text-red-700">{quantityMessage}</p> : null}
           </div>
-          <button type="submit" disabled={isSubmitting || !products?.length || exceedsStock || (outbound && (available === undefined || available === 0))} className={`${inventoryButtonClass} justify-self-start border-transparent bg-[color:var(--brand-primary)] text-white hover:bg-blue-700`}>
+          <button type="submit" disabled={isSubmitting || !products?.length || exceedsStock || (outbound && (available === undefined || available === 0))} className={`${inventoryButtonClass} justify-self-start border-transparent bg-[color:var(--brand-primary)] text-[color:var(--on-brand)] hover:bg-blue-700`}>
             {isSubmitting ? "Registering..." : `Register ${direction} order`}
           </button>
         </form>

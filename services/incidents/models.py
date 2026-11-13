@@ -69,9 +69,10 @@ class IncidentInDB(IncidentBase):
     """The stored row.
 
     `source_incident_id` holds the identifier of the helpdesk record a seeded
-    incident came from. It is how `scripts/seed_incidents.py` stays idempotent
-    and it is absent on anything created through the API, which is why it is
-    excluded from the response model rather than being part of the contract.
+    incident came from (`TRF-000123`). It is how `scripts/seed_incidents.py`
+    stays idempotent, and it is absent on anything created through the API.
+    The response publishes it read-only as `reference`, the number support
+    staff quote ("ticket 482").
     """
 
     id: str
@@ -82,9 +83,15 @@ class IncidentInDB(IncidentBase):
 
 
 class IncidentResponse(IncidentBase):
-    """What the API returns. Deliberately without `source_incident_id`."""
+    """What the API returns.
+
+    `reference` is the helpdesk reference (`source_incident_id`), or None for
+    an incident created through the API. It is output only: no request model
+    accepts it, so it can never be set or changed over HTTP.
+    """
 
     id: str
+    reference: str | None = None
     status: IncidentStatus
     created_at: datetime
     updated_at: datetime
